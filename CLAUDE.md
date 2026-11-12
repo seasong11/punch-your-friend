@@ -76,7 +76,17 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - Level is fixed at 1 while `JOURNEY` is on (`levelOf`), so punches stay slow and there are no level-up hearts.
 - Relay: at zero hearts `gameOver` sets `S.handT`; `relayHand` then hands the role to the top hitter who has not
   been 我 this round (`S.was`, passed along in presence `was`). The new 我 starts the house from room 1.
-- Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS }`.
+- A garden (`outdoor`, `gate`) follows the garage and ends the house section.
+- Rooftop climb (the last entry of `ROOMS`, `climb: { top, stairs, ladders, hooks }`): floors are one-way platforms
+  `FH` apart (`climbGround`, `moveClimb`). ↑ at a ladder's foot climbs it in one go (← → lets go), a jump into a
+  hook pulls 我 up a floor, ↓ drops through a floor (`tryDrop`). The view scrolls with 我 (`CAMV`, `camFollow`,
+  `camY`); everything in the world is drawn under `translate(0, camY())`.
+- Side punches (`addSide`, `updateSide`, `sideWarn`, `sideFist`) live in `S.chops` with `side` (+1 from the left,
+  -1 from the right) and `row`. They run along one floor until a pillar (prop `k: 'pillar'`, `lv`, 3 hp) or 我
+  stops them. Never two neighbouring rows at once. A 兄弟 tap sends its height (`chop.h`); the tapped half of the
+  arena picks the side. Entering the climb refills hearts and sets `S.startRm`, so a lost turn (presence `sec`)
+  restarts the climb, not the house.
+- Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
 - The hoodie no longer has 我 printed on the chest.
 
 ## Publishing (GitHub Pages)

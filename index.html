@@ -960,10 +960,20 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'bed', x: 430, w: 260, h: 68 }, { k: 'desk', x: 900, w: 150, h: 64 }, { k: 'wardrobe', x: 1050, w: 150, h: 215, hp: 3 }] },
     { name: 'STAIRS DOWN', wall: ['#3e2731', '#733e39', '#3e2731'], floor: ['#733e39', '#3e2731'], decor: [['pic', 700], ['pic', 980]], ramp: { x0: 400, x1: 1300, h: 240, up: 0 }, props: [] },
     { name: 'GARAGE', wall: ['#5a6988', '#8b9bb4', '#3a4466'], floor: ['#8b9bb4', '#5a6988'], decor: [['shelf', 300], ['shelf', 760]], props: [
-      { k: 'box', x: 330, w: 90, h: 60 }, { k: 'box', x: 560, w: 110, h: 96 }, { k: 'box', x: 800, w: 90, h: 60 }, { k: 'box', x: 1030, w: 130, h: 112 }, { k: 'box', x: 1280, w: 100, h: 70 }] }
+      { k: 'box', x: 330, w: 90, h: 60 }, { k: 'box', x: 560, w: 110, h: 96 }, { k: 'box', x: 800, w: 90, h: 60 }, { k: 'box', x: 1030, w: 130, h: 112 }, { k: 'box', x: 1280, w: 100, h: 70 }] },
+    { name: 'GARDEN', outdoor: 1, gate: 1, wall: ['#124e89', '#124e89', '#b86f50'], floor: ['#3e8948', '#265c42'], decor: [['moon', 1180], ['tree', 300], ['tree', 980]], props: [
+      { k: 'hedge', x: 420, w: 170, h: 70 }, { k: 'pot', x: 760, w: 70, h: 56 }, { k: 'hedge', x: 1130, w: 220, h: 84 }] },
+    { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], props: [
+      { k: 'pillar', lv: 0, x: 900, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 1, x: 600, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 1, x: 1100, w: 54, h: 0, hp: 3 },
+      { k: 'pillar', lv: 2, x: 1000, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 3, x: 500, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 3, x: 1000, w: 54, h: 0, hp: 3 },
+      { k: 'pillar', lv: 4, x: 600, w: 54, h: 0, hp: 3 }],
+      climb: { top: 5,
+        stairs: [{ lv: 0, x0: 300, x1: 700 }, { lv: 1, x0: 1300, x1: 900 }, { lv: 2, x0: 400, x1: 800 }, { lv: 3, x0: 700, x1: 300 }, { lv: 4, x0: 900, x1: 1300 }],
+        ladders: [{ lv: 0, x: 1300 }, { lv: 1, x: 250 }, { lv: 3, x: 1400 }, { lv: 4, x: 200 }],
+        hooks: [{ lv: 1, x: 760 }, { lv: 2, x: 1250 }] } }
   ];
   const R = { i: 0, props: [] };
-  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS }; // test hook
+  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom }; // test hook
   function loadRoom(i) {
     R.i = clamp(i | 0, 0, ROOMS.length - 1);
     R.props = ROOMS[R.i].props.map(p => ({ ...p, hp0: p.hp, sparkT: 0, dead: false }));
@@ -981,12 +991,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return g;
   }
   function tryJump() {
-    if (role !== 'me' || S.st !== 'play' || S.paused || P.air) return;
+    if (role !== 'me' || S.st !== 'play' || S.paused || P.air || P.lad) return;
+    const cl = climbOf();
+    if (cl) { const l = cl.ladders.find(l => Math.abs(l.lv * FH - P.y) < 3 && Math.abs(P.x - l.x) < 36); if (l) { P.lad = l; P.vx = 0; S.blockT = 0; return; } }
     P.vy = JUMP_V; P.air = true; S.blockT = 0;
     if (!reduce) burst(P.x, FLOOR - P.y - 3, 6, ['#c9b6de', '#fff4e0'], 120, 0.5, 300, 4);
     sfx.whoosh();
   }
   function movePlayer(dt) {
+    if (climbOf()) { moveClimb(dt); return; }
     let nx = P.x + P.vx * dt;
     if (nx < P.w / 2) { nx = P.w / 2; P.vx = 0; }
     if (nx > W - P.w / 2) nx = W - P.w / 2;
@@ -1003,20 +1016,25 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function nextRoom() {
     if (R.i >= ROOMS.length - 1) { houseDone(); return; }
     loadRoom(R.i + 1);
-    P.x = 70; P.vx = 0; P.y = surfAt(70, 18); P.vy = 0; P.air = false;
+    if (climbOf() && !ROOMS[R.i - 1].climb) { // a new section: hearts refill, and a lost turn restarts from here
+      S.lives = 3; S.startRm = R.i; hud(S.score, 3);
+      banner('天台!', 'House and garden cleared · hearts refilled · climb to the roof', '#2ce8f5');
+    }
+    P.x = 70; P.vx = 0; P.y = surfAt(70, 18); P.vy = 0; P.air = false; P.lad = null;
     S.chops = []; S.queue = []; S.rainT = 0; S.spawnIn = 1.4; S.blockT = 0;
     FX.ghosts = []; sfx.levelup();
     pushTarget(true);
   }
   function houseDone() {
-    S.won = true; S.lives = 3; S.st = 'over'; S.cd = null; S.chops = [];
+    S.won = true; S.lives = 3; S.st = 'over'; S.cd = null; S.chops = []; S.startRm = 0;
     sfx.levelup(); hud(S.score, 3);
     if (S.score > best) { best = S.score; try { localStorage.setItem('chopBest', best); } catch (e) {} }
-    setOverlay(true, 'HOUSE CLEARED!', `You made it through all ${ROOMS.length} rooms, and your hearts are refilled. The rooftop climb is the next section to build. For now the house starts again.`, 'Again', null);
+    setOverlay(true, 'ROOF REACHED!', 'You crossed the house and climbed the building. That is the whole prototype so far. The next game starts back in the living room.', 'Again', null);
     pushTarget(true);
     $('ovBtn').focus();
   }
   function propFx(p, broke) {
+    if (p.k === 'pillar') { pillarFx(p, broke); return; }
     if (!reduce) burst(p.x, FLOOR - p.h * 0.6, broke ? 26 : 10, p.elec ? ['#fee761', '#262b44', '#c0cbdc'] : ['#733e39', '#b86f50', '#ead4aa'], broke ? 420 : 260, 1, 800, 7);
     if (broke) sfx.broken(); 
   }
@@ -1044,6 +1062,185 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       p.dead = v === 0; p.sparkT = v === -1 ? 1 : 0; if (v > 0 && p.hp != null) p.hp = v;
     });
     B.ty = (B.ty || 0) + ((+tp.y || 0) - (B.ty || 0)) * Math.min(1, dt * 18);
+  }
+  // ---------- journey prototype: the rooftop climb ----------
+  // A vertical section. Floors are one-way platforms FH apart, joined by stairs, ladders and hooks. Punches come
+  // from the side here: a fist runs along one row until it hits a pillar or reaches 我. The view scrolls up
+  // with 我 (CAMV).
+  const FH = 200, SIDE_V = 1500, WALL = 40;
+  const CAMV = { y: 0 };
+  const climbOf = () => ROOMS[R.i].climb || null;
+  function climbGround(x, y) {
+    const cl = climbOf(); let g = 0;
+    for (let k = 1; k <= cl.top; k++) if (k * FH <= y + STEP_UP) g = k * FH;
+    for (const s of cl.stairs) {
+      const k = (x - s.x0) / (s.x1 - s.x0);
+      if (k < 0 || k > 1) continue;
+      const h = s.lv * FH + k * FH;
+      if (h <= y + STEP_UP && h > g) g = h;
+    }
+    return g;
+  }
+  function moveClimb(dt) {
+    const cl = climbOf();
+    if (P.lad) { // one press climbs the whole ladder; moving sideways lets go
+      if (keys.l || keys.r) { P.lad = null; P.air = true; P.vy = 0; }
+      else {
+        P.vx = 0; P.x = P.lad.x; P.y += 430 * dt;
+        if (P.y >= (P.lad.lv + 1) * FH) { P.y = (P.lad.lv + 1) * FH; P.lad = null; P.air = false; }
+        return;
+      }
+    }
+    P.x = clamp(P.x + P.vx * dt, WALL + P.w / 2, W - WALL - P.w / 2);
+    if (P.x <= WALL + P.w / 2 || P.x >= W - WALL - P.w / 2) P.vx = 0;
+    const g = climbGround(P.x, P.y);
+    if (!P.air && Math.abs(P.y - g) <= STEP_UP) { P.y = g; P.vy = 0; }
+    else {
+      const py = P.y;
+      P.vy -= GRAV * dt; P.y += P.vy * dt; P.air = true;
+      if (P.vy <= 0) { const g2 = climbGround(P.x, py); if (P.y <= g2) { P.y = g2; P.vy = 0; P.air = false; } }
+      if (P.air) for (const h of cl.hooks) { // jump into a hook and it pulls 我 up a floor
+        if (Math.abs(P.x - h.x) < 48 && Math.abs(P.y + 70 - (h.lv * FH + 150)) < 56) {
+          P.x = h.x; P.y = (h.lv + 1) * FH; P.vy = 0; P.vx = 0; P.air = false;
+          if (!reduce) burst(P.x, FLOOR - P.y - 20, 10, ['#fee761', '#ffffff'], 260, 1, 500, 5);
+          sfx.dash(); break;
+        }
+      }
+    }
+    if (!P.air && P.y >= cl.top * FH - 1 && P.x >= W - WALL - P.w / 2 - 1) nextRoom();
+  }
+  function tryDrop() { // ↓ on a floor or stair above the ground: drop through to whatever is below
+    if (role !== 'me' || S.st !== 'play' || S.paused || !climbOf() || P.air || P.lad || P.y < 1) return false;
+    P.y -= STEP_UP + 2; P.vy = -60; P.air = true;
+    return true;
+  }
+  function addSide(row, dir, from) {
+    const cl = climbOf();
+    if (!cl || S.st !== 'play') return;
+    row = clamp(Math.round(row), 0, cl.top);
+    // one fist per row, and never two neighbouring rows at once: 我 always has a row to escape to
+    if (S.chops.some(c => c.side && Math.abs(c.row - row) <= 1 && c.phase !== 'up')) return;
+    S.chops.push({ id: ++S.cid, side: dir > 0 ? 1 : -1, row, x: dir > 0 ? -70 : W + 70, w: 70, phase: 'warn', t: 0, warn: 0.9, y: 0, from });
+    sfx.warn();
+  }
+  function updateSide(c, dt) {
+    if (c.phase === 'warn') { if (c.t >= c.warn) { c.phase = 'drop'; c.t = 0; sfx.whoosh(); } return; }
+    if (c.phase === 'smash') { if (c.t > 0.15) { c.phase = 'up'; c.t = 0; } return; }
+    if (c.phase === 'up') { c.x -= c.side * 1700 * dt; if (c.x < -90 || c.x > W + 90) c.dead = true; return; }
+    const x0 = c.x, base = c.row * FH;
+    c.x += c.side * SIDE_V * dt;
+    for (const p of R.props) { // a pillar stops the fist and takes the hit
+      if (p.dead || p.lv !== c.row || (p.x - x0) * c.side < 0 || (p.x - c.x) * c.side > 40) continue;
+      p.hp--; if (p.hp <= 0) p.dead = true;
+      pillarFx(p, p.dead);
+      c.x = p.x - c.side * 40; c.phase = 'smash'; c.t = 0; S.shake = reduce ? 0 : 8; sfx.thud();
+      if (!c.pass && Math.abs(P.y - base) < FH * 0.6) sideDodge(c);
+      return;
+    }
+    if (!c.pass && (P.x - x0) * c.side >= -30 && (P.x - c.x) * c.side <= 36) {
+      c.pass = true;
+      const inRow = P.y > base - 14 && P.y < base + 62;
+      if (inRow && S.hurt <= 0 && !(S.iframe > 0) && S.st === 'play') {
+        c.x = P.x - c.side * 36;
+        if (S.bell > 0) { bellBlock(c); c.phase = 'up'; return; }
+        if (S.blockT > 0) { parry(c, S.blockT <= 0.15); return; }
+        S.lives--; S.hurt = 1.1; c.hit = true; c.phase = 'smash'; c.t = 0;
+        buzz(S.lives <= 0 ? [120, 60, 220] : 120); S.combo = 0; S.taunt = null; hitFx(P.x); S.shake = reduce ? 0 : 18;
+        S.hits[c.from] = (S.hits[c.from] || 0) + 1;
+        S.pops.push({ x: P.x, y: FLOOR - 130, txt: '啊!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch();
+        maybeBoard(S.hits); hud(S.score, S.lives);
+        if (S.lives <= 0) gameOver();
+        return;
+      }
+      if (Math.abs(P.y - base) < FH * 0.9 && S.st === 'play') sideDodge(c);
+    }
+    if (c.x < -90 || c.x > W + 90) c.dead = true;
+  }
+  function sideDodge(c) {
+    c.pass = true;
+    S.score += 1; gainRage(0.03); S.combo = (S.combo || 0) + 1;
+    S.pops.push({ x: P.x, y: FLOOR - 150, txt: '+1', t: 0, col: '#ffb703' }); sfx.miss();
+    hud(S.score, S.lives);
+  }
+  function pillarFx(p, broke) {
+    if (!reduce) burst(p.x, FLOOR - p.lv * FH - 80, broke ? 24 : 9, ['#8b9bb4', '#c0cbdc', '#5a6988'], broke ? 420 : 240, 1, 800, 7);
+    if (broke) sfx.broken();
+  }
+  function drawClimb() {
+    const cl = climbOf(), top = cl.top, yOf = h => FLOOR - h;
+    ctx.fillStyle = '#181425'; ctx.fillRect(0, yOf(top * FH) - 900, W, top * FH + 900 + H);
+    // far skyline with neon windows
+    for (let i = 0; i < 9; i++) {
+      const bx = i * 190 - 40, bh = 420 + Math.floor(rnd(i + 40) * 6) * 150;
+      ctx.fillStyle = '#262b44'; ctx.fillRect(bx, yOf(bh), 150, bh + 200);
+      for (let wy = 30; wy < bh - 20; wy += 60) for (let wx = 18; wx < 130; wx += 42) { if (rnd(i * 31 + wy + wx) < 0.45) continue; ctx.fillStyle = ['#0099db', '#b55088', '#fee761'][Math.floor(rnd(i + wy * 3 + wx) * 3)]; ctx.fillRect(bx + wx, yOf(bh) + wy, 18, 24); }
+    }
+    for (let i = 0; i < 40; i++) { ctx.fillStyle = '#c0cbdc'; ctx.fillRect(Math.floor(rnd(i + 5) * W / 6) * 6, yOf(top * FH) - 60 - Math.floor(rnd(i + 77) * 130) * 6, 3, 3); }
+    // the building 我 climbs
+    ctx.fillStyle = '#3a4466'; ctx.fillRect(0, yOf(top * FH), W, top * FH + 200);
+    ctx.fillStyle = '#262b44'; ctx.fillRect(WALL, yOf(top * FH), W - WALL * 2, top * FH);
+    for (let k = 0; k < top; k++) for (let wx = 140; wx < W - 140; wx += 220) { ctx.fillStyle = rnd(k * 17 + wx) < 0.3 ? '#124e89' : '#181425'; ctx.fillRect(wx, yOf(k * FH) - 150, 90, 78); }
+    ctx.fillStyle = '#3a4466'; ctx.fillRect(0, FLOOR, W, H - FLOOR + 200);
+    ctx.fillStyle = '#5a6988'; ctx.fillRect(0, FLOOR, W, 6);
+    for (let k = 1; k <= top; k++) { ctx.fillStyle = '#5a6988'; ctx.fillRect(k === top ? 0 : WALL, yOf(k * FH), k === top ? W : W - WALL * 2, 12); ctx.fillStyle = '#8b9bb4'; ctx.fillRect(k === top ? 0 : WALL, yOf(k * FH), k === top ? W : W - WALL * 2, 3); }
+    // pillars (cover)
+    for (const p of R.props) {
+      if (p.dead) continue;
+      const py = yOf((p.lv + 1) * FH) + 12, ph = FH - 12;
+      ctx.fillStyle = '#8b9bb4'; ctx.fillRect(p.x - 27, py, 54, ph);
+      ctx.fillStyle = '#c0cbdc'; ctx.fillRect(p.x - 27, py, 9, ph);
+      ctx.fillStyle = '#5a6988'; ctx.fillRect(p.x + 18, py, 9, ph);
+      ctx.fillStyle = '#181425';
+      for (let k = 0, n = (p.hp0 - p.hp) * 4; k < n; k++) ctx.fillRect(p.x - 15 + (k % 4) * 9, py + 30 + k * 18, 6, 15);
+    }
+    for (const s of cl.stairs) { // open stairs
+      const n = 12, d = (s.x1 - s.x0) / n;
+      for (let i = 0; i < n; i++) {
+        const sx = s.x0 + i * d, sy = yOf(s.lv * FH + (i + 1) / n * FH);
+        ctx.fillStyle = '#8b9bb4'; ctx.fillRect(Math.round(Math.min(sx, sx + d)), Math.round(sy), Math.ceil(Math.abs(d)) + 1, 9);
+        ctx.fillStyle = '#5a6988'; ctx.fillRect(Math.round(Math.min(sx, sx + d)), Math.round(sy) + 9, Math.ceil(Math.abs(d)) + 1, 6);
+      }
+    }
+    for (const l of cl.ladders) {
+      const ly = yOf((l.lv + 1) * FH);
+      ctx.fillStyle = '#feae34'; ctx.fillRect(l.x - 24, ly, 6, FH); ctx.fillRect(l.x + 18, ly, 6, FH);
+      for (let y = ly + 18; y < ly + FH; y += 27) ctx.fillRect(l.x - 24, y, 48, 6);
+    }
+    for (const h of cl.hooks) {
+      const hy = yOf(h.lv * FH + 150);
+      ctx.fillStyle = '#8b9bb4'; ctx.fillRect(h.x - 3, yOf((h.lv + 1) * FH) + 12, 6, hy - yOf((h.lv + 1) * FH) - 12);
+      ctx.fillStyle = Math.floor(performance.now() / 300) % 2 ? '#e43b44' : '#fee761';
+      ctx.fillRect(h.x - 15, hy, 30, 6); ctx.fillRect(h.x - 15, hy, 6, 24); ctx.fillRect(h.x + 9, hy, 6, 24); ctx.fillRect(h.x - 15, hy + 18, 30, 6);
+    }
+    drawDoor(W - 110, top * FH, true, true);
+    ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260, 36 - camY());
+  }
+  const camY = () => Math.round(CAMV.y / PX) * PX;
+  function camFollow(h, dt) {
+    const cl = climbOf(), target = cl ? clamp(h - 170, 0, cl.top * FH - 170) : 0;
+    if (!cl || CAMV.rm !== R.i) { CAMV.y = target; CAMV.rm = R.i; }
+    else CAMV.y += (target - CAMV.y) * Math.min(1, dt * 8);
+  }
+  function sideWarn(c) {
+    const y = FLOOR - c.row * FH, p = c.phase === 'warn' ? c.p : 1;
+    if (c.phase === 'up') return;
+    ctx.fillStyle = `rgba(255, 93, 115, ${0.08 + p * 0.2})`; ctx.fillRect(WALL, y - 66, W - WALL * 2, 60);
+    if (c.phase === 'warn' && Math.floor(performance.now() / 100) % 2 === 0) {
+      const ex = c.side > 0 ? WALL + 50 : W - WALL - 50;
+      ctx.fillStyle = '#ff5d73'; ctx.font = '24px ' + PF; ctx.textAlign = 'center'; ctx.fillText('!', ex, y - 24);
+      ctx.beginPath(); ctx.moveTo(ex + c.side * 66, y - 36); ctx.lineTo(ex + c.side * 36, y - 54); ctx.lineTo(ex + c.side * 36, y - 18); ctx.closePath(); ctx.fill();
+    }
+  }
+  function sideFist(c) {
+    if (c.phase === 'warn') return;
+    const y = FLOOR - c.row * FH - 66, ex = c.side > 0 ? -10 : W + 10;
+    ctx.fillStyle = '#0099db'; ctx.fillRect(Math.min(ex, c.x - c.side * 30), y + 12, Math.abs(c.x - c.side * 30 - ex), 33);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(c.x - c.side * 36 - 6), y + 9, 12, 39);
+    ctx.fillStyle = '#e4a672'; ctx.fillRect(Math.round(c.x - 30), y, 60, 57);
+    ctx.fillStyle = '#ead4aa'; ctx.fillRect(Math.round(c.x - 30), y, 60, 6);
+    ctx.fillStyle = '#b86f50'; ctx.fillRect(Math.round(c.x - 30), y + 51, 60, 6);
+    for (let k = 0; k < 3; k++) ctx.fillRect(Math.round(c.x + c.side * 12 - 3), y + 12 + k * 15, 6, 9);
   }
   // Relay: when 我 runs out of hearts the turn passes to the top hitter who has not been 我 yet this round.
   function relayHand() {
@@ -1073,6 +1270,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     } else if (kind === 'tiles') {
       ctx.fillStyle = '#c0cbdc';
       for (let y = FLOOR - 186; y < FLOOR - 96; y += 30) for (let tx = ((y / 30) | 0) % 2 * 15; tx < W; tx += 30) ctx.fillRect(tx, y, 27, 27);
+    } else if (kind === 'moon') {
+      ctx.fillStyle = '#fff4e0'; ctx.fillRect(x, 60, 54, 54); ctx.fillStyle = '#124e89'; ctx.fillRect(x + 18, 54, 42, 42);
+    } else if (kind === 'tree') {
+      ctx.fillStyle = '#733e39'; ctx.fillRect(x + 48, 210, 24, FLOOR - 210);
+      ctx.fillStyle = '#265c42'; ctx.fillRect(x, 120, 120, 96); ctx.fillRect(x + 18, 90, 84, 30);
+      ctx.fillStyle = '#3e8948'; ctx.fillRect(x + 12, 126, 60, 42);
     } else if (kind === 'shelf') {
       ctx.fillStyle = '#3a4466'; ctx.fillRect(x, 150, 300, 9); ctx.fillRect(x, 240, 300, 9);
       const cols = ['#e43b44', '#feae34', '#63c74d', '#0099db', '#b55088'];
@@ -1113,6 +1316,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       R_(c[0], l, t, w, h); R_(c[1], l, t, w, 6); R_(c[1], l, t + h - 6, w, 6); R_(c[1], l, t, 6, h); R_(c[1], l + w - 6, t, 6, h); R_(c[2], p.x - 6, t + 6, 12, h - 12);
     } else if (p.k === 'bed') { R_('#733e39', l, t - 36, 18, h + 36); R_('#ead4aa', l + 18, t, w - 18, 30); R_('#ffffff', l + 27, t - 9, 60, 21); R_('#0099db', l + 96, t, w - 96, 36); R_('#124e89', l + 96, t + 36, w - 96, h - 48); R_('#ead4aa', l + 18, t + 30, 78, h - 42); R_('#733e39', l + 18, t + h - 12, w - 18, 12); }
     else if (p.k === 'desk') { R_('#b86f50', l, t, w, 12); R_('#733e39', l + 9, t + 12, 12, h - 12); R_('#733e39', l + w - 21, t + 12, 12, h - 12); R_('#262b44', p.x - 33, t - 54, 66, 42); R_('#63c74d', p.x - 27, t - 48, 54, 30); R_('#5a6988', p.x - 6, t - 12, 12, 12); }
+    else if (p.k === 'hedge') { R_('#265c42', l, t, w, h); R_('#3e8948', l, t, w, 9); for (let k = 0; k < w - 18; k += 30) R_('#63c74d', l + 9 + k, t + 18 + (k % 60 ? 12 : 0), 9, 9); }
+    else if (p.k === 'pot') { R_('#b86f50', l + 6, t + 18, w - 12, h - 18); R_('#e4a672', l, t + 12, w, 9); R_('#63c74d', p.x - 9, t - 24, 6, 36); R_('#e43b44', p.x - 15, t - 36, 18, 15); R_('#fee761', p.x + 3, t - 18, 15, 15); }
     else if (p.k === 'wardrobe') { R_('#733e39', l, t, w, h); R_('#b86f50', l + 9, t + 12, w / 2 - 15, h - 30); R_('#b86f50', p.x + 6, t + 12, w / 2 - 15, h - 30); R_('#feae34', p.x - 15, t + h / 2, 6, 15); R_('#feae34', p.x + 9, t + h / 2, 6, 15); R_('#3e2731', l, t, w, 6); }
     if (hurt && !fried) { // cracks
       ctx.fillStyle = '#181425';
@@ -1121,12 +1326,19 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (fried) for (let k = 0; k < 7; k++) { const s = Math.floor(performance.now() / 70) + k * 7; ctx.fillStyle = k % 2 ? '#fee761' : '#ffffff'; ctx.fillRect(Math.round(l + rnd(s) * w), Math.round(t - 12 + rnd(s + 3) * (h * 0.7)), 9, 9); }
   }
   function drawRoom() {
-    const rm = ROOMS[R.i], [w0, w1, w2] = rm.wall, [f0, f1] = rm.floor, rp = rm.ramp, last = R.i === ROOMS.length - 1;
+    const rm = ROOMS[R.i], [w0, w1, w2] = rm.wall, [f0, f1] = rm.floor, rp = rm.ramp, last = !!rm.gate;
+    if (rm.climb) { drawClimb(); return; }
     ctx.fillStyle = w0; ctx.fillRect(0, 0, W, FLOOR);
-    ctx.fillStyle = w1;
-    for (let y = 18, r = 0; y < FLOOR - 96; y += 36, r++) for (let x = (r % 2) * 24; x < W; x += 48) { ctx.fillRect(x - 3, y - 6, 6, 12); ctx.fillRect(x - 6, y - 3, 12, 6); }
-    ctx.fillStyle = w2; ctx.fillRect(0, FLOOR - 90, W, 90);
-    ctx.fillStyle = '#181425'; ctx.fillRect(0, FLOOR - 93, W, 6);
+    if (rm.outdoor) { // night sky and a picket fence
+      for (let i = 0; i < 40; i++) { ctx.fillStyle = '#c0cbdc'; ctx.fillRect(Math.floor(rnd(i + 5) * W / 6) * 6, 12 + Math.floor(rnd(i + 77) * 50) * 6, 3, 3); }
+      ctx.fillStyle = w2; for (let x = 6; x < W; x += 36) { ctx.fillRect(x, FLOOR - 96, 24, 96); ctx.fillRect(x + 6, FLOOR - 105, 12, 9); }
+      ctx.fillStyle = '#733e39'; ctx.fillRect(0, FLOOR - 66, W, 9); ctx.fillRect(0, FLOOR - 27, W, 9);
+    } else {
+      ctx.fillStyle = w1;
+      for (let y = 18, r = 0; y < FLOOR - 96; y += 36, r++) for (let x = (r % 2) * 24; x < W; x += 48) { ctx.fillRect(x - 3, y - 6, 6, 12); ctx.fillRect(x - 6, y - 3, 12, 6); }
+      ctx.fillStyle = w2; ctx.fillRect(0, FLOOR - 90, W, 90);
+      ctx.fillStyle = '#181425'; ctx.fillRect(0, FLOOR - 93, W, 6);
+    }
     for (const [k, x] of rm.decor || []) drawDecor(k, x);
     drawDoor(42, rp && !rp.up ? rp.h : 0, false, false);
     // tilted floor: plank rows get deeper toward the camera
@@ -1199,7 +1411,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!peer || !room || role !== 'me' || S.st === 'play') return;
     claimed = false; S.st = 'idle'; S.cd = null;
     resolveRole();
-    room.presence({ hand: peer + ':' + Date.now(), sw: null, was: was || null }).catch(() => {});
+    room.presence({ hand: peer + ':' + Date.now(), sw: null, was: was || null, sec: S.startRm | 0 }).catch(() => {});
     banner('换边!', 'You throw the punches now', '#2f80ed');
   }
   // ---------- stop / pause ----------
@@ -1237,7 +1449,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const pr = p.presence || {};
       if (p.sameTab) continue;
       if (role === 'bro' && pr.role === 'bro' && typeof pr.hand === 'string' && pr.hand !== handSeen && pr.hand.split(':')[0] === myPeer) {
-        handSeen = pr.hand; claimed = true; S.st = 'idle'; S.cd = null; swapAsked = 0; S.was = Array.isArray(pr.was) ? pr.was.slice(0, 16) : [];
+        handSeen = pr.hand; claimed = true; S.st = 'idle'; S.cd = null; swapAsked = 0; S.was = Array.isArray(pr.was) ? pr.was.slice(0, 16) : []; S.startRm = clamp(+pr.sec || 0, 0, ROOMS.length - 1);
         room.presence({ sw: null }).catch(() => {});
         resolveRole();
         banner('换边!', 'You are 我 now. Dodge!', '#ffb703');
@@ -1259,6 +1471,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
   const HOWTO = {
     me: [
+      '<b>The climb</b>: after the house comes a building. Fists come from the <b>side</b> there and run along one floor. Change floors to dodge: stairs, a ladder (↑ at its foot climbs it, ← → lets go), a jump into a blinking hook, or ↓ to drop a floor. A pillar between you and the fist stops it.',
       '<b>Goal</b>: walk through the house, room by room, and out of the garage. The door on the right leads on. Run out of hearts and the turn passes to the 兄弟 who hit you most.',
       '<b>Move</b> with ← → (or A D), or drag on the arena. <b>Jump</b> with ↑ / W, the ▲ button, or a swipe up. Red shadows show where hands will land.',
       '<b>Furniture</b> blocks the way. Jump low pieces, climb tall ones from a smaller piece beside them, or stand next to the TV, fridge or wardrobe and let the 兄弟 smash it for you. A broken TV or fridge sparks for a second before the path is clear.',
@@ -1274,6 +1487,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ],
     bro: [
       '<b>Tap the arena</b> (or Space / 打!) to chop at that spot. A red shadow warns 我 first, then the hand drops.',
+      '<b>The climb</b>: in the building your fists come from the side. Tap a floor on the left half to punch from the left, on the right half to punch from the right. The fist runs along that floor until it meets a pillar, which cracks and breaks after three hits.',
       '<b>The house</b>: 我 is trying to reach the garage. Your fists wear down the TV, fridge and wardrobe, and breaking one opens the road for 我, so think before you swing near them. Whoever lands the most hits plays 我 next.',
       '<b>Wind-up</b>: after each chop you wait 0.8s (1.2s after a super). The bar on the 打! button and the ring on your aim marker fill up when you\'re ready.',
       '<b>Formation</b> (keys 1 2 3): 扇形 Spread leaves gaps, 集中 Wall is one solid block, 包夹 Pincer hits both sides to herd 我 into the middle.',
@@ -1435,8 +1649,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     Object.assign(S, { st: 'play', score: 0, lives: 3, t: 0, speed: 1, chops: [], spawnIn: 1, shake: 0, hurt: 0, pops: [], hits: {} });
     S.combo = 0; S.fireTier = 0; S.taunt = null; S.blockT = 0; S.blockCd = 0;
     S.dashCd = 0; S.iframe = 0; S.rage = 0; S.bell = 0; S.rainT = 0; S.queue = []; S.stunUntil = {}; S.sn = S.sn || {}; FX.ghosts = []; FX.holes = []; FX.parts = []; FX.cracks = []; FX.slow = 0; FX.hitstop = 0; banner('开打!', TOUCH ? 'Reach the door on the right · swipe up to jump' : 'Reach the door on the right · ↑ jumps', '#ffb703');
-    loadRoom(0); S.won = false; S.handT = null;
-    P.x = 110; P.vx = 0; P.y = 0; P.vy = 0; P.air = false;
+    loadRoom(S.startRm || 0); S.won = false; S.handT = null;
+    P.x = 110; P.vx = 0; P.y = 0; P.vy = 0; P.air = false; P.lad = null;
     setOverlay(false); hud(0, 3); pushTarget(true); maybeBoard(S.hits); fitView();
   }
 
@@ -1449,7 +1663,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     S.cd = null;
     const relay = !manual && room && bros().length > 0;
     S.handT = relay ? 2.5 : null;
-    const auto = relay ? ' The turn passes to the top hitter, who starts the house again.' : room && bros().length ? ' Next round starts by itself.' : '';
+    const auto = relay ? ' The turn passes to the top hitter, who starts this section again.' : room && bros().length ? ' Next round starts by itself.' : '';
     setOverlay(true, manual ? '回合结束' : '被打趴了!', `You dodged ${S.score} chop${S.score === 1 ? '' : 's'}. ${line}${top && top[0] !== 'ai' ? ' The leaderboard shows who finished you.' : ''}${auto}`, 'Again', room && !isOwner ? 'Chop instead' : null);
     pushTarget(true);
     $('ovBtn').focus();
@@ -1503,6 +1717,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
 
   function aiSpawn(pair) {
+    if (climbOf()) { if (!pair) addSide(P.y / FH, Math.random() < 0.5 ? 1 : -1, 'ai'); return; }
     const L = levelOf(S.score);
     if (!pair && L >= 4 && Math.random() < 0.02 && !(S.rainT > 0)) { scheduleRain('ai'); return; }
     if (!pair && L >= 2 && Math.random() < 0.06) { addChop(P.x, 'ai', false, false, { homing: true }); return; }
@@ -1536,6 +1751,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     while (S.queue && S.queue.length && S.queue[0].t <= S.t) { const q = S.queue.shift(); addChop(q.x, q.from, false, false, { warn: 0.55, force: true }); }
     for (const c of S.chops) {
       c.t += dt;
+      if (c.side) { updateSide(c, dt); continue; }
       if (c.homing && c.phase === 'warn' && c.t < c.warn - 0.3) c.x = clamp(c.x + (P.x - c.x) * Math.min(1, dt * 3.5), c.w / 2 + 6, W - c.w / 2 - 6);
       if (c.yq && c.phase === 'warn' && c.t < c.warn - 0.28) c.x = clamp(c.x + clamp(P.x - c.x, -YQ_TRACK * dt, YQ_TRACK * dt), c.w / 2 + 6, W - c.w / 2 - 6);
       if (c.wave != null && c.wave < YQ_WAVE_T) {
@@ -1611,7 +1827,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // ---------- 格挡 block / parry ----------
   S.blockT = 0; S.blockCd = 0;
   function tryBlock() {
-    if (role !== 'me' || S.st !== 'play' || S.blockCd > 0 || S.blockT > 0) return;
+    if (role !== 'me' || S.st !== 'play' || S.blockCd > 0 || S.blockT > 0 || P.lad) return;
     S.blockT = 0.0001; S.blockCd = 1.2;
     sfx.blockUp();
   }
@@ -1704,7 +1920,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const PH = { warn: 0, drop: 1, smash: 2, up: 3 };
   function pushTarget(force) {
     if (!room || role !== 'me') return;
-    const ch = S.chops.map(c => [Math.round(c.x), Math.round(c.w), PH[c.phase], c.phase === 'warn' ? +(c.t / c.warn).toFixed(2) : Math.round(c.y), c.hit ? 1 : 0, c.sup ? 1 : 0, c.homing ? 1 : 0, c.yq ? 1 : 0]);
+    const ch = S.chops.map(c => [Math.round(c.x), Math.round(c.w), PH[c.phase], c.phase === 'warn' ? +(c.t / c.warn).toFixed(2) : Math.round(c.y), c.hit ? 1 : 0, c.sup ? 1 : 0, c.homing ? 1 : 0, c.yq ? 1 : 0, c.side | 0, c.row | 0]);
     room.presence({
       role: 'me', own: isOwner ? 1 : 0, st: S.st, pz: document.hidden || S.paused ? 1 : 0, pzm: S.paused ? 1 : 0, cd: S.cd != null ? Math.max(1, Math.ceil(S.cd)) : 0, cb: S.combo || 0, fire: S.fireTier || 0, cos: curCos, rn: S.rainT > 0 ? 1 : 0, bel: S.bell > 0 ? 1 : 0, sn: S.sn || {}, bl: S.blockT > 0 ? 1 : 0, pr: S.pr || 0, tt: S.taunt ? [S.taunt.id, S.taunt.i] : 0, x: Math.round(P.x), vx: Math.round(P.vx), lives: S.lives, score: S.score,
       rm: R.i, y: Math.round(P.y), pp: R.props.map(propCode), won: S.won ? 1 : 0,
@@ -1722,7 +1938,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (tp.pz && tp.pzm && st === 'play') pauseMenu();
     else if (tp.pz) setOverlay(true, '暂停', '我 switched away from the game, so everything is paused. It picks up again as soon as they come back.', null, null);
     else if (st === 'play') { setOverlay(false); fitView(); }
-    else if (st === 'over' && tp.won) setOverlay(true, 'HOUSE CLEARED!', '我 made it through the house. The rooftop climb is the next section to build.', null, null);
+    else if (st === 'over' && tp.won) setOverlay(true, 'ROOF REACHED!', '我 crossed the house and climbed the building. That is the whole prototype so far.', null, null);
     else if (st === 'over') setOverlay(true, '打趴了!', '我 is down. The top hitter who has not been 我 this round takes the next turn.', null, null);
     else if (cd) setOverlay(true, String(cd), 'Get ready to chop. Tap where 我 is heading.', null, null);
     else setOverlay(true, '我在线!', '我 is here. The round is about to start.', null, null);
@@ -1737,7 +1953,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const sup = (B.charge || 0) >= 1;
     B.n++; B.cool = B.coolMax = sup ? 1.2 : 0.8;
     B.charge = sup ? 0 : Math.min(1, (B.charge || 0) + 0.08);
-    room.presence({ role: 'bro', aim: Math.round(B.aim), chop: { n: B.n, x: Math.round(B.aim), sup: sup ? 1 : 0, f: B.form || 0 }, form: B.form || 0 }).catch(() => {});
+    room.presence({ role: 'bro', aim: Math.round(B.aim), chop: { n: B.n, x: Math.round(B.aim), sup: sup ? 1 : 0, f: B.form || 0, h: Math.round(B.aimH != null ? B.aimH : B.ty || 0) }, form: B.form || 0 }).catch(() => {});
     B.pops.push({ x: B.aim, y: 60, txt: sup ? '如来神掌!!' : '打!', t: 0, col: sup ? '#ffb703' : '#fff4e0', size: sup ? 34 : 24 });
     if (sup) sfx.palmWarn(); else sfx.swing();
   }
@@ -1795,7 +2011,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         lastFrom[p.peer] = now;
         const key = p.by || p.peer;
         if (((S.stunUntil || {})[key] || 0) > S.t) continue;
-        if (c.rain) scheduleRain(key);
+        if (climbOf()) addSide(typeof c.h === 'number' ? Math.floor(c.h / FH) : P.y / FH, c.x < W / 2 ? 1 : -1, key);
+        else if (c.rain) scheduleRain(key);
         else if (c.yq) addChop(c.x, key, false, false, { yq: true });
         else if (c.homing) addChop(c.x, key, false, false, { homing: true });
         else if (c.fake) addChop(c.x, p.by || p.peer, false, true);
@@ -2135,14 +2352,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (FX.wipe > 0) {
       FX.wipe -= dt;
       const k = Math.max(0, FX.wipe / 1.3);
-      ctx.fillStyle = `rgba(27,20,48,${Math.min(1, k * 1.4)})`; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(27,20,48,${Math.min(1, k * 1.4)})`; ctx.fillRect(0, -camY(), W, H);
       ctx.globalAlpha = Math.min(1, k * 2.5); ctx.fillStyle = '#7fe3ff'; ctx.font = '24px ' + HF; ctx.textAlign = 'center';
-      ctx.fillText(JOURNEY ? ROOMS[R.i].name : `STAGE ${idx + 1} · ${STAGES[idx].name}`, W / 2, 72);
+      ctx.fillText(JOURNEY ? ROOMS[R.i].name : `STAGE ${idx + 1} · ${STAGES[idx].name}`, W / 2, 72 - camY());
       ctx.globalAlpha = 1;
     }
   }
 
   function shadow(c) {
+    if (c.side) { sideWarn(c); return; }
     const p = c.phase === 'warn' ? c.p : 1, t = performance.now() / 1000;
     if (c.sup && c.phase === 'warn') {
       // heavenly clouds gather and a pillar of light marks the palm
@@ -2240,6 +2458,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
 
   function hand(c) {
+    if (c.side) { sideFist(c); return; }
     if (c.phase === 'warn') return;
     if (c.sup) { buddhaPalm(c); return; }
     if (c.yq) { underworldFinger(c); return; }
@@ -3101,6 +3320,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.save();
     if (S.shake > 0.3) ctx.translate((Math.random() - .5) * S.shake, (Math.random() - .5) * S.shake);
     S.shake *= Math.pow(0.001, dt);
+    camFollow(P.y, dt); ctx.translate(0, camY());
+    for (const q of S.pops) if (!q.adj) { q.adj = 1; q.y -= P.y; }
     aimN = handsFor(levelOf(S.score));
     drawStage(dt, levelOf(S.score));
     sky(dt, S.rainT > 0);
@@ -3124,7 +3345,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawRings(dt);
     drawParts(dt);
     S.pops = pops(S.pops, dt);
-    drawOverlayFx(dt, S.st === 'play' && S.lives === 1);
+    ctx.translate(0, -camY()); drawOverlayFx(dt, S.st === 'play' && S.lives === 1); ctx.translate(0, camY());
     drawStamp(dt);
     comboMeter(S.combo || 0, dt, S.st === 'play');
     tauntBubble(S, P.x, dt); // last, so score pops and flashes never cover it
@@ -3154,7 +3375,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (tp && typeof tp.x === 'number') B.tx += (tp.x - B.tx) * Math.min(1, dt * 18);
     const cs = (tp && Array.isArray(tp.ch) ? tp.ch : []).slice(0, 20).map(a => ({
       x: +a[0], w: clamp(+a[1], 30, 300), phase: PHN[a[2]] || 'up',
-      p: a[2] === 0 ? clamp(+a[3], 0, 1) : 1, y: a[2] === 0 ? -260 : +a[3], sup: a[5] === 1, homing: a[6] === 1, yq: a[7] === 1
+      p: a[2] === 0 ? clamp(+a[3], 0, 1) : 1, y: a[2] === 0 ? -260 : +a[3], sup: a[5] === 1, homing: a[6] === 1, yq: a[7] === 1, side: +a[8] || 0, row: +a[9] || 0
     })).filter(c => isFinite(c.x) && isFinite(c.y));
     if (cs.some(c => c.phase === 'smash') && !lastChopsB.includes('2')) { shakeB = reduce ? 0 : 8; sfx.thud(); cs.filter(c => c.phase === 'smash').forEach(c => { smashFx(c.x, c.w); if (c.sup) superFx(c.x); if (c.yq) yqFx(c.x); }); }
     const supWarn = cs.some(c => c.sup && c.phase === 'warn');
@@ -3252,6 +3473,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.save();
     if (shakeB > 0.3) ctx.translate((Math.random() - .5) * shakeB, (Math.random() - .5) * shakeB);
     shakeB *= Math.pow(0.001, dt);
+    camFollow(B.ty || 0, dt); ctx.translate(0, camY());
+    for (const q of B.pops) if (!q.adj) { q.adj = 1; if (q.y > 200) q.y -= B.ty || 0; else q.y -= camY(); }
     drawStage(dt, levelOf(tp && tp.score));
     sky(dt, !!tp && tp.rn === 1);
     speedLines(dt, levelOf(tp && tp.score));
@@ -3275,7 +3498,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawRings(dt);
     drawParts(dt);
     B.pops = pops(B.pops, dt);
-    drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1);
+    ctx.translate(0, -camY()); drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1); ctx.translate(0, camY());
     drawStamp(dt);
     comboMeter(tp ? +tp.cb || 0 : 0, dt, !!tp && tp.st === 'play');
     if (tp) tauntBubble(B, B.tx, dt); // last, so score pops and flashes never cover it
@@ -3336,7 +3559,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
           renderWard();
         }
       }
-      sfx.music(S.st === 'play' && !S.paused); sfx.setLevel(levelOf(S.score));
+      sfx.music(S.st === 'play' && !S.paused); sfx.setLevel(climbOf() ? 3 : levelOf(S.score));
       if (S.paused) { /* round frozen */ }
       else if (FX.hitstop > 0) FX.hitstop -= dt;
       else if (S.st === 'play') { FX.slow = Math.max(0, FX.slow - dt); update(FX.slow > 0 ? dt * 0.4 : dt); }
@@ -3353,7 +3576,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       }
       B.cool -= dt; B.fakeCool -= dt; B.homeCool -= dt; B.stunT -= dt; B.yqCool = (B.yqCool || 0) - dt;
       const tpm = remoteTarget();
-      sfx.music(!!tpm && tpm.presence.st === 'play' && !tpm.presence.pz); sfx.setLevel(levelOf(tpm && tpm.presence.score));
+      sfx.music(!!tpm && tpm.presence.st === 'play' && !tpm.presence.pz); sfx.setLevel(tpm && climbOf() ? 3 : levelOf(tpm && tpm.presence.score));
       followCam(B.tx, dt);
       drawBroView(dt);
     }
@@ -3439,7 +3662,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (role === 'me' && (e.key === 'e' || e.key === 'E')) { e.preventDefault(); tryBell(); }
     if (role === 'bro' && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); doFake(); }
     if (role === 'bro' && ['1', '2', '3'].includes(e.key)) { e.preventDefault(); setForm(+e.key - 1); }
-    if (role === 'me' && ['ArrowDown', 's', 'S'].includes(e.key)) { e.preventDefault(); tryBlock(); }
+    if (role === 'me' && ['ArrowDown', 's', 'S'].includes(e.key)) { e.preventDefault(); if (!tryDrop()) tryBlock(); }
     if (role === 'me' && ['ArrowUp', 'w', 'W'].includes(e.key)) { e.preventDefault(); if (!e.repeat) tryJump(); }
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
@@ -3474,16 +3697,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   $('chopBtn').addEventListener('click', () => doChop(B.aim));
 
   const toX = e => { const r = cv.getBoundingClientRect(); return CAM.x + (e.clientX - r.left) / r.width * CAM.w; };
+  const toH = e => { const r = cv.getBoundingClientRect(); return FLOOR + camY() - (e.clientY - r.top) / r.height * H; };
   let steer = false, steerY = 0;
   cv.addEventListener('pointerdown', e => {
-    if (role === 'bro') { doChop(toX(e)); return; }
+    if (role === 'bro') { B.aimH = toH(e); doChop(toX(e)); return; }
     steer = true; steerY = e.clientY; steerTo(toX(e));
   });
   cv.addEventListener('pointermove', e => {
     if (role === 'bro') {
       B.aim = clamp(toX(e), 40, W - 40);
       if (room) room.presence({ aim: Math.round(B.aim) }).catch(() => {});
-    } else if (steer) { steerTo(toX(e)); if (steerY - e.clientY > 34) { steerY = e.clientY - 1e4; tryJump(); } }
+    } else if (steer) { steerTo(toX(e)); if (steerY - e.clientY > 34) { steerY = e.clientY - 1e4; tryJump(); } else if (e.clientY - steerY > 34 && steerY > -5e3) { steerY = e.clientY + 1e4; tryDrop(); } }
   });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => cv.addEventListener(t, () => { if (role === 'me') { steer = false; keys.l = keys.r = false; } }));
   function steerTo(x) { keys.l = x < P.x - 12; keys.r = x > P.x + 12; }
