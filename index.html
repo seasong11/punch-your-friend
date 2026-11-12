@@ -402,7 +402,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   <div class="stage">
     <canvas id="c" width="1600" height="640" aria-label="Game arena"></canvas>
     <div class="overlay" id="overlay">
-      <h2 id="ovTitle">来砍我啊!</h2>
+      <h2 id="ovTitle">来打我啊!</h2>
       <p id="ovText">A red shadow marks where each chop lands. Move before the hand comes down.</p>
       <div class="ovBtns">
         <button class="btn" id="ovBtn">Start</button>
@@ -414,7 +414,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   <p class="rotateTip" id="rotateTip">Turn your phone sideways for a bigger arena.</p>
   <div class="pads" id="pads">
     <button class="pad" id="left" aria-label="Move left">◀</button>
-    <button class="pad chop" id="chopBtn" hidden>砍!</button>
+    <button class="pad chop" id="chopBtn" hidden>打!</button>
     <button class="pad block" id="blockBtn" aria-label="Block">挡</button>
     <button class="pad" id="right" aria-label="Move right">▶</button>
   </div>
@@ -720,8 +720,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       '<b>On fire</b>: dodge or block 5 in a row for +10% speed and flames, 10 for +20%, 20 for +30% and a blue blaze. Getting hit puts the fire out.'
     ],
     bro: [
-      '<b>Tap the arena</b> (or Space / 砍!) to chop at that spot. A red shadow warns 我 first, then the hand drops.',
-      '<b>Wind-up</b>: after each chop you wait 0.8s (1.2s after a super). The bar on the 砍! button and the ring on your aim marker fill up when you\'re ready.',
+      '<b>Tap the arena</b> (or Space / 打!) to chop at that spot. A red shadow warns 我 first, then the hand drops.',
+      '<b>Wind-up</b>: after each chop you wait 0.8s (1.2s after a super). The bar on the 打! button and the ring on your aim marker fill up when you\'re ready.',
       '<b>Formation</b> (keys 1 2 3): 扇形 Spread leaves gaps, 集中 Wall is one solid block, 包夹 Pincer hits both sides to herd 我 into the middle.',
       '<b>假动作 Feint</b> (F): a shadow with no hand. Use it to bait 我 into blocking, then chop for real. 3s cooldown.',
       '<b>如来神掌 Buddha Palm</b>: your meter fills over ~10s. When the button glows gold, your next chop is a giant golden palm that only a perfect block stops.',
@@ -742,12 +742,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ],
     bro: [
       ['<kbd>←</kbd> <kbd>→</kbd>', 'tap arena', 'Aim (tapping the arena aims and chops in one go)'],
-      ['<kbd>Space</kbd>', '砍!', 'Chop where you aim. 0.8s wind-up between chops'],
+      ['<kbd>Space</kbd>', '打!', 'Chop where you aim. 0.8s wind-up between chops'],
       ['<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>', '扇形 集中 包夹', 'Formation for multi-hand chops: Spread, Wall, Pincer'],
       ['<kbd>F</kbd>', '假动作', 'Feint: shadow with no hand. 3s cooldown'],
       ['<kbd>H</kbd>', '追踪拳', 'Homing chop that follows 我. 8s cooldown'],
       ['<kbd>R</kbd>', '必杀·拳雨', 'Punch Rain ultimate when the meter is full (~30s)'],
-      ['auto', '如来神掌!', 'Buddha Palm: when 砍! glows gold, your next chop is a giant golden palm from the heavens'],
+      ['auto', '如来神掌!', 'Buddha Palm: when 打! glows gold, your next chop is a giant golden palm from the heavens'],
       ['<kbd>Y</kbd>', '黄泉指', 'Underworld Finger: a lightning-fast, narrow death finger that breaks normal blocks. 7s cooldown']
     ]
   };
@@ -878,7 +878,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     sfx.start();
     Object.assign(S, { st: 'play', score: 0, lives: 3, t: 0, speed: 1, chops: [], spawnIn: 1, shake: 0, hurt: 0, pops: [], hits: {} });
     S.combo = 0; S.fireTier = 0; S.taunt = null; S.blockT = 0; S.blockCd = 0;
-    S.dashCd = 0; S.iframe = 0; S.rage = 0; S.bell = 0; S.rainT = 0; S.queue = []; S.stunUntil = {}; S.sn = S.sn || {}; FX.ghosts = []; FX.holes = []; FX.parts = []; FX.cracks = []; FX.slow = 0; FX.hitstop = 0; banner('开砍!', 'Dodge, or block with ↓ / 挡', '#ffb703');
+    S.dashCd = 0; S.iframe = 0; S.rage = 0; S.bell = 0; S.rainT = 0; S.queue = []; S.stunUntil = {}; S.sn = S.sn || {}; FX.ghosts = []; FX.holes = []; FX.parts = []; FX.cracks = []; FX.slow = 0; FX.hitstop = 0; banner('开打!', 'Dodge, or block with ↓ / 挡', '#ffb703');
     P.x = W / 2; P.vx = 0;
     setOverlay(false); hud(0, 3); pushTarget(true); maybeBoard(S.hits);
   }
@@ -891,7 +891,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const line = S.score < 5 ? '兄弟们 got you good.' : S.score < 15 ? 'Respectable. They are already bragging though.' : S.score < 30 ? 'Ninja reflexes. The 兄弟 are getting tired.' : 'Untouchable. Your brothers need new moves.';
     S.cd = null;
     const auto = room && bros().length ? ' Next round starts by itself.' : '';
-    setOverlay(true, '被砍翻了!', `You dodged ${S.score} chop${S.score === 1 ? '' : 's'}. ${line}${top && top[0] !== 'ai' ? ' The leaderboard shows who finished you.' : ''}${auto}`, 'Again', room && !isOwner ? 'Chop instead' : null);
+    setOverlay(true, '被打趴了!', `You dodged ${S.score} chop${S.score === 1 ? '' : 's'}. ${line}${top && top[0] !== 'ai' ? ' The leaderboard shows who finished you.' : ''}${auto}`, 'Again', room && !isOwner ? 'Chop instead' : null);
     pushTarget(true);
     $('ovBtn').focus();
   }
@@ -1137,7 +1137,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     broKey = key;
     if (tp.pz) setOverlay(true, '暂停', '我 switched away from the game, so everything is paused. It picks up again as soon as they come back.', null, null);
     else if (st === 'play') setOverlay(false);
-    else if (st === 'over') setOverlay(true, '砍翻了!', cd ? `我 is down. Next round in ${cd}…` : '我 is down. Waiting for a rematch.', null, null);
+    else if (st === 'over') setOverlay(true, '打趴了!', cd ? `我 is down. Next round in ${cd}…` : '我 is down. Waiting for a rematch.', null, null);
     else if (cd) setOverlay(true, String(cd), 'Get ready to chop. Tap where 我 is heading.', null, null);
     else setOverlay(true, '我在线!', '我 is here. The round is about to start.', null, null);
     if (cd && st !== 'play' && !tp.pz) sfx.warn();
@@ -1152,7 +1152,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     B.n++; B.cool = B.coolMax = sup ? 1.2 : 0.8;
     B.charge = sup ? 0 : Math.min(1, (B.charge || 0) + 0.08);
     room.presence({ role: 'bro', aim: Math.round(B.aim), chop: { n: B.n, x: Math.round(B.aim), sup: sup ? 1 : 0, f: B.form || 0 }, form: B.form || 0 }).catch(() => {});
-    B.pops.push({ x: B.aim, y: 60, txt: sup ? '如来神掌!!' : '砍!', t: 0, col: sup ? '#ffb703' : '#fff4e0', size: sup ? 34 : 24 });
+    B.pops.push({ x: B.aim, y: 60, txt: sup ? '如来神掌!!' : '打!', t: 0, col: sup ? '#ffb703' : '#fff4e0', size: sup ? 34 : 24 });
     if (sup) sfx.palmWarn(); else sfx.swing();
   }
 
@@ -1329,7 +1329,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.fillStyle = '#2b1d3a'; ctx.fillRect(scx - 42, 72, 84, 6);
     ctx.fillStyle = '#f5ecd2'; ctx.fillRect(scx - 33, 78, 66, 174);
     ctx.fillStyle = '#c0392b'; ctx.fillRect(scx - 33, 78, 66, 12); ctx.fillRect(scx - 33, 240, 66, 12);
-    ctx.fillStyle = '#2b1d3a'; ctx.font = '48px ' + HF; ctx.textAlign = 'center'; ctx.fillText('砍', scx, 186);
+    ctx.fillStyle = '#2b1d3a'; ctx.font = '48px ' + HF; ctx.textAlign = 'center'; ctx.fillText('打', scx, 186);
     // swaying lanterns
     for (const [lx, ph] of [[66, 0], [W - 66, 1.7]]) {
       const sw = Math.round(Math.sin(FX.st * 1.6 + ph) * 6);
@@ -1964,7 +1964,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
   // ---------- juice: particles, cracks, flashes, banners ----------
   const FX = { parts: [], cracks: [], lines: [], rings: [], flash: 0, flashCol: '255,93,115', banner: null, hitstop: 0, slow: 0 };
-  const TAUNTS = ['就这?', '砍不到~', '太慢了!', '兄弟你行不行?', '再来啊!', '略略略~', '手抖了吧?', '我闪!', '打我呀~', 'Missed me!', 'Too slow!', '没吃饭吧?'];
+  const TAUNTS = [
+    '就这?就这?', '菜就多练!', '打不着,气不气?', '你妈喊你回家吃饭!', '你在跟空气打架吗?', '手残实锤了',
+    '这拳软得像棉花糖', '你这拳速,蜗牛都笑了', '我奶奶都比你快', '兄弟你闭眼打的吧?', '笑死,根本打不着', '建议回炉重造',
+    '挠痒痒呢?', '打我呀,笨蛋~', 'My grandma punches harder', 'Skill issue.', 'Is that a punch or a wave?',
+    'Missed me, loser!', 'Zero hits. Zero friends.', 'Touch grass. Then touch me.', 'Are you even trying?', 'Lag? No. You are just bad.'
+  ];
   function taunt() {
     let i;
     do { i = Math.floor(Math.random() * TAUNTS.length); } while (S.taunt && i === S.taunt.i && TAUNTS.length > 1);
@@ -2321,7 +2326,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     $('rainBtn').style.setProperty('--p', Math.round(B.rain * 100) + '%');
     $('rainTxt').textContent = B.rain >= 1 ? 'READY · R' : `${Math.floor(B.rain * 100)}%`;
     $('fakeTxt').textContent = B.fakeCool > 0 ? `Feint ${B.fakeCool.toFixed(1)}s` : 'Feint · F';
-    $('chopBtn').textContent = ready ? '如来神掌!' : '砍!';
+    $('chopBtn').textContent = ready ? '如来神掌!' : '打!';
     const drops = cs.filter(c => c.phase === 'drop').length;
     if (drops > (B.drops || 0)) sfx.whoosh();
     B.drops = drops;
@@ -2329,7 +2334,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (tp) {
       const lives = +tp.lives;
       if (lives < B.lastLives && B.lastTarget === t.peer) {
-        B.pops.push({ x: B.tx, y: FLOOR - 130, txt: '砍中!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch(); hitFx(B.tx); shakeB = reduce ? 0 : 16; B.taunt = null;
+        B.pops.push({ x: B.tx, y: FLOOR - 130, txt: '打中!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch(); hitFx(B.tx); shakeB = reduce ? 0 : 16; B.taunt = null;
       }
       B.lastLives = lives; B.lastTarget = t.peer;
       const sc = +tp.score || 0, cb = +tp.cb || 0;
@@ -2338,7 +2343,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         else if (cb && cb % 5 === 0 && cb !== B.lastCb) { banner(`${cb} 连闪!`, '我 is on a streak. Stop them!', '#ffb703'); sfx.combo(); }
         else sfx.miss();
       }
-      if (B.lastScore != null && sc < B.lastScore) { FX.parts = []; FX.cracks = []; FX.holes = []; banner('开砍!', 'New round', '#ffb703'); }
+      if (B.lastScore != null && sc < B.lastScore) { FX.parts = []; FX.cracks = []; FX.holes = []; banner('开打!', 'New round', '#ffb703'); }
       B.lastScore = sc; B.lastCb = cb;
       const pr = Array.isArray(tp.pr) ? tp.pr : null;
       if (pr && pr[0] !== B.prId) {
@@ -2372,7 +2377,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       maybeBoard(h);
       const st = tp.st;
       broOverlay(tp);
-      $('status').textContent = st === 'play' ? (B.stunT > 0 ? `被反震! Stunned by a perfect block · ${B.stunT.toFixed(1)}s` : B.cool > 0 ? 'Winding up…' : (B.charge || 0) >= 1 ? 'SUPER READY · your next tap drops a giant hand!' : `Tap to throw ${aimN} hand${aimN > 1 ? 's' : ''} · super ${Math.floor((B.charge || 0) * 100)}%`) : st === 'over' ? '我 got chopped! Waiting for a rematch.' : 'Waiting for 我 to press Start.';
+      $('status').textContent = st === 'play' ? (B.stunT > 0 ? `被反震! Stunned by a perfect block · ${B.stunT.toFixed(1)}s` : B.cool > 0 ? 'Winding up…' : (B.charge || 0) >= 1 ? 'SUPER READY · your next tap drops a giant hand!' : `Tap to throw ${aimN} hand${aimN > 1 ? 's' : ''} · super ${Math.floor((B.charge || 0) * 100)}%`) : st === 'over' ? '我 got punched out! Waiting for a rematch.' : 'Waiting for 我 to press Start.';
       $('chopBtn').disabled = st !== 'play' || B.cool > 0 || B.stunT > 0;
     } else {
       $('status').textContent = ''; $('chopBtn').disabled = true;
