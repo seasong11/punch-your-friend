@@ -1925,7 +1925,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     else bob = M.stance ? Math.abs(Math.sin(now / 170)) * 3 : 0;
     // ground shadow (shrinks as you leave the floor)
     ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, FLOOR + 3, Math.max(10, 24 - bob * 0.35), 5, 0, 0, 7); ctx.fill();
-    if (hurt && Math.floor(now / 80) % 2 === 0) return;
+    // Flattened by a punch: pancake for ~0.6s, then spring back up with a wobble.
+    A.flat = Math.max(0, (A.flat || 0) - dt);
+    const fl = A.flat > 0.4 ? 1 : A.flat / 0.4;
+    const wob = A.flat > 0 && A.flat <= 0.4 ? Math.sin(A.flat * 40) * 0.12 * (1 - fl) : 0;
+    if (hurt && !(A.flat > 0) && Math.floor(now / 80) % 2 === 0) return;
 
     const lean = clamp(vx / 1200 * M.lean, -0.6, 0.6);
     const stride = running ? Math.sin(A.ph) : 0;
@@ -1933,6 +1937,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const crouch = C.id === 'ninja' && !running ? 0.93 : 1;
     ctx.save(); ctx.translate(x, FLOOR - bob); ctx.rotate(lean);
     ctx.scale(1 + A.sq * 0.18, (1 - A.sq * 0.16 + breathe) * crouch);
+    if (A.flat > 0) ctx.scale(1 + 0.95 * fl - wob, 1 - 0.8 * fl + wob);
 
     if (C.scarf) {
       const k = Math.min(1, sp / 450);
@@ -2006,18 +2011,36 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       ctx.lineWidth = 3;
       for (const ex of [-8, 8]) { ctx.beginPath(); ctx.moveTo(ex - 4, -102); ctx.lineTo(ex + 4, -94); ctx.moveTo(ex + 4, -102); ctx.lineTo(ex - 4, -94); ctx.stroke(); }
     } else if (taunting) {
+      // akanbe: wink, cocked brow, big wagging tongue
       ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(-12, -98); ctx.lineTo(-4, -98); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-13, -106); ctx.lineTo(-4, -104); ctx.stroke();            // flat brow
+      ctx.beginPath(); ctx.moveTo(3, -110); ctx.quadraticCurveTo(9, -116, 14, -110); ctx.stroke(); // raised brow
+      ctx.beginPath(); ctx.moveTo(-12, -98); ctx.lineTo(-4, -96); ctx.stroke();              // wink
       ctx.beginPath(); ctx.arc(8, -98, 3.5, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-7, -88); ctx.lineTo(7, -88); ctx.stroke();
-      ctx.fillStyle = '#ff5d73'; ctx.beginPath(); ctx.ellipse(1, -83, 5, 6, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-8, -89); ctx.quadraticCurveTo(1, -86, 9, -90); ctx.stroke();
+      const wag = Math.sin(now / 70) * 3;
+      ctx.fillStyle = '#ff5d73'; ctx.beginPath(); ctx.ellipse(1 + wag, -81, 6, 9, wag * 0.06, 0, 7); ctx.fill();
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(0 + wag, -84, 2, 7);
     } else {
-      if (A.blinkT < 0 && !danger) { ctx.fillRect(-11, -98, 7, 3); ctx.fillRect(5, -98, 7, 3); }
-      else { const r = danger ? 5 : 3; ctx.beginPath(); ctx.arc(-8, -98, r, 0, 7); ctx.arc(8, -98, r, 0, 7); ctx.fill(); }
-      ctx.beginPath();
-      if (danger) { ctx.arc(0, -86, 4, 0, 7); ctx.fill(); }
-      else if (sp > 300) ctx.fillRect(-6, -90, 12, 3);
-      else { ctx.lineWidth = 2; ctx.arc(0, -90, 6, 0.2, Math.PI - 0.2); ctx.stroke(); }
+      // smug by default: one brow up, heavy lids, lopsided smirk
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-14, -106); ctx.lineTo(-4, -104); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(3, -109); ctx.quadraticCurveTo(9, -114, 14, -108); ctx.stroke();
+      if (A.blinkT < 0 && !danger) { ctx.fillRect(-12, -98, 8, 3); ctx.fillRect(4, -98, 8, 3); }
+      else {
+        for (const ex of [-8, 8]) {
+          ctx.beginPath(); ctx.arc(ex, -98, 4, 0, Math.PI); ctx.fill();              // half-closed eye
+          ctx.beginPath(); ctx.moveTo(ex - 6, -98.5); ctx.lineTo(ex + 6, -98.5); ctx.stroke(); // lazy lid
+        }
+      }
+      if (danger) {
+        // cocky grin even when a hand is coming
+        ctx.beginPath(); ctx.moveTo(-9, -90); ctx.quadraticCurveTo(1, -80, 11, -92); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fff4e0'; ctx.fillRect(-5, -90, 12, 3);
+      } else {
+        ctx.beginPath(); ctx.moveTo(-7, -89); ctx.quadraticCurveTo(2, -86, 10, -93); ctx.stroke();  // smirk
+        ctx.beginPath(); ctx.moveTo(11, -95); ctx.lineTo(12, -91); ctx.stroke();                     // dimple
+      }
     }
     ctx.restore();
     cosTop(C);
@@ -2202,6 +2225,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.fillText('x' + combo, x, FLOOR - 172);
   }
   function hitFx(x) {
+    if (FX.anim) FX.anim.flat = 1; // squash 我 flat like a pancake
     addHole();
     FX.flash = reduce ? 0.15 : 0.45; FX.flashCol = '255,93,115'; FX.hitstop = 0.09;
     burst(x, FLOOR - 100, 14, ['#ffb703', '#fff4e0', '#ff5d73'], 380, 1, 600, 5);
