@@ -592,6 +592,23 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   ctx.fillText = function (t, x, y) {
     TXT.push({ t: String(t), x, y, m: ctx.getTransform(), font: ctx.font, fill: ctx.fillStyle, a: ctx.globalAlpha, al: ctx.textAlign, bl: ctx.textBaseline });
   };
+  // Camera: the whole arena normally; on portrait phones a narrower window that follows 我,
+  // so the arena can be about twice as tall. Game logic always works in full-world coordinates.
+  const WORLD_W = cv.width, WORLD_H = cv.height;
+  const CAM = { x: 0, w: WORLD_W };
+  const portraitQ = matchMedia('(orientation: portrait) and (max-width: 600px)');
+  function layoutCam() {
+    CAM.w = portraitQ.matches ? 860 : WORLD_W;
+    cv.width = CAM.w;
+    cv.parentElement.style.aspectRatio = `${CAM.w} / ${WORLD_H}`;
+    CAM.x = Math.min(Math.max(0, CAM.x), WORLD_W - CAM.w);
+  }
+  portraitQ.addEventListener ? portraitQ.addEventListener('change', layoutCam) : portraitQ.addListener(layoutCam);
+  function followCam(x, dt) {
+    if (CAM.w >= WORLD_W) { CAM.x = 0; return; }
+    const want = Math.min(Math.max(0, x - CAM.w / 2), WORLD_W - CAM.w);
+    CAM.x += (want - CAM.x) * Math.min(1, dt * 6);
+  }
   function present() {
     if (!LOWRES) {
       sctx.imageSmoothingEnabled = true;
@@ -601,16 +618,18 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     out.setTransform(1, 0, 0, 1, 0, 0);
     out.imageSmoothingEnabled = false;
     out.clearRect(0, 0, cv.width, cv.height);
-    out.drawImage(sc, 0, 0, cv.width, cv.height);
+    const k = sc.width / WORLD_W;
+    out.drawImage(sc, CAM.x * k, 0, CAM.w * k, sc.height, 0, 0, cv.width, cv.height);
+    const camM = new DOMMatrix([cv.width / CAM.w, 0, 0, cv.height / WORLD_H, -CAM.x * cv.width / CAM.w, 0]);
     for (const r of TXT) {
-      out.setTransform(TXT_BASE.multiply(r.m)); out.font = r.font; out.globalAlpha = r.a; out.textAlign = r.al; out.textBaseline = r.bl;
+      out.setTransform(camM.multiply(TXT_BASE).multiply(r.m)); out.font = r.font; out.globalAlpha = r.a; out.textAlign = r.al; out.textBaseline = r.bl;
       if (r.fill !== '#2b1d3a') { out.fillStyle = '#1b1430'; out.fillText(r.t, r.x + 3, r.y + 3); }
       out.fillStyle = r.fill; out.fillText(r.t, r.x, r.y);
     }
     out.setTransform(1, 0, 0, 1, 0, 0); out.globalAlpha = 1;
     TXT.length = 0;
   }
-  const W = cv.width, H = cv.height, FLOOR = H - 90;
+  const W = WORLD_W, H = WORLD_H, FLOOR = H - 90;
   const ARENA_K = Math.pow(480 / W, 0.7); // a wider arena gets more bot punches
   const $ = id => document.getElementById(id);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2564,6 +2583,21 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
   // ---------- loop ----------
   let last = performance.now(), myId = null;
+  // Portrait camera: red arrows at the edge for hands about to land outside the view.
+  function offscreenArrows() {
+    if (CAM.w >= W || S.st !== 'play') return;
+    const t = performance.now() / 120;
+    for (const c of S.chops) {
+      if (c.fake || (c.phase !== 'warn' && c.phase !== 'drop')) continue;
+      const left = c.x + c.w / 2 < CAM.x, right = c.x - c.w / 2 > CAM.x + CAM.w;
+      if (!left && !right) continue;
+      const ex = left ? CAM.x + 22 : CAM.x + CAM.w - 22, d = left ? -1 : 1;
+      ctx.save(); ctx.globalAlpha = 0.65 + 0.35 * Math.sin(t);
+      ctx.fillStyle = c.sup || c.yq ? '#ffb703' : '#ff5d73';
+      ctx.beginPath(); ctx.moveTo(ex + d * 18, FLOOR - 70); ctx.lineTo(ex - d * 10, FLOOR - 92); ctx.lineTo(ex - d * 10, FLOOR - 48); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
   function loop(now) {
     const dt = Math.min(0.033, (now - last) / 1000); last = now; FX.dt = dt;
     if (role === 'me') {
@@ -2603,7 +2637,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       sfx.music(S.st === 'play'); sfx.setLevel(levelOf(S.score));
       if (FX.hitstop > 0) FX.hitstop -= dt;
       else if (S.st === 'play') { FX.slow = Math.max(0, FX.slow - dt); update(FX.slow > 0 ? dt * 0.4 : dt); }
+      followCam(P.x, dt);
       drawTargetView(dt);
+      offscreenArrows();
       pushAcc += dt;
       if (pushAcc > 0.05) { pushAcc = 0; pushTarget(); }
     } else {
@@ -2615,6 +2651,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       B.cool -= dt; B.fakeCool -= dt; B.homeCool -= dt; B.stunT -= dt; B.yqCool = (B.yqCool || 0) - dt;
       const tpm = remoteTarget();
       sfx.music(!!tpm && tpm.presence.st === 'play'); sfx.setLevel(levelOf(tpm && tpm.presence.score));
+      followCam(B.tx, dt);
       drawBroView(dt);
     }
     present();
@@ -2670,6 +2707,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   renderWard();
 
+  layoutCam();
   hud(0, 3); $('best').textContent = best;
   renderRole(); refreshOverlay();
   requestAnimationFrame(loop);
@@ -2717,7 +2755,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setForm(+b.dataset.f)));
   $('chopBtn').addEventListener('click', () => doChop(B.aim));
 
-  const toX = e => { const r = cv.getBoundingClientRect(); return (e.clientX - r.left) / r.width * W; };
+  const toX = e => { const r = cv.getBoundingClientRect(); return CAM.x + (e.clientX - r.left) / r.width * CAM.w; };
   let steer = false;
   cv.addEventListener('pointerdown', e => {
     if (role === 'bro') { doChop(toX(e)); return; }

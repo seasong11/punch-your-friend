@@ -62,7 +62,10 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
   `body.is-bro` reserves room for the tool row (`--chrome`).
 - `#fsBtn` (touch + Fullscreen API, i.e. Android) goes full screen and locks landscape. iPhones can't do
   element full screen; the page has apple-mobile-web-app-capable so "Add to Home Screen" runs full screen.
-- Portrait phones get a compact header and invite bar and a tip to turn the phone sideways.
+- Portrait phones get a compact header and invite bar and a tip to turn the phone sideways. The arena there
+  shows an 860-wide slice of the 1600-wide world (`CAM`, `layoutCam`, `followCam`) that follows 我 (or the
+  兄弟's aim), so it is about twice as tall; `offscreenArrows()` marks chops outside the view. Taps map
+  through `CAM.x`/`CAM.w`.
 - On touch devices (`pointer: coarse`) the world canvas is drawn directly at half size (`LOWRES`),
   skipping the shrink pass; recorded text is replayed with a 2x base transform (`TXT_BASE`).
 - The invite button uses the system share sheet on phones; hits vibrate (Android); a screen wake lock
