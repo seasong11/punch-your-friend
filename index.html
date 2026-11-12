@@ -354,6 +354,10 @@
 <body>
 <title>Punch Your Friend</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2b1d3a">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&family=Rubik:wght@400;600;800&family=ZCOOL+KuaiLe&display=swap">
 <style>
 /* Layout: one arcade cabinet — title, HUD, shared canvas arena, role-specific controls, brother leaderboard. Single deliberate dark look. */
@@ -511,6 +515,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   </div>
   <div class="stage">
     <canvas id="c" width="1600" height="640" aria-label="Game arena"></canvas>
+    <button type="button" class="fsBtn" id="fsBtn" hidden>⛶ Full screen</button>
     <div class="overlay" id="overlay">
       <h2 id="ovTitle">来打我啊!</h2>
       <p id="ovText">A red shadow marks where each chop lands. Move before the hand comes down.</p>
@@ -777,6 +782,21 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   let best = 0;
   try { best = +localStorage.getItem('chopBest') || 0; } catch (e) {}
 
+  // ---------- full screen on phones ----------
+  const TOUCH = matchMedia('(pointer: coarse)').matches;
+  const IOS = /iPhone|iPod/.test(navigator.userAgent);
+  const fsBtn = document.getElementById('fsBtn');
+  const fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function paintFs() { fsBtn.hidden = !TOUCH || !(document.fullscreenEnabled || document.webkitFullscreenEnabled) || fsOn(); }
+  fsBtn.addEventListener('click', async () => {
+    const el = document.documentElement;
+    try { await (el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : el.webkitRequestFullscreen()); } catch (e) {}
+    try { await screen.orientation.lock('landscape'); } catch (e) {}
+    scrollTo(0, 0); paintFs();
+  });
+  document.addEventListener('fullscreenchange', paintFs); document.addEventListener('webkitfullscreenchange', paintFs);
+  paintFs();
+  if (IOS && !navigator.standalone) { const tip = document.getElementById('rotateTip'); if (tip) tip.textContent = 'Turn your phone sideways for a bigger arena. For true full screen: Share → Add to Home Screen.'; }
   // ---------- phone niceties: vibration, keep the screen awake ----------
   const buzz = ms => { try { if (navigator.vibrate && !sfx.muted) navigator.vibrate(ms); } catch (e) {} };
   let wakeLock = null;
@@ -991,7 +1011,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     sfx.start();
     Object.assign(S, { st: 'play', score: 0, lives: 3, t: 0, speed: 1, chops: [], spawnIn: 1, shake: 0, hurt: 0, pops: [], hits: {} });
     S.combo = 0; S.fireTier = 0; S.taunt = null; S.blockT = 0; S.blockCd = 0;
-    S.dashCd = 0; S.iframe = 0; S.rage = 0; S.bell = 0; S.rainT = 0; S.queue = []; S.stunUntil = {}; S.sn = S.sn || {}; FX.ghosts = []; FX.holes = []; FX.parts = []; FX.cracks = []; FX.slow = 0; FX.hitstop = 0; banner('开打!', 'Dodge, or block with ↓ / 挡', '#ffb703');
+    S.dashCd = 0; S.iframe = 0; S.rage = 0; S.bell = 0; S.rainT = 0; S.queue = []; S.stunUntil = {}; S.sn = S.sn || {}; FX.ghosts = []; FX.holes = []; FX.parts = []; FX.cracks = []; FX.slow = 0; FX.hitstop = 0; banner('开打!', TOUCH ? 'Drag on the arena to move · 挡 to block' : 'Dodge, or block with ↓ / 挡', '#ffb703');
     P.x = W / 2; P.vx = 0;
     setOverlay(false); hud(0, 3); pushTarget(true); maybeBoard(S.hits);
   }
@@ -2774,42 +2794,47 @@ button { touch-action: manipulation; }
   .hud .val { font-size: 15px; }
   .hearts { font-size: 18px; }
   .pad { padding: 18px 8px; }
+  .stage { margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)) + 2px); width: calc(100% + 2 * max(16px, env(safe-area-inset-left, 0px)) - 4px) !important; max-width: none; }
 }
+/* Full screen button (shown where the browser allows it) */
+.fsBtn { position: absolute; top: 6px; right: 6px; z-index: 3; font: 600 12px var(--body); padding: 6px 10px; border: 0; background: rgba(27,20,48,.75); color: var(--fg); cursor: pointer; }
+.fsBtn:focus-visible { outline: 3px solid var(--fg); }
 @media (orientation: portrait) and (max-width: 600px) and (pointer: coarse) {
   .rotateTip { display: block; }
 }
-/* Landscape phone: the arena in the middle, thumb controls on both sides, everything else below. */
+/* Landscape phone: the arena fills the screen, buttons in one column on the right, everything else below.
+   You move by dragging on the arena (the 兄弟 tap it to punch), so there is no ◀ ▶ column. */
 @media (orientation: landscape) and (max-height: 540px) {
-  body { padding-block: 6px; padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); --side: 96px; --chrome: 58px; }
-  body.is-bro { --chrome: 104px; }
-  .wrap { display: grid; max-width: none; grid-template-columns: minmax(var(--side), 1fr) auto minmax(var(--side), 1fr); grid-template-rows: auto repeat(4, minmax(0, 1fr)) auto; column-gap: 10px; row-gap: 6px; }
+  body { padding-block: 4px; padding-left: max(6px, env(safe-area-inset-left, 0px)); padding-right: max(6px, env(safe-area-inset-right, 0px)); --side: 88px; --chrome: 44px; }
+  body.is-bro { --chrome: 86px; }
+  .wrap { display: grid; max-width: none; grid-template-columns: auto var(--side); justify-content: center; grid-template-rows: auto repeat(4, minmax(0, 1fr)) auto; column-gap: 8px; row-gap: 4px; }
   .wrap > * { grid-column: 1 / -1; }
-  .hud { grid-column: 2; grid-row: 1; align-items: center; }
+  .hud { grid-column: 1; grid-row: 1; align-items: center; }
   .hud .label { font-size: 9px; }
-  .hud .val { font-size: 14px; }
-  .hearts { font-size: 16px; }
+  .hud .val { font-size: 13px; }
+  .hearts { font-size: 15px; }
   .under { grid-column: 1 / -1; grid-row: 1; min-height: 0; z-index: 2; pointer-events: none; }
-  #status { justify-self: end; max-width: calc(var(--side) + 30px); font-size: 10px; text-align: right; min-height: 0; line-height: 1.25; }
+  #status { justify-self: end; width: var(--side); font-size: 9px; text-align: center; min-height: 0; line-height: 1.15; }
   .caption { justify-self: center; align-self: stretch; align-items: center; padding: 0 16px; }
-  .caption b { font-size: 20px; }
+  .caption b { font-size: 18px; }
   .caption span { font-size: 11px; }
-  .stage { grid-column: 2; grid-row: 2 / 6; min-width: 0; align-self: start;
-    width: min(calc(100vw - 2 * var(--side) - 20px - max(8px, env(safe-area-inset-left, 0px)) - max(8px, env(safe-area-inset-right, 0px))), calc((100svh - var(--chrome)) * 2.5)); }
+  .stage { grid-column: 1; grid-row: 2 / 6; min-width: 0; align-self: start;
+    width: min(calc(100vw - var(--side) - 8px - max(6px, env(safe-area-inset-left, 0px)) - max(6px, env(safe-area-inset-right, 0px))), calc((100svh - var(--chrome)) * 2.5)); }
+  .stage { box-shadow: 0 0 0 2px var(--panel) !important; }
   .pads, #meSkills, #broMoves { display: contents; }
+  #left, #right { display: none; }
   .pad { padding: 4px; font-size: 20px; min-height: 0; }
   .pad.chop, .pad.block { font-size: 28px; }
-  #left { grid-column: 1; grid-row: 2 / 4; }
-  #right { grid-column: 1; grid-row: 4 / 6; }
-  #blockBtn, #chopBtn { grid-column: 3; grid-row: 2 / 4; }
-  #dashBtn { grid-column: 3; grid-row: 4; }
-  #bellBtn { grid-column: 3; grid-row: 5; }
+  #blockBtn, #chopBtn { grid-column: 2; grid-row: 2 / 4; }
+  #dashBtn { grid-column: 2; grid-row: 4; }
+  #bellBtn { grid-column: 2; grid-row: 5; }
   .skill { font-size: 15px; padding: 4px; min-height: 0; }
   .skill small { font-size: 10px; }
-  .seg { grid-column: 1; grid-row: 6; padding: 2px; gap: 2px; }
+  #fakeBtn { grid-column: 2; grid-row: 4; font-size: 15px; padding: 4px; }
+  .seg { grid-column: 2; grid-row: 5; padding: 2px; gap: 2px; }
   .seg button { font-size: 12px; padding: 3px 0; }
   .seg button small { display: none; }
-  #broTools { grid-column: 2; grid-row: 6; gap: 6px; }
-  #fakeBtn { grid-column: 3; grid-row: 4 / 6; font-size: 16px; }
+  #broTools { grid-column: 1; grid-row: 6; gap: 6px; }
   .head { grid-row: 7; margin-top: 14px; }
   .invite { grid-row: 8; }
   #wardrobe { grid-row: 9; }
