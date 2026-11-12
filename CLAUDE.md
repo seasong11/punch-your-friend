@@ -55,10 +55,13 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
   before the page scripts run.
 
 ## Phones
-- Landscape phones (`orientation: landscape` and `max-height: 540px`) switch `.wrap` to a grid: arena in the
-  middle, ◀ ▶ on the left, block/chop and skills on the right, the rest of the page below. `.pads`,
-  `#meSkills` and `#broMoves` become `display: contents` so their buttons are placed one by one.
-  `body.is-bro` reserves room for the 兄弟 tool row under the arena.
+- Landscape phones (`orientation: landscape` and `max-height: 540px`) switch `.wrap` to a two-column grid:
+  the arena on the left at the largest size that fits, one button column on the right (挡/打!, dash/bell or
+  feint/formation), 兄弟 tools under the arena, the rest of the page below. ◀ ▶ are hidden: 我 moves by
+  dragging on the arena, 兄弟 aim by tapping it. `.pads`, `#meSkills` and `#broMoves` are `display: contents`.
+  `body.is-bro` reserves room for the tool row (`--chrome`).
+- `#fsBtn` (touch + Fullscreen API, i.e. Android) goes full screen and locks landscape. iPhones can't do
+  element full screen; the page has apple-mobile-web-app-capable so "Add to Home Screen" runs full screen.
 - Portrait phones get a compact header and invite bar and a tip to turn the phone sideways.
 - On touch devices (`pointer: coarse`) the world canvas is drawn directly at half size (`LOWRES`),
   skipping the shrink pass; recorded text is replayed with a 2x base transform (`TXT_BASE`).
