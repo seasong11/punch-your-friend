@@ -44,6 +44,13 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
   an invite link opened before the host is ready still connects.
 - While the host's tab is hidden the game loop stops; the host's presence carries `pz: 1` and guests
   see a "paused" overlay.
+- **Relay fallback:** when a guest has no direct link after 8s (or PeerJS can't load or reach its server),
+  it joins through a public MQTT broker over WSS (`broker.emqx.io:8084`, then `broker.hivemq.com:8884`), using
+  topics `pyf2/<room>/up` (guest → host: `hi`/`hb`/`p`/`bye` with the guest id) and `pyf2/<room>/down`
+  (host → guests: the state, ~15/s, at least every 1.5s). The host always listens on both brokers.
+  mqtt.js 5.10.4 is lazy-loaded from unpkg. Guests that miss the host's state for 8s show "rejoining".
+- Local relay test: run an aedes broker over WebSocket and add `&relay=ws://localhost:8883` (only honored
+  with `?mock=1`); the mock can block direct links with `&nodirect=1`.
 - Test without the PeerJS cloud: open with `?mock=1` and inject a `window.MockPeer` (BroadcastChannel)
   before the page scripts run.
 
