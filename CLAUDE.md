@@ -47,9 +47,8 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - 我 (dodger): move, block/perfect block (↓/S/Space), dash (Shift), Golden Bell (E, Rage meter),
   perfect-block stun, on-fire streak buff (5/10/20 combo → +10/20/30% speed), taunts, six unlockable
   costumes (`COS`) each with its own move set (`MOVES`).
-- On-fire speed look (5/10/20 combo tiers, colours in `SPD`): `drawTrail`/`trailSnap` (flat tier-coloured afterimages
-  copied from the lit sprite, faded by ordered dither), `feetFx` (dust per step, heel sparks from x10) and `boltFx`
-  (lightning at x20). Daniel turned down the flame aura, manga stamp and combo meter (too busy): keep it to these.
+- On-fire speed look: only `feetFx` (a pixel dust puff per step while on fire). Daniel turned down afterimages,
+  flame aura, sparks, lightning, manga stamp and combo meter as too busy: keep the speed effect minimal.
 - Fire caption: `ticker(tier, sub)` reuses `#caption` under the arena as a wood strip (`.caption.tick`) with a stepped
   pixel flame (`.tkf`) and typed text; `banner()` resets it. A small `streakTag` "xN" sits over 我's head.
 - 兄弟 (puncher): tap to chop, formations (1/2/3), feint (F), homing (H), 黄泉指 Underworld Finger (Y),
