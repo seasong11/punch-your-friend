@@ -866,10 +866,18 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     // ---- recorded music: one seamless loop per stage, plus the menu lobby and game over ----
     // Files live in music/<id>.ogg. Each is an exact whole number of bars, so it loops with no gap.
     const STAGE_TRACKS = ['living-room', 'dojo', 'rooftop', 'bamboo', 'volcano', 'space'];
+    // The relay journey's sections, in play order, and the track each one plays. A section-based game calls
+    // sfx.setSection(id); until then the stage track follows the level (STAGE_TRACKS).
+    const SECTION_TRACKS = { house: 'living-room', dojo: 'dojo', bamboo: 'bamboo', 'rooftop-climb': 'rooftop', 'rooftop-jumps': 'rooftop-run',
+      'lake-dive': 'lake-dive', lake: 'lake-deep', volcano: 'volcano', snow: 'snow-slope', elevator: 'tower-lift', space: 'space' };
+    const JOURNEY = Object.values(SECTION_TRACKS);
+    let sectionTrack = null;
     const KEYS = { 'living-room': [0, 2, 4, 5, 7, 9, 10], dojo: [9, 0, 2, 4, 7], rooftop: [4, 6, 7, 9, 11, 1, 2], bamboo: [2, 4, 6, 9, 11],
-      volcano: [0, 1, 4, 5, 7, 8, 10], space: [5, 7, 8, 10, 0, 1, 3], menu: [7, 9, 11, 0, 2, 4, 6], 'game-over': [2, 4, 5, 7, 9, 10, 0] };
+      volcano: [0, 1, 4, 5, 7, 8, 10], space: [5, 7, 8, 10, 0, 1, 3], menu: [7, 9, 11, 0, 2, 4, 6], 'game-over': [2, 4, 5, 7, 9, 10, 0],
+      'rooftop-run': [11, 1, 2, 4, 6, 8, 9], 'lake-dive': [9, 11, 1, 2, 4, 6, 8], 'lake-deep': [6, 9, 11, 1, 4],
+      'snow-slope': [4, 6, 7, 9, 11, 0, 2], 'tower-lift': [0, 2, 3, 5, 7, 9, 10] };
     const bufs = {}, failed = {}, offsets = {};
-    let stageIdx = 0, want = null, playing = null, wantScene = null, preloaded = false;
+    let stageIdx = 0, want = null, playing = null, wantScene = null;
     function loadTrack(id) {
       if (bufs[id] || failed[id]) return bufs[id];
       if (location.protocol === 'file:') { failed[id] = true; return null; }
@@ -880,10 +888,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         .catch(() => { failed[id] = true; delete bufs[id]; });
       return bufs[id];
     }
-    function preload() { // after the first tap: the lobby first, then stages in play order
-      if (preloaded || !ac) return; preloaded = true;
-      ['menu', 'living-room', 'game-over', 'dojo', 'rooftop', 'bamboo', 'volcano', 'space']
-        .reduce((p, id) => p.then(() => loadTrack(id)), Promise.resolve());
+    // Light on data: only the track playing now and the one most likely next are fetched (about 0.8 MB each).
+    function stageTrack() { return sectionTrack || STAGE_TRACKS[stageIdx]; }
+    function nextTrack(id) {
+      const order = sectionTrack ? JOURNEY : STAGE_TRACKS, i = order.indexOf(id);
+      return i >= 0 && i + 1 < order.length ? order[i + 1] : null;
     }
     function stopTrack(fade = 0.35) {
       if (!playing) return;
@@ -906,11 +915,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     // scene: 'stage' while a round runs, 'over' after a round, 'menu' in the lobby, null for silence
     function scene(sc) {
       if (!ac || ac.state !== 'running') return;
-      if (!preloaded) preload();
       const on = !musicOff && !muted;
-      const id = !on || !sc ? null : sc === 'stage' ? STAGE_TRACKS[stageIdx] : sc === 'over' ? 'game-over' : 'menu';
+      const id = !on || !sc ? null : sc === 'stage' ? stageTrack() : sc === 'over' ? 'game-over' : 'menu';
       // a fresh round (from the lobby or game over) starts the stage tracks from the top; a resume after a pause continues
-      if (sc === 'stage' && wantScene && wantScene !== 'stage') STAGE_TRACKS.forEach(t => { offsets[t] = 0; });
+      if (sc === 'stage' && wantScene && wantScene !== 'stage') Object.keys(offsets).forEach(t => { if (t !== 'menu') offsets[t] = 0; });
       wantScene = sc; want = id;
       scale = id ? KEYS[id] : null;
       if (playing && playing.id !== id) stopTrack();
@@ -920,6 +928,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         else { const b = loadTrack(id); if (b instanceof AudioBuffer) startTrack(id, b); }
       }
       setMusic(fallback);
+      if (id && bufs[id] instanceof AudioBuffer) { // warm up what comes next
+        const nx = sc === 'stage' ? nextTrack(id) || 'game-over' : sc === 'menu' ? stageTrack() : 'menu';
+        if (nx) loadTrack(nx);
+        if (sc === 'stage') loadTrack('game-over');
+      }
     }
     addEventListener('visibilitychange', () => { if (document.hidden && playing && ac) stopTrack(0.1); });
     function setLevel(level) {
@@ -949,6 +962,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const api = {
       scene,
       setLevel,
+      setSection(id) { sectionTrack = SECTION_TRACKS[id] || null; },
       // where the next effect happens, as a world x position (pans it left or right)
       at(x) { nextPan = clamp((x / W) * 2 - 1, -1, 1) * 0.5; return api; },
       setTempo(x) { tempo = clamp(x, 1, 1.5); },
