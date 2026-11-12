@@ -71,6 +71,12 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - Controls sit in one compact `.dock` under the arena; a round start scrolls the HUD, arena and dock into view.
 
 ## Journey prototype: the house (branch `house-prototype`)
+- House look (from Daniel's indoor references): a cutaway wooden house. `drawRoomShell` draws the wall by `style`
+  (`plank`, `plaster` default, `block`) with a darker lower band, rail and baseboard; `drawRoomFrame` adds the ceiling
+  beam, joists, corner posts and a cobweb. Wall decor kinds: `win` (hazy day and far city, curtains, light patch on the
+  floor), `lamp` (warm `glowPx` dither glow, no blur), `pic`, `clock`, `books`, `pots`, `shelf`, `tiles`, `rug`, `tree`.
+  Furniture is drawn through `litSprite`, so it gets the same lit edges and dark outline as 我. The garden is a hazy
+  day with the house's half-timbered wall on the left and the neon tower ahead on the right.
 - `JOURNEY = true` turns the single arena into a section made of rooms (`ROOMS`): living room, kitchen, stairs up,
   hallway, bedroom, stairs down, garage. Each room is one arena wide; walking out of the right-hand door loads the
   next (`nextRoom`), and the garage door ends the section (`houseDone`, hearts refill).
