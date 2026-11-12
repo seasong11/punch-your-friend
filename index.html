@@ -2452,7 +2452,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.save();
     ctx.font = '34px ' + HF;
     const tw = ctx.measureText(tt.txt).width + 40, bh = 56;
-    const bx = clamp(x, tw / 2 + 6, W - tw / 2 - 6), by = FLOOR - 232;
+    const bx = clamp(x, tw / 2 + 6, W - tw / 2 - 6), by = FLOOR - 232; // above the xN streak tag (FLOOR - 172)
     ctx.globalAlpha = Math.max(0, fade);
     ctx.translate(bx, by); ctx.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
     ctx.fillStyle = '#fff4e0'; ctx.strokeStyle = '#1b1430'; ctx.lineWidth = 5;
@@ -2543,7 +2543,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const FIRE_PAL = [null, ['#ff6a2b', '#ffb703', '#fff4e0'], ['#c0392b', '#ff6a2b', '#ffd36b'], ['#2f80ed', '#7fe3ff', '#fff4e0']];
   const FIRE_TXT = [null, ['热身!', 'Streak x5 · Speed +10%', '#ffb703'], ['燃起来了!', 'Streak x10 · Speed +20%', '#ff8c2b'], ['爆燃!!', 'Streak x20 · Speed +30%', '#7fe3ff']];
   function igniteFx(tier, x) {
-    stampFx(tier); sfx.ignite(tier);
+    ticker(tier, FIRE_TXT[tier][1]); sfx.ignite(tier);
     if (!reduce) burst(x, FLOOR - 60, 14 + tier * 6, FIRE_PAL[tier], 260 + tier * 60, 1.2, -200, 6);
     FX.flash = reduce ? 0.08 : 0.15 + tier * 0.05; FX.flashCol = tier >= 3 ? '127,227,255' : '255,140,40';
   }
@@ -2554,7 +2554,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   // ---------- on-fire speed look ----------
   // A: pixel afterimages (flat tier-coloured copies of 我, faded with an ordered dither, not alpha)
-  // C: three-tone pixel flame that flickers on an 8 fps step and leans back while running
   // D: dust puffs per step, heel sparks from x10, crackling lightning at x20
   const SPD = [null, ['#be4a2f', '#f77622', '#feae34', '#fee761'], ['#a22633', '#e43b44', '#f77622', '#feae34'], ['#124e89', '#0099db', '#2ce8f5', '#ffffff']];
   const fh = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
@@ -2600,27 +2599,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       ctx.restore();
     }
   }
-  function fireAura(x, tier, vx, dt) {
-    if (!tier) return;
-    const ramp = SPD[tier], st = Math.floor(performance.now() / 125), lean = clamp(-vx / 600, -1, 1);
-    const cx = Math.round(x / PX), fl = Math.round(FLOOR / PX), base = [0, 38, 44, 50][tier];
-    for (let L = 0; L < 3; L++) {
-      ctx.fillStyle = ramp[L];
-      const half = 10 - L * 2;
-      for (let i = -half; i <= half; i++) {
-        const edge = (half - Math.abs(i)) / half;
-        const h = Math.max(2, Math.round(base * (1 - L * 0.2) * (0.3 + 0.7 * Math.sqrt(edge)) + fh(i * 7 + L, st) * 7 - 3));
-        let j0 = 0, o0 = 0;
-        for (let j = 1; j <= h; j++) { // runs of the column that share the same lean offset
-          const o = j === h ? null : Math.round(lean * 5 * (j / h) * (j / h));
-          if (o !== o0) { ctx.fillRect((cx + i + o0) * PX, (fl - j) * PX, PX, (j - j0) * PX); j0 = j; o0 = o; }
-        }
-      }
-    }
-    if (tier >= 3) { ctx.fillStyle = ramp[3]; for (let i = -3; i <= 3; i++) if (fh(i, st) < 0.4) ctx.fillRect((cx + i + Math.round(lean * 5)) * PX, (fl - base - 2 - Math.round(fh(st, i) * 4)) * PX, PX, PX); }
-    if (!reduce && Math.random() < dt * (6 + tier * 6)) burst(x + (Math.random() - .5) * 60, FLOOR - 40 - Math.random() * 90, 1, ramp.slice(1), 60, 1, -260, 4);
-    if (tier >= 2 && Math.abs(vx) > 150 && Math.random() < dt * 8) FX.prints.push({ x: x + (Math.random() - .5) * 16, t: 0 });
-  }
   const DUST = { acc: 0, list: [], seed: 0, bt: 0 };
   function feetFx(x, tier, vx, dt) {
     if (tier && !reduce && Math.abs(vx) > 120) {
@@ -2657,73 +2635,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     ctx.restore();
   }
-  // ---------- streak captions ----------
-  // 3: manga stamp that slams down when a fire tier is reached (with shake and ink splatter)
-  function stampFx(tier) {
-    FX.stamp = { tier, t: 0, ink: Array.from({ length: 16 }, () => ({ a: Math.random() * 6.283, r: 70 + Math.random() * 50 })) };
-    if (!reduce) { S.shake = Math.max(S.shake || 0, 14); shakeB = Math.max(shakeB, 14); }
-  }
-  function drawStamp(dt) {
-    const s = FX.stamp;
-    if (!s) return;
-    s.t += dt;
-    if (s.t > 1.05) { FX.stamp = null; return; }
-    const [txt, sub] = FIRE_TXT[s.tier], blue = s.tier >= 3, a = s.t;
-    const sc = reduce ? 1 : a < 0.06 ? 2 : a < 0.11 ? 1.5 : 1, cx = Math.round((CAM.x + CAM.w / 2) / PX) * PX, cy = CAM.w < W ? 300 : 168; // below the combo meter on narrow views
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (sc === 1) {
-      ctx.font = '64px ' + HF;
-      const bw = Math.round((ctx.measureText(txt).width + 72) / (2 * PX)) * 2 * PX, bh = 112, bx = cx - bw / 2, by = cy - bh / 2;
-      if (a < 0.5 && !reduce) {
-        ctx.fillStyle = blue ? '#124e89' : '#a22633';
-        for (const p of s.ink) { const rr = p.r + a * 220; ctx.fillRect(Math.round((cx + Math.cos(p.a) * rr * 1.6) / PX) * PX, Math.round((cy + Math.sin(p.a) * rr * 0.6) / PX) * PX, 2 * PX, 2 * PX); }
-      }
-      ctx.fillStyle = '#181425'; ctx.fillRect(bx, by - PX, bw, bh + 2 * PX); ctx.fillRect(bx - PX, by, bw + 2 * PX, bh);
-      ctx.fillStyle = blue ? '#124e89' : '#a22633'; ctx.fillRect(bx + PX, by, bw - 2 * PX, bh); ctx.fillRect(bx, by + PX, bw, bh - 2 * PX);
-      ctx.fillStyle = blue ? '#0099db' : '#e43b44'; ctx.fillRect(bx + 2 * PX, by + 2 * PX, bw - 4 * PX, bh - 4 * PX);
-      ctx.fillStyle = '#ffffff'; ctx.fillText(txt, cx, cy - 12);
-      ctx.font = '24px ' + HF; ctx.fillStyle = blue ? '#ffffff' : '#fee761'; ctx.fillText(sub, cx, cy + 36);
-    } else {
-      ctx.font = Math.round(64 * sc) + 'px ' + HF; ctx.fillStyle = '#ffffff'; ctx.fillText(txt, cx, cy - 12);
-    }
-    ctx.restore();
-  }
-  // 4: combo meter in the top-right corner: bumps on every hit, bar fills to the next tier,
-  // flashes on a tier-up and shatters when the streak breaks
-  const MT = { c: 0, bump: 0, flash: 0, tier: 0, brk: 0, shards: [] };
-  function comboMeter(combo, dt, playing) {
-    combo = playing ? Math.max(0, combo | 0) : 0;
-    const m = MT, t = combo >= 20 ? 3 : combo >= 10 ? 2 : combo >= 5 ? 1 : 0;
-    const fsb = MT.fsb || (MT.fsb = document.getElementById('fsBtn')), y0 = fsb && fsb.offsetParent ? 96 : 28; // under the full-screen button on phones
-    const bw = 192, bh = 124, x0 = Math.round((CAM.x + CAM.w - bw - 28) / PX) * PX;
-    if (combo > m.c) m.bump = 0.12;
-    if (t > m.tier) m.flash = 0.3;
-    if (playing && combo < m.c && m.c >= 3 && !reduce) {
-      m.brk = 0.9; m.shards = [];
-      for (let i = 0; i < 18; i++) m.shards.push({ x: x0 + 20 + Math.random() * (bw - 40), y: y0 + 10 + Math.random() * 60, vx: (Math.random() - .5) * 420, vy: -160 - Math.random() * 200, c: ['#feae34', '#f77622', '#ffffff', '#ead4aa'][i % 4] });
-    }
-    m.c = combo; m.tier = t;
-    m.bump = Math.max(0, m.bump - dt); m.flash = Math.max(0, m.flash - dt);
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (m.brk > 0) {
-      m.brk -= dt;
-      for (const p of m.shards) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x / PX) * PX, Math.round(p.y / PX) * PX, 2 * PX, PX); }
-      if (m.brk > 0.3) { ctx.font = '40px ' + HF; ctx.fillStyle = '#c0cbdc'; ctx.fillText('断!', x0 + bw / 2, y0 + 40); }
-      ctx.restore();
-      return;
-    }
-    if (combo < 2) { ctx.restore(); return; }
-    const ramp = SPD[t];
-    ctx.fillStyle = '#181425'; ctx.fillRect(x0 - PX, y0 - PX, bw + 2 * PX, bh + 2 * PX);
-    ctx.fillStyle = m.flash > 0 && Math.floor(m.flash * 20) % 2 ? '#ffffff' : '#3e2731'; ctx.fillRect(x0, y0, bw, bh);
-    ctx.fillStyle = '#733e39'; ctx.fillRect(x0, y0, bw, PX);
-    ctx.font = (m.bump > 0.06 ? 64 : 48) + 'px ' + HF; ctx.fillStyle = t ? ramp[3] : '#ead4aa';
-    ctx.fillText('x' + combo, x0 + bw / 2, y0 + 36);
-    const goal = combo < 5 ? 5 : combo < 10 ? 10 : 20, from = combo < 5 ? 0 : combo < 10 ? 5 : 10, fr = Math.min(1, (combo - from) / (goal - from));
-    ctx.fillStyle = '#181425'; ctx.fillRect(x0 + 4 * PX, y0 + 62, bw - 8 * PX, 3 * PX);
-    ctx.fillStyle = t ? ramp[1] : '#8b9bb4'; ctx.fillRect(x0 + 5 * PX, y0 + 62 + PX, Math.round((bw - 10 * PX) * fr / PX) * PX, PX);
-    if (t) { ctx.font = '24px ' + HF; ctx.fillStyle = ramp[2]; ctx.fillText(FIRE_TXT[t][0], x0 + bw / 2, y0 + 96); }
-    ctx.restore();
+  function streakTag(x, tier, combo) {
+    if (!tier) return;
+    ctx.fillStyle = FIRE_TXT[tier][2]; ctx.font = '16px ' + PF; ctx.textAlign = 'center';
+    ctx.fillText('x' + combo, x, FLOOR - 172);
   }
   function hitFx(x) {
     if (FX.anim) FX.anim.flat = 1; // squash 我 flat like a pancake
@@ -2732,15 +2647,36 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     burst(x, FLOOR - 100, 14, ['#ffb703', '#fff4e0', '#ff5d73'], 380, 1, 600, 5);
   }
   // Captions show on a line under the arena (never on top of the action).
-  let capTimer = 0;
+  let capTimer = 0, tickT = 0, tickI = 0;
   function banner(txt, sub, col) {
     const el = $('caption');
+    clearInterval(tickI); clearTimeout(tickT); el.className = 'caption';
     el.replaceChildren();
     const b = document.createElement('b'); b.textContent = txt; b.style.color = col || '#ffb703';
     el.append(b);
     if (sub) { const sm = document.createElement('span'); sm.textContent = sub; el.append(sm); }
     el.hidden = false; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
     clearTimeout(capTimer); capTimer = setTimeout(() => { el.hidden = true; }, 1600);
+  }
+  // On-fire caption: a wood strip slides up under the arena, a pixel flame flickers, the text types itself out,
+  // then the strip slides away again.
+  function ticker(tier, sub) {
+    const [txt, , col] = FIRE_TXT[tier], el = $('caption');
+    clearTimeout(capTimer); clearInterval(tickI); clearTimeout(tickT);
+    el.replaceChildren(); el.className = 'caption tick';
+    const ic = document.createElement('i'); ic.className = 'tkf t' + tier;
+    const b = document.createElement('b'); b.style.color = col;
+    const sm = document.createElement('span');
+    el.append(ic, b, sm); el.hidden = false; void el.offsetWidth; el.classList.add('in');
+    if (reduce) { b.textContent = txt; sm.textContent = sub; }
+    else {
+      const parts = [[b, [...txt]], [sm, [...sub]]]; let p = 0, i = 0;
+      tickI = setInterval(() => {
+        const [node, chars] = parts[p]; node.textContent += chars[i++] || '';
+        if (i >= chars.length) { p++; i = 0; if (p >= parts.length) clearInterval(tickI); }
+      }, 30);
+    }
+    capTimer = setTimeout(() => { el.classList.add('out'); tickT = setTimeout(() => { el.hidden = true; el.className = 'caption'; }, 220); }, 2800);
   }
   function speedLines(dt, level) {
     if (level < 2 || reduce) { FX.lines.length = 0; return; }
@@ -2888,19 +2824,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const danger = S.chops.some(c => c.phase !== 'up' && Math.abs(c.x - P.x) < c.w);
     const ftier = S.st === 'play' ? S.fireTier || 0 : 0;
     drawTrail(P.x, ftier);
-    fireAura(P.x, ftier, P.vx, dt);
     feetFx(P.x, ftier, P.vx, dt);
     drawGhosts(dt, curCos);
     if (!(S.iframe > 0) || Math.floor(performance.now() / 40) % 2) player(P.x, P.vx, S.hurt > 0, danger, room ? 'you' : null, !!S.taunt && !(S.blockT > 0), S.blockT > 0, curCos);
     boltFx(P.x, ftier, dt);
     if (S.bell > 0) drawBell(P.x);
+    if (S.st === 'play') streakTag(P.x, S.fireTier || 0, S.combo || 0);
     cs.forEach(hand);
     drawRings(dt);
     drawParts(dt);
     S.pops = pops(S.pops, dt);
     drawOverlayFx(dt, S.st === 'play' && S.lives === 1);
-    drawStamp(dt);
-    comboMeter(S.combo || 0, dt, S.st === 'play');
     tauntBubble(S, P.x, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -2918,7 +2852,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     B.belOn = !!(tp && tp.bel);
     const fireNow = tp ? clamp(+tp.fire || 0, 0, 3) : 0;
     if (B.fire != null && fireNow !== B.fire && tp && tp.st === 'play') {
-      if (fireNow > B.fire) { stampFx(fireNow); banner(FIRE_TXT[fireNow][0], `我 is on fire · x${+tp.cb || 0} streak. Land a hit to put it out!`, FIRE_TXT[fireNow][2]); sfx.ignite(fireNow); }
+      if (fireNow > B.fire) { ticker(fireNow, `我 is on fire · x${+tp.cb || 0} streak. Land a hit to put it out!`); sfx.ignite(fireNow); }
       else if (fireNow === 0) { if (!reduce) burst(B.tx, FLOOR - 60, 16, ['#8a7f7f', '#b0a6a6', '#5a5050'], 120, 1, -120, 9); B.pops.push({ x: B.tx, y: FLOOR - 190, txt: '熄火!', t: 0, col: '#c9b6de', size: 24 }); sfx.douse(); }
     }
     B.fire = fireNow;
@@ -3035,20 +2969,18 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const danger = cs.some(c => c.phase !== 'up' && Math.abs(c.x - B.tx) < c.w);
       const ftier = tp.st === 'play' ? clamp(+tp.fire || 0, 0, 3) : 0;
       drawTrail(B.tx, ftier);
-      fireAura(B.tx, ftier, +tp.vx || 0, dt);
       feetFx(B.tx, ftier, +tp.vx || 0, dt);
       drawGhosts(dt, clamp(+tp.cos || 0, 0, COS.length - 1));
       player(B.tx, +tp.vx || 0, !!tp.hurt, danger, null, !!B.taunt && !tp.bl, !!tp.bl, clamp(+tp.cos || 0, 0, COS.length - 1));
       boltFx(B.tx, ftier, dt);
       if (tp.bel) drawBell(B.tx);
+      if (tp.st === 'play') streakTag(B.tx, ftier, +tp.cb || 0);
     }
     cs.forEach(hand);
     drawRings(dt);
     drawParts(dt);
     B.pops = pops(B.pops, dt);
     drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1);
-    drawStamp(dt);
-    comboMeter(tp ? +tp.cb || 0 : 0, dt, !!tp && tp.st === 'play');
     if (tp) tauntBubble(B, B.tx, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -3307,7 +3239,21 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 .caption span { font-size: 13px; color: var(--muted); font-weight: 600; }
 .caption.pop { animation: capPop .18s ease-out; }
 @keyframes capPop { from { transform: scale(1.25); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .caption.pop { animation: none; } }
+/* on-fire ticker: wood strip, stepped pixel flame, typed text */
+.caption.tick { background: #733e39; box-shadow: inset 0 3px 0 #b86f50, inset 0 -3px 0 #3e2731, 0 0 0 3px #181425; padding: 4px 14px; align-items: center; gap: 8px; }
+.caption.tick.in { animation: tickIn .15s steps(3) both; }
+.caption.tick.out { animation: tickOut .2s steps(3) forwards; }
+.caption.tick span { color: #ead4aa; }
+@keyframes tickIn { from { transform: translateY(70%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tickOut { to { transform: translateY(70%); opacity: 0; } }
+.tkf { --f: #f77622; --k: #fee761; width: 12px; height: 16px; flex: none; display: inline-block;
+  background: linear-gradient(to top, var(--k) 0 37%, var(--f) 37%);
+  clip-path: polygon(33% 0, 50% 0, 50% 25%, 67% 25%, 67% 12%, 83% 12%, 83% 50%, 100% 50%, 100% 100%, 0 100%, 0 50%, 17% 50%, 17% 25%, 33% 25%);
+  animation: tkf .25s steps(1) infinite; }
+.tkf.t2 { --f: #e43b44; --k: #feae34; }
+.tkf.t3 { --f: #0099db; --k: #ffffff; }
+@keyframes tkf { 50% { transform: scaleX(-1); } }
+@media (prefers-reduced-motion: reduce) { .caption.pop, .caption.tick.in, .caption.tick.out, .tkf { animation: none; } }
 /* ---------- phones ---------- */
 html { -webkit-text-size-adjust: 100%; }
 body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
