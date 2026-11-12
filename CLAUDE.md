@@ -33,10 +33,19 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - 兄弟 (puncher): tap to chop, formations (1/2/3), feint (F), homing (H), 黄泉指 Underworld Finger (Y),
   如来神掌 Buddha Palm (charged super), Punch Rain ultimate (R).
 
-## Open issue (as of the handoff)
-The site returned 404 after Pages was turned on. The repo is public and `index.html` is at the root of
-`main`. The likely cause is Pages settings: Source must be **Deploy from a branch → main → / (root)**, saved.
-Check https://github.com/seasong11/punch-your-friend/settings/pages and the Actions tab.
+## Publishing (GitHub Pages)
+The site is served by GitHub Pages from **Deploy from a branch → main → / (root)** (Settings → Pages).
+As of 2026-11-12 the repo had zero Actions runs, which means Pages had never built: the source setting
+was not saved, so the URL returned 404. Once the source is saved, every push to `main` shows a
+"pages build and deployment" run in the Actions tab and the site updates about a minute later.
+
+## Multiplayer notes
+- Guests keep retrying the join every few seconds (and rejoin by themselves if the host reloads), so
+  an invite link opened before the host is ready still connects.
+- While the host's tab is hidden the game loop stops; the host's presence carries `pz: 1` and guests
+  see a "paused" overlay.
+- Test without the PeerJS cloud: open with `?mock=1` and inject a `window.MockPeer` (BroadcastChannel)
+  before the page scripts run.
 
 ## Working on it
 - Edit `index.html` directly; there is no build step.
