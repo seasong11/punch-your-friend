@@ -1084,18 +1084,25 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // ladder or a hook as a faster, more exposed way up, and one or two pillars for cover (fewer near the top).
   function buildClimb(top) {
     let seed = 7; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const stairs = [], ladders = [], hooks = [], props = [];
+    const stairs = [], ladders = [], hooks = [], props = [], out = [Math.round(top * 0.375), Math.round(top * 0.69)]; // rows [a, b) are outside
     for (let lv = 0; lv < top; lv++) {
+      if (lv >= out[0] && lv < out[1]) { // outside on the facade: the only way up is through windows that slide open and shut
+        const xs = [300 + Math.floor(r() * 3) * 100, 700 + Math.floor(r() * 3) * 100, 1100 + Math.floor(r() * 3) * 100];
+        xs.forEach((x, k) => ladders.push({ lv, x, timed: 1, off: +(k * 1.7 + r() * 5).toFixed(1) }));
+        props.push({ k: 'pillar', ac: 1, lv, x: 500 + Math.floor(r() * 6) * 100, w: 54, h: 0, hp: 2 });
+        continue;
+      }
       const a = 200 + Math.floor(r() * 5) * 100, b = a + 400, right = lv % 2 === 0;
-      stairs.push(right ? { lv, x0: a, x1: b } : { lv, x0: W_ - a, x1: W_ - b });
-      const lo = Math.min(stairs[lv].x0, stairs[lv].x1), hi = lo + 400;
+      const st = right ? { lv, x0: a, x1: b } : { lv, x0: W_ - a, x1: W_ - b };
+      stairs.push(st);
+      const lo = Math.min(st.x0, st.x1), hi = lo + 400;
       const free = () => { for (let k = 0; k < 20; k++) { const x = 160 + Math.floor(r() * 13) * 100; if (x < lo - 90 || x > hi + 90) return x; } return lo > 800 ? 200 : 1400; };
       const pick = r();
       if (pick < 0.5) ladders.push({ lv, x: free() }); else if (pick < 0.8 && lv > 0) hooks.push({ lv, x: free() });
       const np = lv > top - 4 ? (r() < 0.5 ? 1 : 0) : 1 + (r() < 0.5 ? 1 : 0);
       for (let k = 0; k < np; k++) props.push({ k: 'pillar', lv, x: 300 + k * 500 + Math.floor(r() * 5) * 100, w: 54, h: 0, hp: 3 });
     }
-    return { props, climb: { top, stairs, ladders, hooks } };
+    return { props, climb: { top, stairs, ladders, hooks, out } };
   }
   const ROOMS = [
     { name: 'LIVING ROOM', wall: ['#4a3466', '#56407a', '#3c2a52'], floor: ['#733e39', '#3e2731'], decor: [['pic', 230], ['win', 700]], props: [
@@ -1113,11 +1120,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'hedge', x: 420, w: 170, h: 70 }, { k: 'pot', x: 760, w: 70, h: 56 }, { k: 'hedge', x: 1130, w: 220, h: 84 }] },
     { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(16) }
   ];
-  const R = { i: 0, props: [] };
+  const R = { i: 0, props: [], gl: [0, 0], t: 0 }; // gl: broken glass panels per side (bit = row), t: 我's clock
   if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom }; // test hook
   function loadRoom(i) {
     R.i = clamp(i | 0, 0, ROOMS.length - 1);
     R.props = ROOMS[R.i].props.map(p => ({ ...p, hp0: p.hp, sparkT: 0, dead: false }));
+    R.gl = [0, 0];
     FX.holes = [];
   }
   function rampAt(x) {
@@ -1134,7 +1142,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function tryJump() {
     if (role !== 'me' || S.st !== 'play' || S.paused || P.air || P.lad) return;
     const cl = climbOf();
-    if (cl) { const l = cl.ladders.find(l => Math.abs(l.lv * FH - P.y) < 3 && Math.abs(P.x - l.x) < 36); if (l) { P.lad = l; P.vx = 0; S.blockT = 0; return; } }
+    if (cl) { const l = cl.ladders.find(l => Math.abs(l.lv * FH - P.y) < 3 && Math.abs(P.x - l.x) < 36 && ladderOpen(l)); if (l) { P.lad = l; P.vx = 0; S.blockT = 0; return; } }
     P.vy = JUMP_V; P.air = true; S.blockT = 0;
     if (!reduce) burst(P.x, FLOOR - P.y - 3, 6, ['#c9b6de', '#fff4e0'], 120, 0.5, 300, 4);
     sfx.whoosh();
@@ -1202,6 +1210,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (was > 0 && v <= 0) propFx(p, true); else if (was > 0 && v < was) propFx(p, false);
       p.dead = v === 0; p.sparkT = v === -1 ? 1 : 0; if (v > 0 && p.hp != null) p.hp = v;
     });
+    if (Array.isArray(tp.gl)) for (const k of [0, 1]) {
+      const v = +tp.gl[k] || 0, fresh = v & ~R.gl[k];
+      if (fresh) for (let row = 0; row < 31; row++) if (fresh & (1 << row)) glassFx(k ? -1 : 1, row);
+      R.gl[k] = v;
+    }
+    if (typeof tp.gt === 'number') R.t = Math.abs(tp.gt - R.t) > 0.5 ? tp.gt : R.t + dt;
     B.ty = (B.ty || 0) + ((+tp.y || 0) - (B.ty || 0)) * Math.min(1, dt * 18);
   }
   // ---------- journey prototype: the rooftop climb ----------
@@ -1211,6 +1225,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const FH = 200, SIDE_V = 1500, WALL = 40;
   const CAMV = { y: 0 };
   const climbOf = () => ROOMS[R.i].climb || null;
+  const outsideRow = row => { const cl = climbOf(); return !!cl && row >= cl.out[0] && row < cl.out[1]; };
+  const ladderOpen = l => !l.timed || ((R.t + l.off) % 5) < 3; // timed windows: open 3s, shut 2s
+  const glassWhole = (side, row) => !!climbOf() && !outsideRow(row) && !(R.gl[side > 0 ? 0 : 1] & (1 << row));
+  function glassFx(side, row) {
+    if (!reduce) burst(side > 0 ? WALL : W - WALL, FLOOR - row * FH - 90, 22, ['#2ce8f5', '#ffffff', '#0099db'], 420, 1, 700, 6);
+  }
   function climbGround(x, y) {
     const cl = climbOf(); let g = 0;
     for (let k = 1; k <= cl.top; k++) if (k * FH <= y + STEP_UP) g = k * FH;
@@ -1261,11 +1281,18 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     row = clamp(Math.round(row), 0, cl.top);
     // one fist per row, and never two neighbouring rows at once: 我 always has a row to escape to
     if (S.chops.some(c => c.side && Math.abs(c.row - row) <= 1 && c.phase !== 'up')) return;
-    S.chops.push({ id: ++S.cid, side: dir > 0 ? 1 : -1, row, x: dir > 0 ? -70 : W + 70, w: 70, phase: 'warn', t: 0, warn: 0.9, y: 0, from });
+    // an unbroken glass wall has to be smashed first, so that punch is slower and the cracks give it away
+    S.chops.push({ id: ++S.cid, side: dir > 0 ? 1 : -1, row, x: dir > 0 ? -70 : W + 70, w: 70, phase: 'warn', t: 0, warn: glassWhole(dir, row) ? 1.05 : 0.75, y: 0, from });
     sfx.warn();
   }
   function updateSide(c, dt) {
-    if (c.phase === 'warn') { if (c.t >= c.warn) { c.phase = 'drop'; c.t = 0; sfx.whoosh(); } return; }
+    if (c.phase === 'warn') {
+      if (c.t >= c.warn) {
+        c.phase = 'drop'; c.t = 0; sfx.whoosh();
+        if (glassWhole(c.side, c.row)) { R.gl[c.side > 0 ? 0 : 1] |= 1 << c.row; glassFx(c.side, c.row); sfx.broken(); }
+      }
+      return;
+    }
     if (c.phase === 'smash') { if (c.t > 0.15) { c.phase = 'up'; c.t = 0; } return; }
     if (c.phase === 'up') { c.x -= c.side * 1700 * dt; if (c.x < -90 || c.x > W + 90) c.dead = true; return; }
     const x0 = c.x, base = c.row * FH;
@@ -1308,35 +1335,80 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (broke) sfx.broken();
   }
   function drawClimb() {
-    const cl = climbOf(), top = cl.top, yOf = h => FLOOR - h;
-    ctx.fillStyle = '#181425'; ctx.fillRect(0, yOf(top * FH) - 900, W, top * FH + 900 + H);
-    // far skyline with neon windows
+    const cl = climbOf(), top = cl.top, yOf = h => FLOOR - h, cam = camY(), vis = (y, h) => y + h > -cam - 8 && y < H - cam + 8;
+    const [o0, o1] = cl.out, now = performance.now();
+    ctx.fillStyle = '#181425'; ctx.fillRect(0, -cam - 8, W, H + 16);
+    // the neon city behind the glass
     for (let i = 0; i < 9; i++) {
-      const bx = i * 190 - 40, bh = 420 + Math.floor(rnd(i + 40) * 6) * 150;
-      ctx.fillStyle = '#262b44'; ctx.fillRect(bx, yOf(bh), 150, bh + 200);
-      for (let wy = 30; wy < bh - 20; wy += 60) for (let wx = 18; wx < 130; wx += 42) { if (rnd(i * 31 + wy + wx) < 0.45) continue; ctx.fillStyle = ['#0099db', '#b55088', '#fee761'][Math.floor(rnd(i + wy * 3 + wx) * 3)]; ctx.fillRect(bx + wx, yOf(bh) + wy, 18, 24); }
+      const bx = i * 190 - 40, bh = Math.round((0.3 + rnd(i + 40) * 0.75) * top * FH / 30) * 30;
+      ctx.fillStyle = i % 2 ? '#262b44' : '#3a4466'; ctx.fillRect(bx, yOf(bh), 150, bh + 200);
+      for (let wy = 30; wy < bh - 20; wy += 60) {
+        if (!vis(yOf(bh) + wy, 24)) continue;
+        for (let wx = 18; wx < 130; wx += 42) { if (rnd(i * 31 + wy + wx) < 0.5) continue; ctx.fillStyle = ['#0099db', '#b55088', '#fee761', '#2ce8f5'][Math.floor(rnd(i + wy * 3 + wx) * 4)]; ctx.fillRect(bx + wx, yOf(bh) + wy, 18, 24); }
+      }
+      if (vis(yOf(bh) - 60, 60)) { ctx.fillStyle = '#e43b44'; ctx.fillRect(bx + 72, yOf(bh) - 60, 6, 60); if (Math.floor(now / 500 + i) % 2) ctx.fillRect(bx + 66, yOf(bh) - 66, 18, 6); }
     }
-    for (let i = 0; i < 40; i++) { ctx.fillStyle = '#c0cbdc'; ctx.fillRect(Math.floor(rnd(i + 5) * W / 6) * 6, yOf(top * FH) - 60 - Math.floor(rnd(i + 77) * 130) * 6, 3, 3); }
-    // the building 我 climbs
-    ctx.fillStyle = '#3a4466'; ctx.fillRect(0, yOf(top * FH), W, top * FH + 200);
-    ctx.fillStyle = '#262b44'; ctx.fillRect(WALL, yOf(top * FH), W - WALL * 2, top * FH);
-    for (let k = 0; k < top; k++) for (let wx = 140; wx < W - 140; wx += 220) { ctx.fillStyle = rnd(k * 17 + wx) < 0.3 ? '#124e89' : '#181425'; ctx.fillRect(wx, yOf(k * FH) - 150, 90, 78); }
+    for (let i = 0; i < 60; i++) { const sy = yOf(top * FH) + 300 - Math.floor(rnd(i + 77) * 160) * 6; if (vis(sy, 3)) { ctx.fillStyle = '#c0cbdc'; ctx.fillRect(Math.floor(rnd(i + 5) * W / 6) * 6, sy, 3, 3); } }
+    // ground
     ctx.fillStyle = '#3a4466'; ctx.fillRect(0, FLOOR, W, H - FLOOR + 200);
     ctx.fillStyle = '#5a6988'; ctx.fillRect(0, FLOOR, W, 6);
-    for (let k = 1; k <= top; k++) { ctx.fillStyle = '#5a6988'; ctx.fillRect(k === top ? 0 : WALL, yOf(k * FH), k === top ? W : W - WALL * 2, 12); ctx.fillStyle = '#8b9bb4'; ctx.fillRect(k === top ? 0 : WALL, yOf(k * FH), k === top ? W : W - WALL * 2, 3); }
-    ctx.fillStyle = '#5a6988'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    for (let k = 0; k <= top; k++) ctx.fillText(k === top ? 'ROOF' : (k + 1) + 'F', WALL + 18, yOf(k * FH) - 160);
-    // pillars (cover)
+    for (let k = 0; k < top; k++) {
+      const y = yOf((k + 1) * FH), out = k >= o0 && k < o1;
+      if (!vis(y, FH)) continue;
+      if (out) { // outside: the dark mirrored facade, seen from the street side
+        ctx.fillStyle = '#262b44'; ctx.fillRect(WALL, y, W - WALL * 2, FH);
+        ctx.fillStyle = '#3a4466'; for (let x = WALL; x < W - WALL; x += 190) ctx.fillRect(x, y, 6, FH);
+        ctx.fillStyle = '#124e89'; for (let x = WALL + 40; x < W - WALL - 60; x += 190) { ctx.fillRect(x + (k % 3) * 30, y + 30, 6, 66); ctx.fillRect(x + 12 + (k % 3) * 30, y + 42, 6, 36); }
+        ctx.fillStyle = '#8b9bb4'; ctx.fillRect(WALL - 12, y + FH - 9, W - WALL * 2 + 24, 9); // the ledge 我 walks on is the row below
+      } else { // inside: floor-to-ceiling glazing with the city showing through
+        ctx.fillStyle = 'rgba(18, 78, 137, 0.5)'; ctx.fillRect(WALL, y, W - WALL * 2, FH);
+        ctx.fillStyle = 'rgba(44, 232, 245, 0.16)'; for (let x = WALL + 60; x < W - WALL - 60; x += 380) { ctx.fillRect(x + (k % 2) * 190, y + 24, 12, 120); ctx.fillRect(x + 24 + (k % 2) * 190, y + 48, 6, 72); }
+        ctx.fillStyle = '#3a4466'; for (let x = WALL; x < W - WALL; x += 190) ctx.fillRect(x, y, 6, FH);
+        ctx.fillStyle = '#262b44'; ctx.fillRect(WALL, y + 12, W - WALL * 2, 24);
+        for (const sd of [1, -1]) { // glass curtain wall on each side: whole, or smashed by a fist
+          const gx = sd > 0 ? 0 : W - WALL, whole = !(R.gl[sd > 0 ? 0 : 1] & (1 << k));
+          ctx.fillStyle = '#3a4466'; ctx.fillRect(gx, y, WALL, 12);
+          if (whole) {
+            ctx.fillStyle = 'rgba(44, 232, 245, 0.55)'; ctx.fillRect(gx + 6, y + 12, WALL - 12, FH - 12);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(gx + 12, y + 30, 6, 48); ctx.fillRect(gx + 21, y + 48, 3, 24);
+          } else {
+            ctx.fillStyle = '#2ce8f5';
+            for (let j = 0; j < 4; j++) { ctx.fillRect(gx + 6 + j * 7, y + 12, 6, 9 + ((j * 7 + k) % 3) * 9); ctx.fillRect(gx + 6 + j * 7, y + FH - 12 - ((j * 5 + k) % 3) * 9, 6, 12 + ((j * 5 + k) % 3) * 9); }
+          }
+          ctx.fillStyle = '#5a6988'; ctx.fillRect(sd > 0 ? 0 : W - 6, y, 6, FH); ctx.fillRect(sd > 0 ? WALL - 6 : W - WALL, y, 6, FH);
+        }
+      }
+      ctx.fillStyle = '#5a6988'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
+      ctx.fillText(k + 1 + 'F', WALL + 18, y + 60);
+    }
+    for (let k = 1; k <= top; k++) { // floor slabs
+      const y = yOf(k * FH), out = k >= o0 && k <= o1 && k < top;
+      if (!vis(y, 12)) continue;
+      ctx.fillStyle = out ? '#8b9bb4' : '#5a6988'; ctx.fillRect(k === top ? 0 : WALL, y, k === top ? W : W - WALL * 2, 12);
+      ctx.fillStyle = out ? '#c0cbdc' : '#8b9bb4'; ctx.fillRect(k === top ? 0 : WALL, y, k === top ? W : W - WALL * 2, 3);
+    }
+    // pillars inside, air-conditioning units outside (both are cover)
     for (const p of R.props) {
       if (p.dead) continue;
       const py = yOf((p.lv + 1) * FH) + 12, ph = FH - 12;
+      if (!vis(py, ph)) continue;
+      if (p.ac) {
+        const ay = yOf(p.lv * FH) - 96;
+        ctx.fillStyle = '#c0cbdc'; ctx.fillRect(p.x - 36, ay, 72, 96);
+        ctx.fillStyle = '#8b9bb4'; ctx.fillRect(p.x - 36, ay, 72, 9); ctx.fillRect(p.x + 27, ay, 9, 96);
+        ctx.fillStyle = '#262b44'; for (let j = 0; j < 4; j++) ctx.fillRect(p.x - 27, ay + 21 + j * 15, 45, 6);
+        ctx.fillStyle = Math.floor(now / 400) % 2 ? '#63c74d' : '#265c42'; ctx.fillRect(p.x - 27, ay + 81, 9, 6);
+        ctx.fillStyle = '#181425'; for (let j = 0, n = (p.hp0 - p.hp) * 5; j < n; j++) ctx.fillRect(p.x - 21 + (j % 5) * 9, ay + 12 + j * 12, 6, 12);
+        continue;
+      }
       ctx.fillStyle = '#8b9bb4'; ctx.fillRect(p.x - 27, py, 54, ph);
       ctx.fillStyle = '#c0cbdc'; ctx.fillRect(p.x - 27, py, 9, ph);
       ctx.fillStyle = '#5a6988'; ctx.fillRect(p.x + 18, py, 9, ph);
       ctx.fillStyle = '#181425';
-      for (let k = 0, n = (p.hp0 - p.hp) * 4; k < n; k++) ctx.fillRect(p.x - 15 + (k % 4) * 9, py + 30 + k * 18, 6, 15);
+      for (let j = 0, n = (p.hp0 - p.hp) * 4; j < n; j++) ctx.fillRect(p.x - 15 + (j % 4) * 9, py + 30 + j * 18, 6, 15);
     }
     for (const s of cl.stairs) { // open stairs
+      if (!vis(yOf((s.lv + 1) * FH), FH)) continue;
       const n = 12, d = (s.x1 - s.x0) / n;
       for (let i = 0; i < n; i++) {
         const sx = s.x0 + i * d, sy = yOf(s.lv * FH + (i + 1) / n * FH);
@@ -1346,18 +1418,28 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     for (const l of cl.ladders) {
       const ly = yOf((l.lv + 1) * FH);
+      if (!vis(ly, FH)) continue;
+      if (l.timed) { // a window that slides open and shut; the lamp blinks just before it changes
+        const ph = (R.t + l.off) % 5, open = ph < 3, soon = (ph > 2.4 && ph < 3) || ph > 4.4;
+        ctx.fillStyle = '#5a6988'; ctx.fillRect(l.x - 42, ly + 12, 84, FH - 12);
+        ctx.fillStyle = open ? '#181425' : '#0099db'; ctx.fillRect(l.x - 36, ly + 18, 72, FH - 24);
+        if (!open) { ctx.fillStyle = '#2ce8f5'; ctx.fillRect(l.x - 24, ly + 36, 6, 60); ctx.fillRect(l.x - 12, ly + 54, 6, 30); }
+        ctx.fillStyle = soon && Math.floor(now / 120) % 2 ? '#fee761' : open ? '#63c74d' : '#e43b44'; ctx.fillRect(l.x - 9, ly + FH - 3, 18, 9);
+        if (!open) continue;
+      }
       ctx.fillStyle = '#feae34'; ctx.fillRect(l.x - 24, ly, 6, FH); ctx.fillRect(l.x + 18, ly, 6, FH);
       for (let y = ly + 18; y < ly + FH; y += 27) ctx.fillRect(l.x - 24, y, 48, 6);
     }
     for (const h of cl.hooks) {
       const hy = yOf(h.lv * FH + 150);
+      if (!vis(hy - 40, 80)) continue;
       ctx.fillStyle = '#8b9bb4'; ctx.fillRect(h.x - 3, yOf((h.lv + 1) * FH) + 12, 6, hy - yOf((h.lv + 1) * FH) - 12);
-      ctx.fillStyle = Math.floor(performance.now() / 300) % 2 ? '#e43b44' : '#fee761';
+      ctx.fillStyle = Math.floor(now / 300) % 2 ? '#e43b44' : '#fee761';
       ctx.fillRect(h.x - 15, hy, 30, 6); ctx.fillRect(h.x - 15, hy, 6, 24); ctx.fillRect(h.x + 9, hy, 6, 24); ctx.fillRect(h.x - 15, hy + 18, 30, 6);
     }
     drawDoor(W - 110, top * FH, true, true);
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260, 36 - camY());
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260, 36 - cam);
   }
   const camY = () => Math.round(CAMV.y / PX) * PX;
   function camFollow(h, dt) {
@@ -1368,6 +1450,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function sideWarn(c) {
     const y = FLOOR - c.row * FH, p = c.phase === 'warn' ? c.p : 1;
     if (c.phase === 'up') return;
+    if (c.phase === 'warn' && glassWhole(c.side, c.row)) { // the glass cracks before it gives way
+      const gx = c.side > 0 ? 6 : W - WALL + 6, n = Math.ceil(p * 9);
+      ctx.fillStyle = '#181425';
+      for (let j = 0; j < n; j++) ctx.fillRect(gx + ((j * 11) % 24), y - 150 + ((j * 37) % 120), 6, 15);
+      ctx.fillStyle = '#ffffff';
+      for (let j = 0; j < n; j++) ctx.fillRect(gx + ((j * 7 + 9) % 24), y - 144 + ((j * 53) % 120), 3, 9);
+    }
     ctx.fillStyle = `rgba(255, 93, 115, ${0.08 + p * 0.2})`; ctx.fillRect(WALL, y - 66, W - WALL * 2, 60);
     if (c.phase === 'warn' && Math.floor(performance.now() / 100) % 2 === 0) {
       const ex = c.side > 0 ? WALL + 50 : W - WALL - 50;
@@ -1614,7 +1703,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
   const HOWTO = {
     me: [
-      '<b>The climb</b>: after the house comes a building. Fists come from the <b>side</b> there and run along one floor. Change floors to dodge: stairs, a ladder (↑ at its foot climbs it, ← → lets go), a jump into a blinking hook, or ↓ to drop a floor. A pillar between you and the fist stops it.',
+      '<b>The climb</b>: after the house comes a building. Fists come from the <b>side</b> there and run along one floor. Change floors to dodge: stairs, a ladder (↑ at its foot climbs it, ← → lets go), a jump into a blinking hook, or ↓ to drop a floor. A pillar between you and the fist stops it. Inside, a fist has to smash the glass wall first: watch for the cracks. In the middle stretch you are outside on the facade, where the only way up is a window while its lamp is green.',
       '<b>Goal</b>: walk through the house, room by room, and out of the garage. The door on the right leads on. Run out of hearts and the turn passes to the 兄弟 who hit you most.',
       '<b>Move</b> with ← → (or A D), or drag on the arena. <b>Jump</b> with ↑ / W, the ▲ button, or a swipe up. Red shadows show where hands will land.',
       '<b>Furniture</b> blocks the way. Jump low pieces, climb tall ones from a smaller piece beside them, or stand next to the TV, fridge or wardrobe and let the 兄弟 smash it for you. A broken TV or fridge sparks for a second before the path is clear.',
@@ -1630,7 +1719,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ],
     bro: [
       '<b>Tap the arena</b> (or Space / 打!) to chop at that spot. A red shadow warns 我 first, then the hand drops.',
-      '<b>The climb</b>: in the building your fists come from the side. Tap a floor on the left half to punch from the left, on the right half to punch from the right. The fist runs along that floor until it meets a pillar, which cracks and breaks after three hits.',
+      '<b>The climb</b>: in the building your fists come from the side. Tap a floor on the left half to punch from the left, on the right half to punch from the right. The fist runs along that floor until it meets a pillar, which cracks and breaks after three hits. Your first punch through a glass wall is slower because it has to break the glass; after that the opening stays and your punches from that side are quicker.',
       '<b>The house</b>: 我 is trying to reach the garage. Your fists wear down the TV, fridge and wardrobe, and breaking one opens the road for 我, so think before you swing near them. Whoever lands the most hits plays 我 next.',
       '<b>Wind-up</b>: after each chop you wait 0.8s (1.2s after a super). The bar on the 打! button and the ring on your aim marker fill up when you\'re ready.',
       '<b>Formation</b> (keys 1 2 3): 扇形 Spread leaves gaps, 集中 Wall is one solid block, 包夹 Pincer hits both sides to herd 我 into the middle.',
@@ -1883,7 +1972,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     P.vx = clamp(P.vx, -max, max);
     movePlayer(dt);
     if (S.st !== 'play') return;
-    tickProps(dt);
+    tickProps(dt); R.t = S.t;
 
     // Practice bot only while no 兄弟 are here
     if (!bros().length && !(S.hurt > 0.2)) {
@@ -2066,7 +2155,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const ch = S.chops.map(c => [Math.round(c.x), Math.round(c.w), PH[c.phase], c.phase === 'warn' ? +(c.t / c.warn).toFixed(2) : Math.round(c.y), c.hit ? 1 : 0, c.sup ? 1 : 0, c.homing ? 1 : 0, c.yq ? 1 : 0, c.side | 0, c.row | 0]);
     room.presence({
       role: 'me', own: isOwner ? 1 : 0, st: S.st, pz: document.hidden || S.paused ? 1 : 0, pzm: S.paused ? 1 : 0, cd: S.cd != null ? Math.max(1, Math.ceil(S.cd)) : 0, cb: S.combo || 0, fire: S.fireTier || 0, cos: curCos, rn: S.rainT > 0 ? 1 : 0, bel: S.bell > 0 ? 1 : 0, sn: S.sn || {}, bl: S.blockT > 0 ? 1 : 0, pr: S.pr || 0, tt: S.taunt ? [S.taunt.id, S.taunt.i] : 0, x: Math.round(P.x), vx: Math.round(P.vx), lives: S.lives, score: S.score,
-      rm: R.i, y: Math.round(P.y), pp: R.props.map(propCode), won: S.won ? 1 : 0,
+      rm: R.i, y: Math.round(P.y), pp: R.props.map(propCode), won: S.won ? 1 : 0, gl: R.gl, gt: +S.t.toFixed(1),
       hurt: S.hurt > 0 ? 1 : 0, ch, hits: S.hits, aim: null, chop: null
     }).catch(() => {});
   }

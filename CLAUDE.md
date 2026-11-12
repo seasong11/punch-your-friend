@@ -93,6 +93,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   stops them. Never two neighbouring rows at once. A 兄弟 tap sends its height (`chop.h`); the tapped half of the
   arena picks the side. Entering the climb refills hearts and sets `S.startRm`, so a lost turn (presence `sec`)
   restarts the climb, not the house.
+- Glass tower: inside floors have glass curtain walls on both sides (`R.gl` bitmasks, `glassWhole`, `glassFx`). A side
+  punch through whole glass cracks it during a longer wind-up (1.05s instead of 0.75s) and shatters it for good.
+  Rows `climb.out` (6 to 10) are outside on the facade (`outsideRow`): no glass, AC units (`ac: 1` pillars, 2 hp) as
+  cover, and the only way up is timed sliding windows (ladders with `timed`, `off`; `ladderOpen`: open 3s, shut 2s,
+  lamp green/red). Presence carries `gl` and `gt` (`R.t`) so the 兄弟 side shows the same glass and windows.
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
 - The hoodie no longer has 我 printed on the chest.
 
