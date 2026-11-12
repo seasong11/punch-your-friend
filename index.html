@@ -410,7 +410,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       </div>
     </div>
   </div>
-  <p class="status" id="status"></p>
+  <div class="under">
+    <p class="status" id="status"></p>
+    <p class="caption" id="caption" hidden aria-live="polite"></p>
+  </div>
   <p class="rotateTip" id="rotateTip">Turn your phone sideways for a bigger arena.</p>
   <div class="pads" id="pads">
     <button class="pad" id="left" aria-label="Move left">◀</button>
@@ -2092,7 +2095,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     FX.flash = reduce ? 0.15 : 0.45; FX.flashCol = '255,93,115'; FX.hitstop = 0.09;
     burst(x, FLOOR - 100, 14, ['#ffb703', '#fff4e0', '#ff5d73'], 380, 1, 600, 5);
   }
-  function banner(txt, sub, col) { FX.banner = { txt, sub, col, t: 0 }; }
+  // Captions show on a line under the arena (never on top of the action).
+  let capTimer = 0;
+  function banner(txt, sub, col) {
+    const el = $('caption');
+    el.replaceChildren();
+    const b = document.createElement('b'); b.textContent = txt; b.style.color = col || '#ffb703';
+    el.append(b);
+    if (sub) { const sm = document.createElement('span'); sm.textContent = sub; el.append(sm); }
+    el.hidden = false; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    clearTimeout(capTimer); capTimer = setTimeout(() => { el.hidden = true; }, 1600);
+  }
   function speedLines(dt, level) {
     if (level < 2 || reduce) { FX.lines.length = 0; return; }
     const n = Math.min(4 + level * 4, 36);
@@ -2152,23 +2165,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     FX.parts = FX.parts.filter(p => p.t < p.life);
   }
   function drawOverlayFx(dt, lowLife) {
-    const b = FX.banner;
-    if (b) {
-      b.t += dt;
-      const T = 1.3;
-      if (b.t > T) FX.banner = null;
-      else {
-        // Captions live in a strip along the bottom so they never cover the taunt bubble or the action.
-        const inS = Math.min(1, b.t / 0.15), out = b.t > T - 0.25 ? (T - b.t) / 0.25 : 1, sc = 1.2 - 0.2 * inS;
-        const bh = b.sub ? 92 : 70;
-        ctx.save(); ctx.globalAlpha = Math.max(0, out); ctx.translate(W / 2, H - bh / 2);
-        ctx.fillStyle = 'rgba(27,20,48,.82)'; ctx.fillRect(-W / 2, -bh / 2, W, bh);
-        ctx.scale(sc, sc); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = b.col; ctx.font = '44px ' + HF; ctx.fillText(b.txt, 0, b.sub ? -14 : 2);
-        if (b.sub) { ctx.font = '20px ' + HF; ctx.fillStyle = '#fff4e0'; ctx.fillText(b.sub, 0, 28); }
-        ctx.restore();
-      }
-    }
     if (lowLife && !reduce) {
       const a = 0.18 + 0.12 * Math.sin(performance.now() / 160);
       const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75);
@@ -2611,6 +2607,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
 <style>
 [hidden] { display: none !important; }
+.under { display: grid; min-height: 30px; }
+.under > * { grid-area: 1 / 1; align-self: center; }
+.caption { margin: 0; display: flex; justify-content: center; align-items: baseline; gap: 10px; flex-wrap: wrap; text-align: center;
+  background: var(--bg); padding: 2px 8px; line-height: 1.2; }
+.caption b { font-family: var(--han); font-weight: 400; font-size: 22px; }
+.caption span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.caption.pop { animation: capPop .18s ease-out; }
+@keyframes capPop { from { transform: scale(1.25); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .caption.pop { animation: none; } }
 /* ---------- phones ---------- */
 html { -webkit-text-size-adjust: 100%; }
 body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
@@ -2648,7 +2653,11 @@ button { touch-action: manipulation; }
   .hud .label { font-size: 9px; }
   .hud .val { font-size: 14px; }
   .hearts { font-size: 16px; }
-  #status { grid-column: 3; grid-row: 1; font-size: 10px; text-align: right; align-self: center; min-height: 0; line-height: 1.25; }
+  .under { grid-column: 1 / -1; grid-row: 1; min-height: 0; z-index: 2; pointer-events: none; }
+  #status { justify-self: end; max-width: calc(var(--side) + 30px); font-size: 10px; text-align: right; min-height: 0; line-height: 1.25; }
+  .caption { justify-self: center; align-self: stretch; align-items: center; padding: 0 16px; }
+  .caption b { font-size: 20px; }
+  .caption span { font-size: 11px; }
   .stage { grid-column: 2; grid-row: 2 / 6; min-width: 0; align-self: start;
     width: min(calc(100vw - 2 * var(--side) - 20px - max(8px, env(safe-area-inset-left, 0px)) - max(8px, env(safe-area-inset-right, 0px))), calc((100svh - var(--chrome)) * 2.5)); }
   .pads, #meSkills, #broMoves { display: contents; }
