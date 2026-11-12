@@ -102,6 +102,10 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   silhouette layers at art-pixel size; `drawClimb` blits them with parallax (farther = paler and slower), over a pale
   screen-fixed sky with one moon. The tower is dark navy with lit edges; things 我 can use are lighter than the city
   behind them (pillars, stair treads, steel ladders with orange handles). Keep backdrops quiet and low-detail.
+  Detail level follows Daniel's references: irregular 1px window grids, wings, crowns, panel lines, a dark near frame at
+  the screen edges, walkways, dither haze (`ditherBand`), blinking windows (`L.blink`), and pixel neon (cyan #2ce8f5 /
+  #0099db bands, magenta #f6757a / #68386c edges; near layers only). Stairs have cyan tread lights and a magenta rail;
+  each pillar has a three-segment neon strip that loses a segment per hit.
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
 - The hoodie no longer has 我 printed on the chest.
 

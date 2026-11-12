@@ -1336,51 +1336,102 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   // The city behind the tower: four silhouette layers, drawn once at art-pixel size. Farther layers are paler
   // and move less as the camera climbs (depth by haze and parallax). One blue ramp, a few warm lights up close.
-  const CITY = { L: null };
+  const CITY = { L: null, sky: null, haze: null };
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function ditherBand(w, h, col, from, to) { // ordered dither, density runs from `from` at the top to `to` at the bottom (0..1)
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.fillStyle = col;
+    for (let y = 0; y < h; y++) { const dn = (from + (to - from) * y / (h - 1)) * 16; for (let x = 0; x < w; x++) if (BAYER[(y & 3) * 4 + (x & 3)] < dn) g.fillRect(x, y, 1, 1); }
+    return cv;
+  }
   function cityLayers(maxCam) {
     if (CITY.L) return CITY.L;
     const AW = W / PX, AH = H / PX;
+    // sky: deeper blue at the top, dithered down to pale, with one small plain moon
+    { const cv = document.createElement('canvas'); cv.width = AW; cv.height = AH; const g = cv.getContext('2d');
+      g.fillStyle = '#c0cbdc'; g.fillRect(0, 0, AW, AH); g.fillStyle = '#8b9bb4'; g.fillRect(0, 0, AW, 14); g.drawImage(ditherBand(AW, 56, '#8b9bb4', 1, 0), 0, 14);
+      g.fillStyle = '#ffffff'; for (let j = -6; j < 6; j++) { const hw = Math.round(Math.sqrt(36 - (j + 0.5) * (j + 0.5))); g.fillRect(292 - hw, 38 + j, hw * 2, 1); }
+      CITY.sky = cv; }
+    CITY.haze = [null, ditherBand(AW, 64, '#c0cbdc', 0, 0.3), null, null];
     const defs = [
-      { f: 0.08, c: '#8b9bb4', w: [14, 30], top: [-40, 70], gap: 10, seed: 3 },
-      { f: 0.16, c: '#5a6988', w: [16, 36], top: [-90, 70], gap: 6, seed: 7, roof: 1, win: ['#8b9bb4'], wp: 0.08 },
-      { f: 0.3, c: '#3a4466', w: [22, 44], top: [-110, 80], gap: 8, seed: 13, roof: 1, win: ['#8b9bb4', '#c0cbdc', '#5a6988'], wp: 0.1 },
-      { f: 0.5, c: '#262b44', edge: '#3a4466', w: [30, 56], top: [30, 130], gap: 30, seed: 21, roof: 1, win: ['#5a6988', '#5a6988', '#5a6988', '#2ce8f5', '#e43b44', '#f77622'], wp: 0.09, wide: 1 },
+      { f: 0.06, c: '#8b9bb4', w: [10, 26], top: [-30, 84], gap: 9, seed: 3, dim: '#c0cbdc', dp: 0.05 },
+      { f: 0.14, c: '#5a6988', w: [14, 32], top: [-80, 76], gap: 5, seed: 7, roof: 1, dim: '#8b9bb4', dp: 0.12, lit: ['#c0cbdc'], wp: 0.04, line: '#3a4466', thin: 0.5 },
+      { f: 0.26, c: '#124e89', w: [18, 38], top: [-40, 112], gap: 40, seed: 13, roof: 1, dim: '#3a4466', dp: 0.22, lit: ['#0099db', '#0099db', '#c0cbdc', '#2ce8f5'], wp: 0.08, line: '#262b44', walk: [104, -38], warm: 0.012, neon: 0.7 },
+      { f: 0.45, c: '#262b44', edge: '#3a4466', w: [26, 44], top: [-330, -120], gap: 3, seed: 21, roof: 1, dim: '#3a4466', dp: 0.3, lit: ['#5a6988', '#5a6988', '#8b9bb4', '#2ce8f5'], wp: 0.07, line: '#181425', warm: 0.03, frame: 1, neon: 0.9 },
     ];
     CITY.L = defs.map(d => {
       const sh = Math.ceil(maxCam * d.f / PX), cv = document.createElement('canvas'); cv.width = AW; cv.height = AH + sh;
-      const g = cv.getContext('2d'); let s = d.seed * 7919;
-      const rn = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+      const g = cv.getContext('2d'), blink = []; let s = d.seed * 7919;
+      const rn = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296, ri = (a, b) => a + rn() * (b - a) | 0;
       const r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x | 0, (y | 0) + sh, w | 0, h | 0); };
-      for (let bx = -8; bx < AW;) {
-        const bw = d.w[0] + rn() * (d.w[1] - d.w[0]) | 0, top = d.top[0] + rn() * (d.top[1] - d.top[0]) | 0, k = rn(), c = d.c;
-        r(bx, top, bw, AH - top, c);
-        if (!d.roof) { if (k < 0.4) r(bx + (bw >> 1), top - 9, 1, 9, c); }
-        else if (k < 0.2) { r(bx + 2, top - 9, bw - 5, 6, c); r(bx + 4, top - 3, 1, 3, c); r(bx + bw - 6, top - 3, 1, 3, c); }            // billboard
-        else if (k < 0.38) { r(bx + bw - 9, top - 8, 6, 5, c); r(bx + bw - 10, top - 9, 8, 1, c); r(bx + bw - 8, top - 3, 1, 3, c); r(bx + bw - 5, top - 3, 1, 3, c); } // water tank
-        else if (k < 0.62) { r(bx + 3, top - 5, bw - 6, 5, c); r(bx + 6, top - 9, bw - 12, 4, c); r(bx + (bw >> 1), top - 18, 1, 9, c); } // stepped crown
-        else if (k < 0.8) { r(bx + 3, top - 8, 1, 8, c); r(bx + 2, top - 6, 3, 1, c); r(bx + bw - 6, top - 3, 4, 3, c); }               // antenna and vent
-        if (d.edge) r(bx, top, 1, AH - top, d.edge);
-        if (d.win) for (let wy = top + 3; wy < AH - 1; wy += 3) for (let wx = bx + 2; wx < bx + bw - 2; wx += 3) {
-          const q = rn(); if (q < d.wp) r(wx, wy, d.wide && q < d.wp / 2 ? 2 : 1, 1, d.win[(q * 977 | 0) % d.win.length]);
+      const windows = (x0, y0, w, yEnd) => { // irregular window grid: whole dark floors, runs of lit windows, rare warm strips
+        const sx = rn() < 0.5 ? 2 : 3, sy = rn() < 0.6 ? 2 : 3;
+        for (let wy = y0 + 2; wy < yEnd; wy += sy) {
+          const row = rn(); if (row < 0.18) continue;
+          if (d.line && row > 0.93) { r(x0, wy, w, 1, d.line); continue; } // floor stripe
+          if (d.warm && rn() < d.warm * 4) { r(x0 + ri(1, w - 7), wy, ri(3, 7), 1, rn() < 0.5 ? '#e43b44' : '#f77622'); continue; }
+          for (let wx = x0 + 1; wx < x0 + w - 1; wx += sx) {
+            const q = rn();
+            if (d.lit && q < d.wp) { const col = d.lit[(q * 9973 | 0) % d.lit.length]; r(wx, wy, 1, 1, col); if (blink.length < 26 && rn() < 0.02) blink.push([wx, wy, 1, 1, d.c, rn() * 9]); }
+            else if (q < d.wp + d.dp) r(wx, wy, 1, 1, d.dim);
+          }
         }
-        bx += bw + (rn() * d.gap | 0);
+      };
+      const tower = (bx, top, bw) => {
+        const c = d.c, k = rn();
+        r(bx, top, bw, AH - top, c);
+        const wings = [];
+        if (rn() < 0.55) { const ww = ri(5, 11), wt = top + ri(14, 60); r(bx - ww, wt, ww, AH - wt, c); wings.push([bx - ww, wt, ww]); }
+        if (rn() < 0.55) { const ww = ri(5, 11), wt = top + ri(14, 60); r(bx + bw, wt, ww, AH - wt, c); wings.push([bx + bw, wt, ww]); }
+        if (d.roof && rn() < 0.45) { const ny = top + ri(16, 70), nh = ri(5, 12); r(bx - 3, ny, bw + 6, nh, c); if (d.line) r(bx - 3, ny + nh, bw + 6, 1, d.line); } // overhanging block
+        if (!d.roof) { if (k < 0.5) r(bx + (bw >> 1), top - ri(5, 14), 1, 14, c); if (k > 0.3) r(bx + 2, top - 3, bw - 4, 3, c); }
+        else if (k < 0.2) { r(bx + 2, top - 9, bw - 5, 6, c); r(bx + 4, top - 3, 1, 3, c); r(bx + bw - 6, top - 3, 1, 3, c); if (d.lit) r(bx + 3, top - 8, bw - 7, 1, d.dim); } // billboard
+        else if (k < 0.36) { r(bx + bw - 9, top - 8, 6, 5, c); r(bx + bw - 10, top - 9, 8, 1, c); r(bx + bw - 8, top - 3, 1, 3, c); r(bx + bw - 5, top - 3, 1, 3, c); r(bx + 2, top - 2, 5, 2, c); } // water tank
+        else if (k < 0.66) { r(bx + 2, top - 4, bw - 4, 4, c); r(bx + 5, top - 9, bw - 10, 5, c); r(bx + 8, top - 12, bw - 16, 3, c); r(bx + (bw >> 1), top - 24, 1, 12, c); r(bx + (bw >> 1) - 1, top - 16, 3, 1, c); } // stepped crown and mast
+        else if (k < 0.84) { r(bx + 3, top - 10, 1, 10, c); r(bx + 2, top - 7, 3, 1, c); r(bx + 7, top - 6, 1, 6, c); r(bx + bw - 8, top - 4, 6, 4, c); r(bx + bw - 7, top - 5, 2, 1, c); } // antennas and roof machinery
+        else { r(bx, top - 2, 2, 2, c); r(bx + bw - 2, top - 2, 2, 2, c); r(bx + 4, top - 3, bw - 8, 1, c); } // parapet and rail
+        if (d.dim) { windows(bx, top, bw, AH); for (const [wx, wt, ww] of wings) windows(wx, wt, ww, AH); }
+        if (d.line && rn() < 0.7) { const lx = bx + ri(3, bw - 3); r(lx, top + ri(2, 20), 1, AH, d.line); if (rn() < 0.5) r(lx + ri(3, 8), top + ri(20, 60), 1, AH, d.line); } // panel lines
+        if (d.edge) { r(bx, top, 1, AH - top, d.edge); r(bx, top, bw, 1, d.edge); }
+        if (d.thin && rn() < d.thin) { if (rn() < 0.6) r(bx + 1, top + ri(6, 50), bw - 2, 1, '#0099db'); else r(rn() < 0.5 ? bx : bx + bw - 1, top + 1, 1, ri(20, 70), '#b55088'); } // middle buildings: thin lines only
+        if (d.neon) { // neon drawn in pixels: a 1px core, a darker halo row, and a short dithered spill on the wall below
+          if (rn() < d.neon) for (let ny = top + ri(6, 26); ny < AH; ny += ri(34, 90)) {
+            r(bx, ny, bw, 1, '#2ce8f5'); r(bx, ny + 1, bw, 1, '#0099db');
+            for (let x = bx; x < bx + bw; x++) { if ((x & 1) === 0) r(x, ny + 2, 1, 1, '#0099db'); if ((x & 3) === 1) r(x, ny + 3, 1, 1, '#0099db'); }
+            if (rn() < 0.25) blink.push([bx, ny, bw, 1, '#0099db', rn() * 23]);
+          }
+          if (rn() < d.neon * 0.8) { const lf = rn() < 0.5, ex = lf ? bx + 1 : bx + bw - 2, y0 = top + 1, len = ri(30, 130); r(ex, y0, 1, len, '#f6757a'); r(ex + (lf ? 1 : -1), y0, 1, len, '#68386c'); for (let y = y0; y < y0 + len; y += 2) r(ex + (lf ? 2 : -2), y, 1, 1, '#68386c'); if (rn() < 0.25) blink.push([ex, y0, 1, len, '#68386c', rn() * 23]); }
+          if (rn() < d.neon * 0.5) { r(bx + (bw >> 1), top - 12, 1, 8, '#f6757a'); r(bx + 2, top - 1, bw - 4, 1, '#b55088'); } // spire and setback
+        }
+      };
+      if (d.frame) { // the dark near frame: megastructures at the left and right edges only
+        for (const [x0, x1] of [[-10, 54], [AW - 58, AW + 6]]) for (let bx = x0; bx < x1;) { const bw = ri(d.w[0], d.w[1]); tower(bx, ri(d.top[0], d.top[1]), Math.min(bw, x1 - bx + 8)); bx += bw + ri(0, d.gap); }
+      } else for (let bx = -8; bx < AW;) { const bw = ri(d.w[0], d.w[1]); tower(bx + (d.roof ? 6 : 0), ri(d.top[0], d.top[1]), bw); bx += bw + (d.roof ? 12 : 0) + ri(0, d.gap); }
+      for (const wy of d.walk || []) { // a walkway across the city: light top edge, a row of small lights, machinery hanging underneath
+        r(0, wy, AW, 5, d.c); r(0, wy, AW, 1, '#2ce8f5'); r(0, wy + 1, AW, 1, '#0099db'); r(0, wy + 5, AW, 1, d.line);
+        for (let x = 3; x < AW; x += 9) r(x, wy + 3, 1, 1, x % 27 === 3 ? '#f77622' : '#c0cbdc');
+        for (let x = ri(10, 50); x < AW; x += ri(40, 90)) { const mw = ri(8, 18), mh = ri(3, 7); r(x, wy + 5, mw, mh, d.c); r(x + 2, wy + 5 + mh, 1, ri(2, 6), d.c); r(x + mw - 3, wy + 5 + mh, 1, ri(1, 4), d.c); r(x + 1, wy + 6, mw - 2, 1, d.line); }
+        for (let x = ri(20, 80); x < AW; x += ri(70, 120)) r(x, wy + 5, 3, AH, d.c); // legs
       }
-      return { cv, f: d.f, sh };
+      return { cv, f: d.f, sh, blink };
     });
     return CITY.L;
   }
   function drawClimb() {
     const cl = climbOf(), top = cl.top, yOf = h => FLOOR - h, cam = camY(), vis = (y, h) => y + h > -cam - 8 && y < H - cam + 8;
     const [o0, o1] = cl.out, now = performance.now(), box = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
-    // sky, fixed to the screen: pale, a darker dithered band at the top, one plain moon
-    box(0, -cam - 8, W, H + 16, '#c0cbdc'); box(0, -cam - 8, W, 56, '#8b9bb4');
-    ctx.fillStyle = '#8b9bb4'; for (let j = 0; j < 3; j++) for (let x = (j % 2) * 8; x < W; x += 16 + j * 8) ctx.fillRect(x, -cam + 48 + j * 8, 8, 8);
-    { const mx = 1180, my = 150 - cam + Math.round(cam * 0.03 / PX) * PX; ctx.fillStyle = '#ffffff'; for (let j = -44; j < 44; j += 4) { const hw = Math.round(Math.sqrt(44 * 44 - (j + 2) * (j + 2)) / 4) * 4; ctx.fillRect(mx - hw, my + j, hw * 2, 4); } }
-    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-    for (const L of cityLayers(top * FH)) ctx.drawImage(L.cv, 0, -cam + Math.round(cam * L.f / PX) * PX - L.sh * PX, W, L.cv.height * PX);
+    // sky, fixed to the screen; then the city layers with haze between them, and a few blinking windows
+    const sm = ctx.imageSmoothingEnabled, Ls = cityLayers(top * FH); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(CITY.sky, 0, -cam, W, H);
+    Ls.forEach((L, i) => {
+      const oy = -cam + Math.round(cam * L.f / PX) * PX - L.sh * PX;
+      ctx.drawImage(L.cv, 0, oy, W, L.cv.height * PX);
+      for (const [bx, by, bw, bh, col, ph] of L.blink) if (Math.floor(now / (bw > 1 ? 90 : 700) + ph) % (bw > 1 ? 23 : 3) === 0) { ctx.fillStyle = col; ctx.fillRect(bx * PX, oy + (by + L.sh) * PX, bw * PX, bh * PX); }
+      const hz = CITY.haze[i]; if (hz) ctx.drawImage(hz, 0, -cam + H - hz.height * PX, W, hz.height * PX);
+    });
     ctx.imageSmoothingEnabled = sm;
     // street
     box(0, FLOOR, W, H - FLOOR + 200, '#181425'); box(0, FLOOR, W, 4, '#3a4466');
+    for (let i = 0; i < 70; i++) box(Math.floor(rnd(i + 5) * W / 8) * 8, FLOOR + 12 + Math.floor(rnd(i + 77) * 14) * 8, rnd(i + 9) < 0.3 ? 16 : 8, 4, rnd(i + 3) < 0.12 ? '#f77622' : rnd(i + 3) < 0.3 ? '#2ce8f5' : '#3a4466'); // lights broken up in the wet street
     for (let k = 0; k < top; k++) {
       const y = yOf((k + 1) * FH), out = k >= o0 && k < o1;
       if (!vis(y, FH)) continue;
@@ -1413,7 +1464,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     for (let k = 1; k <= top; k++) { // floor slabs: dark navy with a lit top edge; pale ledges outside
       const y = yOf(k * FH), out = k >= o0 && k <= o1 && k < top, x0 = k === top ? 0 : out ? WALL - 12 : 0, w = k === top ? W : out ? W - WALL * 2 + 24 : W;
       if (!vis(y, 12)) continue;
-      box(x0, y, w, 12, out ? '#8b9bb4' : '#181425'); box(x0, y, w, 4, out ? '#c0cbdc' : k === top ? '#8b9bb4' : '#5a6988');
+      box(x0, y, w, 12, out ? '#8b9bb4' : '#181425'); box(x0, y, w, 4, out ? '#c0cbdc' : k === top ? '#8b9bb4' : '#0099db');
     }
     // pillars inside, air-conditioning units outside (both are cover)
     for (const p of R.props) {
@@ -1428,23 +1479,25 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         for (let j = 0, n = (p.hp0 - p.hp) * 5; j < n; j++) box(p.x - 20 + (j % 5) * 8, ay + 12 + j * 12, 4, 12, '#181425');
         continue;
       }
-      box(p.x - 28, py, 56, ph, '#5a6988'); box(p.x - 28, py, 8, ph, '#8b9bb4'); box(p.x + 16, py, 12, ph, '#3a4466');
-      box(p.x - 36, py, 72, 12, '#3a4466'); box(p.x - 36, py + ph - 16, 72, 16, '#3a4466'); box(p.x - 36, py + ph - 16, 72, 4, '#8b9bb4');
-      for (let j = 0, n = (p.hp0 - p.hp) * 4; j < n; j++) box(p.x - 16 + (j % 4) * 8, py + 32 + j * 16, 4, 16, '#181425');
+      box(p.x - 28, py, 56, ph, '#262b44'); box(p.x - 28, py, 4, ph, '#5a6988'); box(p.x + 16, py, 12, ph, '#181425');
+      box(p.x - 36, py, 72, 12, '#181425'); box(p.x - 36, py + ph - 16, 72, 16, '#181425'); box(p.x - 36, py + ph - 16, 72, 4, '#5a6988');
+      // a neon strip up the pillar: one segment goes dark for every hit it has taken
+      for (let j = 0; j < 3; j++) { const lit = j < p.hp; box(p.x - 8, py + 24 + j * 48, 8, 36, lit ? '#2ce8f5' : '#3a4466'); if (lit) box(p.x, py + 24 + j * 48, 4, 36, '#0099db'); }
+      for (let j = 0, n = (p.hp0 - p.hp) * 4; j < n; j++) box(p.x - 24 + (j % 4) * 12, py + 32 + j * 16, 4, 16, '#181425');
     }
     for (const s of cl.stairs) { // a solid staircase in the floor's material: lit treads, handrail, glass panels
       if (!vis(yOf((s.lv + 1) * FH), FH)) continue;
       const n = 10, d = (s.x1 - s.x0) / n, ad = Math.abs(d), rise = FH / n, base = yOf(s.lv * FH);
-      ctx.fillStyle = 'rgba(192, 203, 220, 0.2)';
-      for (let i = 0; i < n; i++) ctx.fillRect(Math.round(Math.min(s.x0 + i * d, s.x0 + (i + 1) * d)), Math.round(base - (i + 1) * rise - 64), Math.ceil(ad), 64);
+      ctx.fillStyle = 'rgba(192, 203, 220, 0.1)';
+      for (let i = 0; i < n; i++) ctx.fillRect(Math.round(Math.min(s.x0 + i * d, s.x0 + (i + 1) * d)), Math.round(base - (i + 1) * rise - 48), Math.ceil(ad), 48);
       for (let i = 0; i < n; i++) {
         const sx = Math.min(s.x0 + i * d, s.x0 + (i + 1) * d), sy = base - (i + 1) * rise;
         box(sx, sy, ad + 1, Math.min(48, base - sy), '#181425');
-        box(d > 0 ? sx : sx + ad - 8, sy + 4, 8, rise - 4, '#5a6988');
-        box(sx, sy, ad + 1, 4, '#c0cbdc');
+        box(d > 0 ? sx : sx + ad - 8, sy + 4, 8, rise - 4, '#262b44');
+        box(sx, sy, ad + 1, 4, '#3a4466'); box(sx + 8, sy, ad - 12, 4, '#2ce8f5'); box(sx + 8, sy + 4, ad - 12, 4, '#0099db');
       }
-      for (let q = 0, m = Math.round(Math.abs(s.x1 - s.x0) / 4); q <= m; q++) box(s.x0 + Math.sign(d) * q * 4 - (d < 0 ? 4 : 0), Math.round((base - rise - 64 - (q / m) * (FH - rise)) / 4) * 4, 4, 8, '#5a6988');
-      for (let i = 0; i <= n; i += 3) { const px = s.x0 + (i + 0.5) * d, ty = base - Math.min(n, i + 1) * rise; box(px - 2, ty - 64, 4, 64, '#5a6988'); }
+      for (let q = 0, m = Math.round(Math.abs(s.x1 - s.x0) / 4); q <= m; q++) box(s.x0 + Math.sign(d) * q * 4 - (d < 0 ? 4 : 0), Math.round((base - rise - 48 - (q / m) * (FH - rise)) / 4) * 4, 4, 4, '#f6757a');
+      for (let i = 0; i <= n; i += 3) { const px = s.x0 + (i + 0.5) * d, ty = base - Math.min(n, i + 1) * rise; box(px - 2, ty - 44, 4, 44, '#b55088'); }
     }
     for (const l of cl.ladders) {
       const ly = yOf((l.lv + 1) * FH);
