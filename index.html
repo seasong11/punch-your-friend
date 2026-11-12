@@ -135,7 +135,7 @@
   }
 
   // ---------- join diagnostics (shown to guests while a join is slow) ----------
-  const BUILD = 'v10';
+  const BUILD = 'v11';
   const diag = { mm: '…', host: '…', direct: '…', relay: '–' };
   const setDiag = (k, v) => { diag[k] = v; ui(); };
   const diagText = () => `[${BUILD} · server ${diag.mm} · host ${diag.host} · direct ${diag.direct} · relay ${diag.relay}]`;
@@ -358,19 +358,30 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#2b1d3a">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&family=Rubik:wght@400;600;800&family=ZCOOL+KuaiLe&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;600;800&display=swap">
+<style>
+/* "PYF Pixel": a subset (only the characters this page uses) of the Cubic 11 pixel font, which is also one of the
+   sources of Fusion Pixel. Cubic 11 (c) ACh-K, https://github.com/ACh-K/Cubic-11, SIL Open Font License 1.1
+   (https://openfontlicense.org). Derived from JF Dot M+H 12 (c) 2005 M+ FONTS PROJECT and M+ BITMAP FONTS (c) 2002-2004 COZ. */
+@font-face { font-family: "PYF Pixel"; src: url(data:font/woff2;base64,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) format("woff2"); font-display: swap; }
+</style>
 <style>
 /* Layout: one arcade cabinet — title, HUD, shared canvas arena, role-specific controls, brother leaderboard. Single deliberate dark look. */
 :root {
-  --bg: #2b1d3a;
-  --panel: #3c2a52;
-  --fg: #fff4e0;
-  --muted: #c9b6de;
-  --accent: #ffb703;
-  --danger: #ff5d73;
-  --bro: #2f80ed;
-  --display: "Press Start 2P", "DotGothic16", ui-monospace, monospace;
-  --han: "DotGothic16", "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", monospace;
+  /* Endesga 32 palette, warm wood-and-parchment UI */
+  --bg: #262b44;
+  --panel: #733e39;
+  --wood-hi: #b86f50;
+  --wood-lo: #3e2731;
+  --paper: #ead4aa;
+  --ink: #3e2731;
+  --fg: #ead4aa;
+  --muted: #e4a672;
+  --accent: #feae34;
+  --danger: #e43b44;
+  --bro: #0099db;
+  --display: "Press Start 2P", "PYF Pixel", ui-monospace, monospace;
+  --han: "PYF Pixel", "PingFang SC", "Microsoft YaHei", monospace;
   --body: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
@@ -582,17 +593,20 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // Pixel pipeline: the world is drawn full size offscreen, shrunk 3x, then blown back up with hard pixels.
   // Text is recorded and drawn afterwards in pixel fonts so it stays readable.
   // On phones the world is drawn straight at the shrunk size (a quarter of the pixels, one pass less).
-  const PX = 2, LOWRES = matchMedia('(pointer: coarse)').matches;
+  // The world is drawn straight onto a 4x art-pixel grid (one art pixel = 4 world units), so 我 is about
+  // 16x32 art pixels, then blown up with hard pixels.
+  const PX = 4, LOWRES = true;
   const wc = document.createElement('canvas');
   wc.width = LOWRES ? Math.round(cv.width / PX) : cv.width; wc.height = LOWRES ? Math.round(cv.height / PX) : cv.height;
-  let ctx = wc.getContext('2d'); // swapped for a sprite canvas while a lit sprite is drawn (see litSprite)
+  let ctx = wc.getContext('2d', { willReadFrequently: true }); // small CPU canvas, re-coloured every frame; swapped for a sprite canvas while a lit sprite is drawn (see litSprite)
   if (LOWRES) ctx.scale(1 / PX, 1 / PX);
   const TXT_BASE = new DOMMatrix(LOWRES ? [PX, 0, 0, PX, 0, 0] : [1, 0, 0, 1, 0, 0]);
   const sc = LOWRES ? wc : document.createElement('canvas');
   if (!LOWRES) { sc.width = Math.round(cv.width / PX); sc.height = Math.round(cv.height / PX); }
   const sctx = sc.getContext('2d');
-  const PF = '"Press Start 2P", "DotGothic16", monospace';
-  const HF = '"DotGothic16", "Press Start 2P", "ZCOOL KuaiLe", "PingFang SC", monospace';
+  const PF = '"Press Start 2P", "PYF Pixel", monospace';
+  const HF = '"PYF Pixel", "Press Start 2P", "PingFang SC", monospace';
+  try { document.fonts.load('24px "PYF Pixel"'); } catch (e) {}
   const TXT = [];
   ctx.fillText = function (t, x, y) {
     TXT.push({ t: String(t), x, y, m: ctx.getTransform(), font: ctx.font, fill: ctx.fillStyle, a: ctx.globalAlpha, al: ctx.textAlign, bl: ctx.textBaseline });
@@ -614,7 +628,38 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const want = Math.min(Math.max(0, x - CAM.w / 2), WORLD_W - CAM.w);
     CAM.x += (want - CAM.x) * Math.min(1, dt * 6);
   }
+  // One palette for everything (Endesga 32): every frame, each art pixel is snapped to its nearest palette
+  // colour through a 15-bit lookup table. This also removes soft anti-aliased edges, so shapes stay crisp.
+  const PAL = ['be4a2f', 'd77643', 'ead4aa', 'e4a672', 'b86f50', '733e39', '3e2731', 'a22633', 'e43b44', 'f77622', 'feae34', 'fee761',
+    '63c74d', '3e8948', '265c42', '193c3e', '124e89', '0099db', '2ce8f5', 'ffffff', 'c0cbdc', '8b9bb4', '5a6988', '3a4466',
+    '262b44', '181425', 'ff0044', '68386c', 'b55088', 'f6757a', 'e8b796', 'c28569'].map(h => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]);
+  const nearest = (r, g, b) => {
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < PAL.length; i++) {
+      const [pr, pg, pb] = PAL[i], rm = (r + pr) / 2, dr = r - pr, dg = g - pg, db = b - pb;
+      const d = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db; // "redmean" distance
+      if (d < bd) { bd = d; best = i; }
+    }
+    return PAL[best];
+  };
+  const LUT = new Uint32Array(32768);
+  for (let i = 0; i < 32768; i++) {
+    const [r, g, b] = nearest(((i >> 10) & 31) * 8 + 4, ((i >> 5) & 31) * 8 + 4, (i & 31) * 8 + 4);
+    LUT[i] = 0xff000000 | (b << 16) | (g << 8) | r; // little-endian RGBA in a Uint32
+  }
+  const palHex = {};
+  function palCol(c) { // map a '#rrggbb' text colour onto the palette
+    if (typeof c !== 'string' || c[0] !== '#' || c.length !== 7) return c;
+    if (!palHex[c]) { const [r, g, b] = nearest(parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)); palHex[c] = `rgb(${r},${g},${b})`; }
+    return palHex[c];
+  }
+  function palettize() {
+    const img = sctx.getImageData(0, 0, sc.width, sc.height), px = new Uint32Array(img.data.buffer);
+    for (let i = 0; i < px.length; i++) { const v = px[i]; px[i] = LUT[((v & 0xf8) << 7) | ((v >> 6) & 0x3e0) | ((v >> 19) & 0x1f)]; }
+    sctx.putImageData(img, 0, 0);
+  }
   function present() {
+    palettize();
     if (!LOWRES) {
       sctx.imageSmoothingEnabled = true;
       sctx.clearRect(0, 0, sc.width, sc.height);
@@ -629,7 +674,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     for (const r of TXT) {
       out.setTransform(camM.multiply(TXT_BASE).multiply(r.m)); out.font = r.font; out.globalAlpha = r.a; out.textAlign = r.al; out.textBaseline = r.bl;
       if (r.fill !== '#2b1d3a') { out.fillStyle = '#1b1430'; out.fillText(r.t, r.x + 3, r.y + 3); }
-      out.fillStyle = r.fill; out.fillText(r.t, r.x, r.y);
+      out.fillStyle = palCol(r.fill); out.fillText(r.t, r.x, r.y);
     }
     out.setTransform(1, 0, 0, 1, 0, 0); out.globalAlpha = 1;
     TXT.length = 0;
@@ -1507,7 +1552,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // ---------- stages: the backdrop changes as the level climbs ----------
   const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
   function grad(y0, y1, stops) { const g = ctx.createLinearGradient(0, y0, 0, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; }
-  function glow(x, y, r, rgb, a) { const g = ctx.createRadialGradient(x, y, 2, x, y, r); g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
+  // Flat-lit pixel style: no soft glows (they only band into rings on the palette).
+  function glow() {}
+  function glowSoft(x, y, r, rgb, a) { const g = ctx.createRadialGradient(x, y, 2, x, y, r); g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
   function stars(n, y1, seed) {
     for (let i = 0; i < n; i++) {
       ctx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(FX.st * (0.8 + rnd(seed + i) * 2) + i));
@@ -1834,7 +1881,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (FX.stageIdx !== idx) { if (FX.stageIdx != null && idx > FX.stageIdx) FX.wipe = 1.3; FX.stageIdx = idx; }
     STAGES[idx].draw();
     if (idx <= 1) for (const h of FX.holes || []) wallHole(h.x, h.y, h.r, h.seed, idx);
-    depthBlur();
     if (FX.wipe > 0) {
       FX.wipe -= dt;
       const k = Math.max(0, FX.wipe / 1.3);
@@ -2020,10 +2066,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
   }
 
-  // ---------- lit pixel sprites ----------
-  // Characters and fists are drawn on their own small canvas at output-pixel size, then lit like a
-  // little 3D figure: a top-to-bottom light/shade ramp, a 1px rim light on the side facing the stage's
-  // key light, a darker edge on the far side, and a dark pixel outline. Each stage has its own light.
+  // ---------- pixel sprites ----------
+  // Characters and fists are drawn on their own small canvas on the art-pixel grid, then given flat
+  // shading (highlight on the top-left edges, shadow on the bottom-right ones) and an outline that is a
+  // darker shade of the colour next to it.
   const SPR = document.createElement('canvas'), spx = SPR.getContext('2d', { willReadFrequently: true }); // small CPU-side canvases: cheaper than GPU round trips for many tiny passes
   const MSK = document.createElement('canvas'), mkx = MSK.getContext('2d', { willReadFrequently: true });
   const RIM = document.createElement('canvas'), rmx = RIM.getContext('2d', { willReadFrequently: true });
@@ -2031,15 +2077,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   spx.fillText = function (t, x, y) {
     TXT.push({ t: String(t), x, y, m: sprM0.multiply(sprInv.multiply(spx.getTransform())), font: spx.font, fill: spx.fillStyle, a: spx.globalAlpha, al: spx.textAlign, bl: spx.textBaseline });
   };
-  const LIGHT = [
-    { dx: 1, dy: -1, rim: 'rgba(255,210,130,.85)', top: 'rgba(255,236,190,.16)', bot: 'rgba(28,12,58,.42)', far: 'rgba(20,8,44,.55)' },   // living room: lamp on the right
-    { dx: -1, dy: -1, rim: 'rgba(255,244,214,.85)', top: 'rgba(255,248,226,.18)', bot: 'rgba(40,24,30,.36)', far: 'rgba(30,16,24,.5)' },   // dojo: daylight
-    { dx: -1, dy: -1, rim: 'rgba(150,220,255,.85)', top: 'rgba(170,200,255,.12)', bot: 'rgba(14,10,48,.48)', far: 'rgba(255,90,190,.45)' }, // rooftop: moon + neon
-    { dx: -1, dy: -1, rim: 'rgba(232,255,170,.8)', top: 'rgba(230,255,200,.14)', bot: 'rgba(10,40,24,.4)', far: 'rgba(8,30,18,.5)' },     // bamboo: green sun
-    { dx: 1, dy: 1, rim: 'rgba(255,140,60,.9)', top: 'rgba(30,6,10,.32)', bot: 'rgba(255,120,40,.22)', far: 'rgba(30,4,8,.5)' },         // volcano: lava glow from below
-    { dx: 1, dy: -1, rim: 'rgba(140,215,255,.9)', top: 'rgba(160,210,255,.12)', bot: 'rgba(8,8,40,.5)', far: 'rgba(120,70,255,.4)' }      // space: blue starlight
-  ];
-  function litSprite(left, top, w, h, draw, castY) {
+  // Lines thinner than one art pixel would vanish or smear, so every line is at least one art pixel wide.
+  {
+    const lw = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'lineWidth');
+    for (const c of [ctx, spx]) Object.defineProperty(c, 'lineWidth', { get() { return lw.get.call(this); }, set(v) { lw.set.call(this, Math.max(PX, v)); } });
+  }
+  const SHADE = [['rgba(254,231,97,.32)', 1, 1], ['rgba(104,56,108,.42)', -1, -1]]; // [colour, mask offset]
+  function litSprite(left, top, w, h, draw) {
     const main = ctx, m0 = main.getTransform(), s = 1 / PX, pad = 2;
     left = Math.floor(left / PX) * PX; top = Math.floor(top / PX) * PX;
     const pw = Math.ceil(w * s) + pad * 2, ph = Math.ceil(h * s) + pad * 2;
@@ -2049,67 +2093,31 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     sprM0 = m0; sprInv = spx.getTransform().inverse();
     ctx = spx;
     try { draw(); } finally { ctx = main; }
-    const L = LIGHT[FX.stageIdx || 0] || LIGHT[0];
     // silhouette
     mkx.setTransform(1, 0, 0, 1, 0, 0); mkx.globalCompositeOperation = 'source-over'; mkx.clearRect(0, 0, pw, ph);
-    mkx.drawImage(SPR, 0, 0, pw, ph, 0, 0, pw, ph); mkx.globalCompositeOperation = 'source-in'; mkx.fillStyle = '#140b24'; mkx.fillRect(0, 0, pw, ph);
+    mkx.drawImage(SPR, 0, 0, pw, ph, 0, 0, pw, ph); mkx.globalCompositeOperation = 'source-in'; mkx.fillStyle = '#181425'; mkx.fillRect(0, 0, pw, ph);
     mkx.globalCompositeOperation = 'source-over';
-    // light ramp, kept inside the sprite
+    // flat shading, light from the top-left: a warm highlight on edges facing up-left and a purple-leaning
+    // shadow on edges facing down-right. No gradients.
     spx.setTransform(1, 0, 0, 1, 0, 0); spx.globalAlpha = 1; spx.globalCompositeOperation = 'source-atop';
-    // (gradients are built once per light on a unit square and stretched to the sprite)
-    if (!L.g) {
-      L.g = spx.createLinearGradient(0, 0, 0, 1); L.g.addColorStop(0, L.top); L.g.addColorStop(0.5, 'rgba(0,0,0,0)'); L.g.addColorStop(1, L.bot);
-      // side ramp: the half facing the light is brighter, the other half rolls off into shade
-      L.gx = spx.createLinearGradient(L.dx > 0 ? 1 : 0, 0, L.dx > 0 ? 0 : 1, 0);
-      L.gx.addColorStop(0.3, 'rgba(255,240,210,.10)'); L.gx.addColorStop(0.5, 'rgba(0,0,0,0)'); L.gx.addColorStop(0.75, 'rgba(10,4,30,.22)');
-    }
-    spx.setTransform(pw, 0, 0, ph, 0, 0);
-    spx.fillStyle = L.g; spx.fillRect(0, 0, 1, 1);
-    spx.fillStyle = L.gx; spx.fillRect(0, 0, 1, 1);
-    spx.setTransform(1, 0, 0, 1, 0, 0);
-    // rim light (edge pixels facing the light) and the far edge in shade
-    for (const [col, ox, oy] of LOWRES ? [[L.rim, -L.dx, -L.dy]] : [[L.rim, -L.dx, -L.dy], [L.far, L.dx, L.dy]]) {
+    for (const [col, ox, oy] of SHADE) {
       rmx.setTransform(1, 0, 0, 1, 0, 0); rmx.globalCompositeOperation = 'source-over'; rmx.clearRect(0, 0, pw, ph);
       rmx.drawImage(MSK, 0, 0, pw, ph, 0, 0, pw, ph); rmx.globalCompositeOperation = 'source-in'; rmx.fillStyle = col; rmx.fillRect(0, 0, pw, ph);
       rmx.globalCompositeOperation = 'destination-out'; rmx.drawImage(MSK, 0, 0, pw, ph, ox, oy, pw, ph);
       spx.drawImage(RIM, 0, 0, pw, ph, 0, 0, pw, ph);
     }
-    // dark pixel outline, tucked behind the sprite
-    spx.globalCompositeOperation = 'destination-over'; spx.globalAlpha = 0.9;
-    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) spx.drawImage(MSK, 0, 0, pw, ph, ox, oy, pw, ph);
-    spx.globalCompositeOperation = 'source-over'; spx.globalAlpha = 1;
+    // outline in a darker shade of whatever colour it touches (not flat black)
+    rmx.setTransform(1, 0, 0, 1, 0, 0); rmx.globalCompositeOperation = 'source-over'; rmx.clearRect(0, 0, pw, ph);
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) rmx.drawImage(SPR, 0, 0, pw, ph, ox, oy, pw, ph);
+    rmx.globalCompositeOperation = 'source-atop'; rmx.fillStyle = 'rgba(24,20,37,.62)'; rmx.fillRect(0, 0, pw, ph);
+    rmx.globalCompositeOperation = 'source-over';
+    spx.globalCompositeOperation = 'destination-over'; spx.drawImage(RIM, 0, 0, pw, ph, 0, 0, pw, ph);
+    spx.globalCompositeOperation = 'source-over';
     // onto the world with hard pixels
     main.save(); main.imageSmoothingEnabled = false;
     const X = left - pad * PX, Y = top - pad * PX, DW = pw * PX, DH = ph * PX;
-    if (castY != null && L.dy < 0) {
-      // long cast shadow laid flat on the floor, pointing away from the light
-      const sk = -0.55 * L.dx;
-      main.save(); main.transform(1, 0, -sk, -0.22, sk * castY, 1.22 * castY);
-      main.globalAlpha = 0.28; main.drawImage(MSK, 0, 0, pw, ph, X, Y, DW, DH); main.restore();
-    }
     main.drawImage(SPR, 0, 0, pw, ph, X, Y, DW, DH);
     main.restore();
-  }
-
-  // Depth of field: the back wall goes soft toward the top, like a tilt-shift lens, so the
-  // crisp characters pop out in front of it.
-  const DOF = document.createElement('canvas'), dofx = DOF.getContext('2d');
-  const DOF2 = document.createElement('canvas'), dof2x = DOF2.getContext('2d');
-  function depthBlur() {
-    if (reduce || LOWRES) return; // phones skip it to keep the frame rate up
-    const k = wc.width / W, rows = Math.round((FLOOR - 150) * k);
-    if (rows <= 0) return;
-    const bw = Math.max(1, Math.round(wc.width / 4)), bh = Math.max(1, Math.round(rows / 4));
-    if (DOF.width !== bw || DOF.height !== bh) { DOF.width = bw; DOF.height = bh; }
-    if (DOF2.width !== wc.width || DOF2.height !== rows) { DOF2.width = wc.width; DOF2.height = rows; }
-    dofx.imageSmoothingEnabled = true; dofx.imageSmoothingQuality = 'medium';
-    dofx.drawImage(wc, 0, 0, wc.width, rows, 0, 0, bw, bh);
-    dof2x.globalCompositeOperation = 'source-over'; dof2x.clearRect(0, 0, DOF2.width, rows);
-    dof2x.imageSmoothingEnabled = true; dof2x.drawImage(DOF, 0, 0, bw, bh, 0, 0, wc.width, rows);
-    dof2x.globalCompositeOperation = 'destination-in';
-    const g = dof2x.createLinearGradient(0, 0, 0, rows); g.addColorStop(0, 'rgba(0,0,0,.75)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    dof2x.fillStyle = g; dof2x.fillRect(0, 0, wc.width, rows);
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(DOF2, 0, 0); ctx.restore();
   }
 
   const COS = [
@@ -2193,7 +2201,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
 
   function player(x, vx, hurt, danger, label, taunting, blocking, ci) {
-    litSprite(x - 110, FLOOR - 245, 220, 262, () => playerRaw(x, vx, hurt, danger, null, taunting, blocking, ci), FLOOR + 2);
+    litSprite(x - 110, FLOOR - 245, 220, 262, () => playerRaw(x, vx, hurt, danger, null, taunting, blocking, ci));
     if (label) { ctx.fillStyle = '#ffb703'; ctx.font = '8px ' + PF; ctx.textAlign = 'center'; ctx.fillText(label, x, FLOOR + 40); }
   }
   function playerRaw(x, vx, hurt, danger, label, taunting, blocking, ci) {
@@ -2303,41 +2311,32 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     // head + face
     ctx.fillStyle = C.skin; ctx.beginPath(); ctx.arc(0, -98, 22, 0, 7); ctx.fill();
     cosHair(C);
-    ctx.save(); ctx.translate(A.face * 3, 0);
-    ctx.fillStyle = '#2b1d3a'; ctx.strokeStyle = '#2b1d3a';
+    // Face on the 4-unit art-pixel grid: every feature is a whole number of art pixels.
+    ctx.save(); ctx.translate(A.face * 4, 0);
+    const ink = '#3e2731';
+    ctx.fillStyle = ink;
     if (hurt) {
-      ctx.lineWidth = 3;
-      for (const ex of [-8, 8]) { ctx.beginPath(); ctx.moveTo(ex - 4, -102); ctx.lineTo(ex + 4, -94); ctx.moveTo(ex + 4, -102); ctx.lineTo(ex - 4, -94); ctx.stroke(); }
+      for (const ex of [-12, 4]) { ctx.fillRect(ex, -104, 4, 4); ctx.fillRect(ex + 4, -100, 4, 4); ctx.fillRect(ex + 8, -104, 4, 4); ctx.fillRect(ex, -96, 4, 4); ctx.fillRect(ex + 8, -96, 4, 4); }
+      ctx.fillRect(-4, -88, 12, 4);
     } else if (taunting) {
       // akanbe: wink, cocked brow, big wagging tongue
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(-13, -106); ctx.lineTo(-4, -104); ctx.stroke();            // flat brow
-      ctx.beginPath(); ctx.moveTo(3, -110); ctx.quadraticCurveTo(9, -116, 14, -110); ctx.stroke(); // raised brow
-      ctx.beginPath(); ctx.moveTo(-12, -98); ctx.lineTo(-4, -96); ctx.stroke();              // wink
-      ctx.beginPath(); ctx.arc(8, -98, 3.5, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-8, -89); ctx.quadraticCurveTo(1, -86, 9, -90); ctx.stroke();
-      const wag = Math.sin(now / 70) * 3;
-      ctx.fillStyle = '#ff5d73'; ctx.beginPath(); ctx.ellipse(1 + wag, -81, 6, 9, wag * 0.06, 0, 7); ctx.fill();
-      ctx.fillStyle = '#c0392b'; ctx.fillRect(0 + wag, -84, 2, 7);
+      ctx.fillRect(-16, -96, 12, 4);                                // wink
+      ctx.fillRect(4, -100, 8, 8);                                  // open eye
+      ctx.fillRect(-8, -88, 20, 4);                                 // mouth
+      const wag = Math.round(Math.sin(now / 70) * 1) * 4;
+      ctx.fillStyle = '#e43b44'; ctx.fillRect(-4 + wag, -84, 12, 12);
+      ctx.fillStyle = '#a22633'; ctx.fillRect(0 + wag, -84, 4, 8);
     } else {
-      // smug by default: one brow up, heavy lids, lopsided smirk
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(-14, -106); ctx.lineTo(-4, -104); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(3, -109); ctx.quadraticCurveTo(9, -114, 14, -108); ctx.stroke();
-      if (A.blinkT < 0 && !danger) { ctx.fillRect(-12, -98, 8, 3); ctx.fillRect(4, -98, 8, 3); }
+      // smug: heavy-lidded eyes (lid line + pupil underneath), lopsided smirk
+      if (A.blinkT < 0 && !danger) { ctx.fillRect(-16, -96, 12, 4); ctx.fillRect(4, -96, 12, 4); }
       else {
-        for (const ex of [-8, 8]) {
-          ctx.beginPath(); ctx.arc(ex, -98, 4, 0, Math.PI); ctx.fill();              // half-closed eye
-          ctx.beginPath(); ctx.moveTo(ex - 6, -98.5); ctx.lineTo(ex + 6, -98.5); ctx.stroke(); // lazy lid
-        }
+        ctx.fillRect(-16, -100, 12, 4); ctx.fillRect(4, -100, 12, 4);   // lids
+        ctx.fillRect(-8, -96, 4, 4); ctx.fillRect(12, -96, 4, 4);       // pupils looking sideways
       }
       if (danger) {
-        // cocky grin even when a hand is coming
-        ctx.beginPath(); ctx.moveTo(-9, -90); ctx.quadraticCurveTo(1, -80, 11, -92); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#fff4e0'; ctx.fillRect(-5, -90, 12, 3);
+        ctx.fillRect(-8, -88, 20, 4); ctx.fillStyle = '#ffffff'; ctx.fillRect(-4, -88, 12, 4);   // cocky grin
       } else {
-        ctx.beginPath(); ctx.moveTo(-7, -89); ctx.quadraticCurveTo(2, -86, 10, -93); ctx.stroke();  // smirk
-        ctx.beginPath(); ctx.moveTo(11, -95); ctx.lineTo(12, -91); ctx.stroke();                     // dimple
+        ctx.fillRect(-4, -88, 12, 4); ctx.fillRect(8, -92, 4, 4);      // smirk
       }
     }
     ctx.restore();
@@ -3142,8 +3141,6 @@ body.is-bro #left, body.is-bro #right { display: none; }
   .keys { display: none; }
 }
 /* Full screen button (shown where the browser allows it) */
-.stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background: radial-gradient(ellipse 75% 85% at 50% 58%, rgba(10,4,24,0) 55%, rgba(10,4,24,.42) 100%); } /* lens vignette */
 .fsBtn { position: absolute; top: 6px; right: 6px; z-index: 3; font: 600 12px var(--body); padding: 6px 10px; border: 0; background: rgba(27,20,48,.75); color: var(--fg); cursor: pointer; }
 .fsBtn:focus-visible { outline: 3px solid var(--fg); }
 @media (orientation: portrait) and (max-width: 600px) and (pointer: coarse) {
@@ -3173,7 +3170,7 @@ body.is-bro #left, body.is-bro #right { display: none; }
   .dock #chopBtn, .dock .seg { grid-column: 2; }
   .dock .pad { min-height: 0; padding: 4px; }
   .dock .pad.chop, .dock .pad.block { font-size: 28px; }
-  .dock .seg button { font-size: 12px; padding: 3px 0; }
+  .dock .seg button { font-size: 11px; padding: 3px 0; white-space: nowrap; letter-spacing: -1px; }
   .dock .seg button small { display: none; }
   #left, #right { display: none; }
   .pad { padding: 4px; font-size: 20px; min-height: 0; }
@@ -3210,6 +3207,50 @@ img { max-width: 100%; }
 .inv-new { margin-left: 8px; background: var(--bro); color: var(--fg); }
 .inv-status { margin: 0; font-size: 13px; }
 .inv-link button:focus-visible, .inv-new:focus-visible, .inv-name input:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+
+/* ---------- cozy pixel UI: wood panels with chunky stepped borders, parchment buttons ---------- */
+body { background: var(--bg); }
+h1 { color: var(--accent); text-shadow: 3px 3px 0 var(--wood-lo); }
+.sub, .keys { color: #c0cbdc; }
+.hud { background: var(--panel); padding: 6px 12px; box-shadow: inset 0 0 0 3px var(--wood-hi), 0 0 0 3px var(--wood-lo); }
+.hud .label { color: var(--paper); font-family: var(--han); letter-spacing: .04em; }
+.hud .val { color: #fee761; text-shadow: 2px 2px 0 var(--wood-lo); }
+.stage { box-shadow: 0 0 0 4px var(--wood-hi), 0 0 0 8px var(--wood-lo) !important; }
+.overlay { background: rgba(24, 20, 37, .78); }
+.overlay h2 { font-family: var(--han); color: #fee761; text-shadow: 3px 3px 0 var(--wood-lo); }
+.btn { font-family: var(--han); background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 3px var(--wood-hi), 0 4px 0 var(--wood-lo); }
+.btn:active { box-shadow: inset 0 0 0 3px var(--wood-hi), 0 1px 0 var(--wood-lo); }
+.btn.ghost { background: var(--panel); color: var(--paper); box-shadow: inset 0 0 0 3px var(--wood-hi), 0 4px 0 var(--wood-lo); }
+.btn.swap { background: var(--bro); color: #ffffff; box-shadow: inset 0 0 0 3px #2ce8f5, 0 4px 0 #124e89; }
+.pad, .skill, .fake, .seg { background-color: var(--panel); color: var(--paper); box-shadow: inset 0 0 0 3px var(--wood-hi), 0 3px 0 var(--wood-lo); }
+.seg button { color: var(--paper); }
+.seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); }
+.seg button[aria-pressed="true"] small, .seg button small, .fake small, .skill small { color: var(--paper); }
+.seg button[aria-pressed="true"] small { color: var(--ink); }
+.pad.chop { background-color: var(--danger); color: #ffffff; box-shadow: inset 0 0 0 3px #f6757a, 0 3px 0 #a22633; }
+.pad.block { background: var(--bro); color: #ffffff; box-shadow: inset 0 0 0 3px #2ce8f5, 0 3px 0 #124e89; }
+.pad.block.on { background: #2ce8f5; color: var(--ink); }
+.pad.chop.super { background-color: #fee761; color: var(--ink); }
+.skill.ready { background-color: #fee761; color: var(--ink); box-shadow: inset 0 0 0 3px #feae34, 0 3px 0 #be4a2f; }
+.skill.ready small { color: var(--ink); }
+.skill.rain.ready { background-color: #b55088; box-shadow: inset 0 0 0 3px #f6757a, 0 3px 0 #68386c; color: #ffffff; }
+.board, .howto, .wardrobe, .invite { background: var(--panel); color: var(--paper); box-shadow: inset 0 0 0 3px var(--wood-hi), 0 0 0 3px var(--wood-lo); }
+.board h3, .howto h3, .wardrobe h3 { color: #fee761; font-family: var(--han); letter-spacing: .06em; }
+.howto b { color: #fee761; }
+.ctl th, .wdesc, .cos small, .inv-name, .board .empty { color: var(--muted); }
+.ctl td { border-top-color: rgba(234,212,170,.2); }
+kbd { background: var(--wood-lo); color: var(--paper); }
+.cos { background: var(--wood-lo); color: var(--paper); }
+.cos[aria-pressed="true"] { box-shadow: inset 0 0 0 3px #fee761; }
+.inv-name input, .inv-link input { background: var(--paper); color: var(--ink); border-color: var(--wood-lo); }
+.inv-link button, .inv-new { font-family: var(--han); font-size: 14px; background: #fee761; color: var(--ink); box-shadow: inset 0 0 0 3px var(--accent); }
+.mute { background: var(--panel); color: var(--paper); box-shadow: inset 0 0 0 2px var(--wood-hi); font-family: var(--han); }
+.chip { font-family: var(--han); background: #fee761; color: var(--ink); }
+.chip.bro { background: var(--bro); color: #ffffff; }
+.caption { background: var(--bg); }
+.caption b { font-family: var(--han); text-shadow: 2px 2px 0 #181425; }
+.board li .n { color: #f6757a; }
+.fsBtn { background: rgba(62,39,49,.85); color: var(--paper); font-family: var(--han); }
 </style>
 </body>
 </html>

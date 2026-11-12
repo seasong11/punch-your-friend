@@ -21,12 +21,22 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
    invite bar and the reset styles (`[hidden]{display:none!important}` etc.).
 
 ## Game systems (all inside the main game script)
-- Rendering: world drawn to an offscreen 1600x640 canvas, downscaled 2x and upscaled with hard pixels;
-  `fillText` calls are recorded and replayed crisp in pixel fonts (Press Start 2P / DotGothic16).
-- Lit sprites: `litSprite()` draws 我 (and fists) on a small output-resolution canvas (`ctx` is temporarily
-  swapped to it), then adds a light ramp, rim light, far-edge shade, pixel outline and a cast shadow, using the
-  stage's `LIGHT` entry. Lit fists are cached in `HAND_CACHE` (motion streaks drawn fresh by `handMotion`).
-  `depthBlur()` softens the back wall (desktop only); the vignette is CSS (`.stage::after`).
+- Look: simple flat pixel art (Stardew-like techniques, no assets from any game). The world is drawn straight onto
+  a 400x160 canvas, i.e. a 4x art-pixel grid (`PX = 4`), then blown up with hard pixels. 我 is about 16x32 art
+  pixels; the face is drawn in whole art pixels. Every line is at least one art pixel wide (`lineWidth` floor).
+- Palette: `palettize()` snaps every art pixel to Endesga 32 (`PAL`) through a 15-bit lookup table each frame,
+  which also removes soft anti-aliasing. Canvas text colours go through `palCol()`. `glow()` is a no-op (soft
+  glows only band into rings on a palette).
+- Sprites: `litSprite()` draws 我 (and fists) on a small art-pixel canvas (`ctx` is temporarily swapped to it),
+  then adds flat shading from the top-left (`SHADE`: warm highlight on up-left edges, purple shadow on
+  down-right edges) and an outline that is a darker shade of the neighbouring colour. Lit fists are cached in
+  `HAND_CACHE` (motion streaks drawn fresh by `handMotion`).
+- Text: recorded `fillText` calls are replayed crisp on top. Chinese and UI text use "PYF Pixel", a subset of the
+  Cubic 11 pixel font (OFL, embedded as base64 in a `<style>` in `<head>`). If you add new Chinese characters,
+  re-subset the font (fontTools, from Cubic_11.woff2 in TakWolf/fusion-pixel-font assets/fonts/cubic-11) with every
+  non-ASCII character in index.html, or the new ones fall back to a system font.
+- UI: wood panels with stepped borders and parchment buttons, all in palette colours (CSS variables in `:root`
+  and the "cozy pixel UI" block at the end of the last `<style>`).
 - Music: one theme per stage in `THEMES` (scale, melody, bass, lead sound, base bpm rising stage by stage);
   `setLevel` picks the theme and intensity tier, and levels past the last stage push the tempo further.
   Sound effects go through their own quieter bus (`sfxOut`).
