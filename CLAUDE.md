@@ -37,9 +37,17 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   non-ASCII character in index.html, or the new ones fall back to a system font.
 - UI: wood panels with stepped borders and parchment buttons, all in palette colours (CSS variables in `:root`
   and the "cozy pixel UI" block at the end of the last `<style>`).
-- Music: one theme per stage in `THEMES` (scale, melody, bass, lead sound, base bpm rising stage by stage);
-  `setLevel` picks the theme and intensity tier, and levels past the last stage push the tempo further.
-  Sound effects go through their own quieter bus (`sfxOut`).
+- Music: recorded loops in `music/<id>.ogg` (one per stage in `STAGE_TRACKS`, plus `menu` and `game-over`), each an
+  exact whole number of bars so `AudioBufferSourceNode.loop` plays them gaplessly. The game loop calls
+  `sfx.scene('stage' | 'over' | 'menu' | null)` every frame; `setLevel` picks the stage track by level, or
+  `sfx.setSection(id)` picks it by relay section (`SECTION_TRACKS`: house, dojo, bamboo, rooftop-climb, rooftop-jumps,
+  lake-dive, lake, volcano, snow, elevator, space). Only the playing track and the likely next one are fetched
+  (OGG Vorbis q2, about 0.75 MB each), starting after the first tap. If a file can't load (e.g. opened from `file://`), stages fall back to the synthesized
+  `THEMES` and the lobby/game over stay quiet. The tracks were made by an offline synth script (kept outside the repo).
+- Mix: music (`musicOut`, ducked) and effects (`sfxOut`) meet on a master bus with a limiter. Effects are in three
+  tiers (`TIER`, `TIER_DB`); big moments dip the music ~5 dB. Pitched effects (marked `P`) snap to the playing track's
+  scale (`KEYS`). `sfx.at(x)` pans the next effect to its world position. `MUSIC_LEVEL` sets music against effects.
+  Each effect is capped at two starts per 80 ms.
 - Levels: `levelOf(score)` — LV2 at 25 points, LV3 at 75, then triangular growth. Speed curve caps around 4.2.
   A fairness check (`fairSpot`) stops the practice bot from throwing unescapable punches.
 - Six stages by level (living room, dojo, rooftop, bamboo, volcano with fire dragon, space with ships),
@@ -104,4 +112,5 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
 - Edit `index.html` directly; there is no build step.
 - To test multiplayer locally, serve the folder (`python3 -m http.server`) and open two browser windows:
   one at `/` (host) and one at the invite link it shows.
-- Keep the game working inside a single file so it can be dropped onto any static host.
+- Keep the game working inside a single file so it can be dropped onto any static host. The only extra files are
+  the optional music loops in `music/`; without them the game still runs with its synthesized fallback music.
