@@ -58,6 +58,22 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   The pause menu (Resume / End round) uses `ovMode = 'paused'` on the overlay buttons.
 - Controls sit in one compact `.dock` under the arena; a round start scrolls the HUD, arena and dock into view.
 
+## Journey prototype: the house (branch `house-prototype`)
+- `JOURNEY = true` turns the single arena into a section made of rooms (`ROOMS`): living room, kitchen, stairs up,
+  hallway, bedroom, stairs down, garage. Each room is one arena wide; walking out of the right-hand door loads the
+  next (`nextRoom`), and the garage door ends the section (`houseDone`, hearts refill).
+- 我 has height now: `P.y`/`P.vy`/`P.air`, `tryJump` (↑ / W, the ▲ button, or a swipe up), `movePlayer`. `surfAt(x)`
+  is the height of the ramp or tallest prop at x. Props are solid boxes; ones with `hp` break under punches
+  (`hitProps`), and `elec` ones spark for a second (still solid) before they clear. A fist that lands on something
+  taller than 我 cannot hit 我 (cover).
+- 我's page owns the room and sends `rm` (room), `y`, `pp` (prop states, `propCode`) and `won` in presence; the
+  兄弟 side mirrors them in `syncRoom`.
+- Level is fixed at 1 while `JOURNEY` is on (`levelOf`), so punches stay slow and there are no level-up hearts.
+- Relay: at zero hearts `gameOver` sets `S.handT`; `relayHand` then hands the role to the top hitter who has not
+  been 我 this round (`S.was`, passed along in presence `was`). The new 我 starts the house from room 1.
+- Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS }`.
+- The hoodie no longer has 我 printed on the chest.
+
 ## Publishing (GitHub Pages)
 The site is served by GitHub Pages from **Deploy from a branch → main → / (root)** (Settings → Pages).
 As of 2026-11-12 the repo had zero Actions runs, which means Pages had never built: the source setting
