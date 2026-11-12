@@ -47,6 +47,17 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
 - Test without the PeerJS cloud: open with `?mock=1` and inject a `window.MockPeer` (BroadcastChannel)
   before the page scripts run.
 
+## Phones
+- Landscape phones (`orientation: landscape` and `max-height: 540px`) switch `.wrap` to a grid: arena in the
+  middle, ◀ ▶ on the left, block/chop and skills on the right, the rest of the page below. `.pads`,
+  `#meSkills` and `#broMoves` become `display: contents` so their buttons are placed one by one.
+  `body.is-bro` reserves room for the 兄弟 tool row under the arena.
+- Portrait phones get a compact header and invite bar and a tip to turn the phone sideways.
+- On touch devices (`pointer: coarse`) the world canvas is drawn directly at half size (`LOWRES`),
+  skipping the shrink pass; recorded text is replayed with a 2x base transform (`TXT_BASE`).
+- The invite button uses the system share sheet on phones; hits vibrate (Android); a screen wake lock
+  is taken on the first tap.
+
 ## Working on it
 - Edit `index.html` directly; there is no build step.
 - To test multiplayer locally, serve the folder (`python3 -m http.server`) and open two browser windows:
