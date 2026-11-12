@@ -106,6 +106,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   the screen edges, walkways, dither haze (`ditherBand`), blinking windows (`L.blink`), and pixel neon (cyan #2ce8f5 /
   #0099db bands, magenta #f6757a / #68386c edges; near layers only). Stairs have cyan tread lights and a magenta rail;
   each pillar has a three-segment neon strip that loses a segment per hit.
+- More ways up (`climb.pipes/ropes/plats/ledges/els`, plus `wall: 1` pillar props), placed by `PLAN` in `buildClimb`:
+  drain pipes outside (`P.grip`, auto-climb, ↓ sets `P.slide`), ropes (caught in the air, `grip.rope`, ← → leaps off via
+  `P.kt`/`P.kd`), half-height ledges and the window-cleaning lift (`platY`, both handled in `climbGround`), wall kicks
+  (↑ in the air near a shaft wall, max 2, `P.kicks`), and an elevator (`R.el[]`, `tickElevators`, `P.el`; a side fist
+  stops at the car and stalls it; car heights go out in presence `ey`). Orange always marks "climb here".
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
 - The hoodie no longer has 我 printed on the chest.
 

@@ -1080,29 +1080,47 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // break under punches (`elec` ones spark for a second first). Both sides build the room from ROOMS; 我's page
   // owns the prop state and sends it in presence (`rm`, `pp`, `y`).
   const JOURNEY = true, GRAV = 2600, JUMP_V = 940, STEP_UP = 14, W_ = 1600;
-  // The tower is generated from a fixed seed: every floor gets one staircase (alternating direction), most get a
-  // ladder or a hook as a faster, more exposed way up, and one or two pillars for cover (fewer near the top).
+  // The tower is generated from a fixed seed. Inside floors each get a staircase (alternating direction), one or two
+  // faster ways up from a fixed plan (ladder, hook, wall-jump shaft, ledge, rope, elevator) and pillars for cover.
+  // The outside stretch has timed windows, two drain pipes and a window-cleaning lift.
   function buildClimb(top) {
     let seed = 7; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const stairs = [], ladders = [], hooks = [], props = [], out = [Math.round(top * 0.375), Math.round(top * 0.69)]; // rows [a, b) are outside
+    const stairs = [], ladders = [], hooks = [], props = [], pipes = [], ropes = [], plats = [], ledges = [], els = [];
+    const out = [Math.round(top * 0.375), Math.round(top * 0.69)]; // rows [a, b) are outside
+    const PLAN = { 0: 'L', 1: 'H', 2: 'S', 3: 'GL', 4: 'SR', 5: 'H', [out[1]]: 'E', [out[1] + 1]: 'G', [out[1] + 2]: 'SL', [out[1] + 3]: 'R', [out[1] + 4]: 'H' };
     for (let lv = 0; lv < top; lv++) {
-      if (lv >= out[0] && lv < out[1]) { // outside on the facade: the only way up is through windows that slide open and shut
+      if (lv >= out[0] && lv < out[1]) { // outside on the facade
         const xs = [300 + Math.floor(r() * 3) * 100, 700 + Math.floor(r() * 3) * 100, 1100 + Math.floor(r() * 3) * 100];
         xs.forEach((x, k) => ladders.push({ lv, x, timed: 1, off: +(k * 1.7 + r() * 5).toFixed(1) }));
-        props.push({ k: 'pillar', ac: 1, lv, x: 500 + Math.floor(r() * 6) * 100, w: 54, h: 0, hp: 2 });
+        let ax = 500 + Math.floor(r() * 6) * 100; if (Math.abs(ax - 600) < 90) ax += 200;
+        props.push({ k: 'pillar', ac: 1, lv, x: ax, w: 54, h: 0, hp: 2 });
+        if (lv === out[0]) pipes.push({ lv, n: 3, x: 140 });
+        if (lv === out[0] + 1) plats.push({ lv, n: 2, x: 1450, off: 0 });
+        if (lv === out[0] + 3) pipes.push({ lv, n: 2, x: 600 });
         continue;
       }
       const a = 200 + Math.floor(r() * 5) * 100, b = a + 400, right = lv % 2 === 0;
       const st = right ? { lv, x0: a, x1: b } : { lv, x0: W_ - a, x1: W_ - b };
       stairs.push(st);
-      const lo = Math.min(st.x0, st.x1), hi = lo + 400;
-      const free = () => { for (let k = 0; k < 20; k++) { const x = 160 + Math.floor(r() * 13) * 100; if (x < lo - 90 || x > hi + 90) return x; } return lo > 800 ? 200 : 1400; };
-      const pick = r();
-      if (pick < 0.5) ladders.push({ lv, x: free() }); else if (pick < 0.8 && lv > 0) hooks.push({ lv, x: free() });
+      const lo = Math.min(st.x0, st.x1), hi = lo + 400, used = [];
+      let slot = lo >= 600 ? 230 : hi + 170; // the side of the floor the staircase leaves free
+      for (const ch of PLAN[lv] || '') {
+        const x = slot;
+        if (ch === 'L') ladders.push({ lv, x });
+        else if (ch === 'H') hooks.push({ lv, x });
+        else if (ch === 'G') ledges.push({ lv, x: x + 30, w: 150 });
+        else if (ch === 'R') ropes.push({ lv, n: 2, x });
+        else if (ch === 'E') els.push({ lv, n: 2, x: x + 20 });
+        else if (ch === 'S') { props.push({ k: 'pillar', wall: 1, lv, x: x - 30, w: 40, h: 0, hp: 4 }, { k: 'pillar', wall: 1, lv, x: x + 150, w: 40, h: 0, hp: 4 }); slot += 120; used.push(x + 150); }
+        used.push(x); slot += 250;
+      }
       const np = lv > top - 4 ? (r() < 0.5 ? 1 : 0) : 1 + (r() < 0.5 ? 1 : 0);
-      for (let k = 0; k < np; k++) props.push({ k: 'pillar', lv, x: 300 + k * 500 + Math.floor(r() * 5) * 100, w: 54, h: 0, hp: 3 });
+      for (let k = 0; k < np; k++) { const x = 300 + k * 500 + Math.floor(r() * 5) * 100; if (!used.some(u => Math.abs(u - x) < 150)) props.push({ k: 'pillar', lv, x, w: 54, h: 0, hp: 3 }); }
     }
-    return { props, climb: { top, stairs, ladders, hooks, out } };
+    for (const e of els) for (let k = e.lv + 1; k < e.lv + e.n; k++) { // keep the elevator shaft clear on the floors it passes
+      for (let q = props.length - 1; q >= 0; q--) if (props[q].lv === k && Math.abs(props[q].x - e.x) < 130) props.splice(q, 1);
+    }
+    return { props, climb: { top, stairs, ladders, hooks, out, pipes, ropes, plats, ledges, els } };
   }
   const ROOMS = [
     { name: 'LIVING ROOM', wall: ['#4a3466', '#56407a', '#3c2a52'], floor: ['#733e39', '#3e2731'], decor: [['pic', 230], ['win', 700]], props: [
@@ -1120,12 +1138,14 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'hedge', x: 420, w: 170, h: 70 }, { k: 'pot', x: 760, w: 70, h: 56 }, { k: 'hedge', x: 1130, w: 220, h: 84 }] },
     { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(16) }
   ];
-  const R = { i: 0, props: [], gl: [0, 0], t: 0 }; // gl: broken glass panels per side (bit = row), t: 我's clock
+  const R = { i: 0, props: [], gl: [0, 0], t: 0, el: [] }; // gl: broken glass panels per side (bit = row), t: 我's clock
   if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom }; // test hook
   function loadRoom(i) {
     R.i = clamp(i | 0, 0, ROOMS.length - 1);
     R.props = ROOMS[R.i].props.map(p => ({ ...p, hp0: p.hp, sparkT: 0, dead: false }));
     R.gl = [0, 0];
+    R.el = ((ROOMS[R.i].climb || {}).els || []).map(e => ({ y: e.lv * 200, st: 'idle', t: 0, stall: 0 }));
+    P.grip = null; P.el = null; P.kt = 0;
     FX.holes = [];
   }
   function rampAt(x) {
@@ -1140,10 +1160,25 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return g;
   }
   function tryJump() {
-    if (role !== 'me' || S.st !== 'play' || S.paused || P.air || P.lad) return;
+    if (role !== 'me' || S.st !== 'play' || S.paused || P.lad || P.el) return;
     const cl = climbOf();
-    if (cl) { const l = cl.ladders.find(l => Math.abs(l.lv * FH - P.y) < 3 && Math.abs(P.x - l.x) < 36 && ladderOpen(l)); if (l) { P.lad = l; P.vx = 0; S.blockT = 0; return; } }
-    P.vy = JUMP_V; P.air = true; S.blockT = 0;
+    if (P.grip) { P.slide = 0; return; } // on a pipe: ↑ climbs again after a slide
+    if (P.air) { // wall kick: ↑ in the air next to a shaft wall pushes off it, up and across
+      if (!cl || (P.kicks | 0) >= 2) return;
+      const row = Math.floor((P.y + 20) / FH), wl = R.props.find(p => p.wall && !p.dead && p.lv === row && Math.abs(p.x - P.x) < 70);
+      if (!wl) return;
+      P.kicks = (P.kicks | 0) + 1; P.vy = 700; P.kd = P.x >= wl.x ? 1 : -1; P.kt = 0.2;
+      if (!reduce) burst(wl.x + P.kd * 20, FLOOR - P.y - 30, 6, ['#f6757a', '#ffffff'], 200, 0.6, 300, 4);
+      sfx.dash(); return;
+    }
+    if (cl) {
+      const l = cl.ladders.find(l => Math.abs(l.lv * FH - P.y) < 3 && Math.abs(P.x - l.x) < 36 && ladderOpen(l)); if (l) { P.lad = l; P.vx = 0; S.blockT = 0; return; }
+      const pp = cl.pipes.find(q => Math.abs(P.x - q.x) < 36 && P.y > q.lv * FH - 3 && P.y < (q.lv + q.n) * FH - 3 && Math.abs(P.y % FH) < 3);
+      if (pp) { P.grip = { x: pp.x, y0: pp.lv * FH, y1: (pp.lv + pp.n) * FH, v: 300 }; P.slide = 0; P.vx = 0; S.blockT = 0; return; }
+      const ei = cl.els.findIndex((e, k) => Math.abs(P.x - e.x) < 50 && R.el[k].st === 'idle' && Math.abs(P.y - R.el[k].y) < 3);
+      if (ei >= 0) { P.el = ei + 1; R.el[ei].st = 'up'; P.vx = 0; S.blockT = 0; sfx.warn(); return; }
+    }
+    P.vy = JUMP_V; P.air = true; S.blockT = 0; P.kicks = 0;
     if (!reduce) burst(P.x, FLOOR - P.y - 3, 6, ['#c9b6de', '#fff4e0'], 120, 0.5, 300, 4);
     sfx.whoosh();
   }
@@ -1169,7 +1204,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       S.lives = 3; S.startRm = R.i; hud(S.score, 3);
       banner('天台!', 'House and garden cleared · hearts refilled · climb to the roof', '#2ce8f5');
     }
-    P.x = 70; P.vx = 0; P.y = surfAt(70, 18); P.vy = 0; P.air = false; P.lad = null;
+    P.x = 70; P.vx = 0; P.y = surfAt(70, 18); P.vy = 0; P.air = false; P.lad = null; P.grip = null; P.el = null; P.kt = 0;
     S.chops = []; S.queue = []; S.rainT = 0; S.spawnIn = 1.4; S.blockT = 0;
     FX.ghosts = []; sfx.levelup();
     pushTarget(true);
@@ -1215,6 +1250,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (fresh) for (let row = 0; row < 31; row++) if (fresh & (1 << row)) glassFx(k ? -1 : 1, row);
       R.gl[k] = v;
     }
+    if (Array.isArray(tp.ey)) tp.ey.forEach((v, k) => { if (R.el[k]) R.el[k].y = +v || 0; });
     if (typeof tp.gt === 'number') R.t = Math.abs(tp.gt - R.t) > 0.5 ? tp.gt : R.t + dt;
     B.ty = (B.ty || 0) + ((+tp.y || 0) - (B.ty || 0)) * Math.min(1, dt * 18);
   }
@@ -1231,6 +1267,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function glassFx(side, row) {
     if (!reduce) burst(side > 0 ? WALL : W - WALL, FLOOR - row * FH - 90, 22, ['#2ce8f5', '#ffffff', '#0099db'], 420, 1, 700, 6);
   }
+  // A window-cleaning lift: waits, rides up n floors, waits, rides down. Its height comes from 我's clock, so every page agrees.
+  const platY = pl => { const tr = pl.n * FH / 120, p = (R.t + pl.off) % (2 * tr + 3); return pl.lv * FH + (p < 1.5 ? 0 : p < 1.5 + tr ? (p - 1.5) * 120 : p < 3 + tr ? pl.n * FH : pl.n * FH - (p - 3 - tr) * 120); };
   function climbGround(x, y) {
     const cl = climbOf(); let g = 0;
     for (let k = 1; k <= cl.top; k++) if (k * FH <= y + STEP_UP) g = k * FH;
@@ -1240,10 +1278,23 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const h = s.lv * FH + k * FH;
       if (h <= y + STEP_UP && h > g) g = h;
     }
+    for (const d of cl.ledges) { const h = d.lv * FH + 100; if (Math.abs(x - d.x) < d.w / 2 + 10 && h <= y + STEP_UP && h > g) g = h; }
+    for (const pl of cl.plats) { const h = platY(pl); if (Math.abs(x - pl.x) < 70 && h <= y + STEP_UP && h > g) g = h; }
     return g;
+  }
+  function tickElevators(dt) {
+    const cl = climbOf();
+    cl.els.forEach((e, k) => {
+      const c = R.el[k], y1 = (e.lv + e.n) * FH;
+      if (c.st === 'up') { if (c.stall > 0) c.stall -= dt; else c.y += 170 * dt; if (c.y >= y1) { c.y = y1; c.st = 'open'; c.t = 1.2; if (P.el === k + 1) { P.el = null; P.y = y1; P.air = false; } sfx.charged(); } }
+      else if (c.st === 'open') { c.t -= dt; if (c.t <= 0) c.st = 'down'; }
+      else if (c.st === 'down') { c.y -= 420 * dt; if (c.y <= e.lv * FH) { c.y = e.lv * FH; c.st = 'idle'; } }
+    });
   }
   function moveClimb(dt) {
     const cl = climbOf();
+    tickElevators(dt);
+    if (P.el) { const e = cl.els[P.el - 1]; P.vx = 0; P.vy = 0; P.x = e.x; P.y = R.el[P.el - 1].y; P.air = false; return; } // riding: no input until the doors open
     if (P.lad) { // one press climbs the whole ladder; moving sideways lets go
       if (keys.l || keys.r) { P.lad = null; P.air = true; P.vy = 0; }
       else {
@@ -1252,6 +1303,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         return;
       }
     }
+    if (P.grip) { // pipe or rope: climbs by itself, ↓ slides back down (pipe), sideways lets go (a rope throws 我 off in a leap)
+      const gp = P.grip;
+      if (keys.l || keys.r) { P.grip = null; P.air = true; P.slide = 0; P.kicks = 2; if (gp.rope) { P.vy = 640; P.kd = keys.r ? 1 : -1; P.kt = 0.32; } else P.vy = 0; }
+      else {
+        P.vx = 0; P.x = gp.x; P.y += (P.slide && !gp.rope ? -900 : gp.v) * dt;
+        if (P.y >= gp.y1) { P.y = gp.y1; P.grip = null; P.air = false; P.slide = 0; }
+        else if (P.y <= gp.y0) { P.y = gp.y0; P.grip = null; P.air = false; P.slide = 0; }
+        return;
+      }
+    }
+    if (P.kt > 0) { P.kt -= dt; P.vx = P.kd * 430; }
     P.x = clamp(P.x + P.vx * dt, WALL + P.w / 2, W - WALL - P.w / 2);
     if (P.x <= WALL + P.w / 2 || P.x >= W - WALL - P.w / 2) P.vx = 0;
     const g = climbGround(P.x, P.y);
@@ -1267,11 +1329,18 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
           sfx.dash(); break;
         }
       }
+      if (P.air && !(P.kt > 0)) for (const rp of cl.ropes) { // jump to catch the end of a rope; it carries 我 up two floors
+        if (Math.abs(P.x - rp.x) < 40 && P.y > rp.lv * FH + 30 && P.y < (rp.lv + rp.n) * FH - 40) {
+          P.grip = { x: rp.x, y0: rp.lv * FH + 30, y1: (rp.lv + rp.n) * FH, v: 340, rope: 1 }; P.vy = 0; P.vx = 0; P.slide = 0; sfx.dash(); break;
+        }
+      }
     }
     if (!P.air && P.y >= cl.top * FH - 1 && P.x >= W - WALL - P.w / 2 - 1) nextRoom();
   }
   function tryDrop() { // ↓ on a floor or stair above the ground: drop through to whatever is below
-    if (role !== 'me' || S.st !== 'play' || S.paused || !climbOf() || P.air || P.lad || P.y < 1) return false;
+    if (role !== 'me' || S.st !== 'play' || S.paused || !climbOf() || P.lad || P.el) return false;
+    if (P.grip) { if (!P.grip.rope) P.slide = 1; return true; } // on a pipe: slide down fast
+    if (P.air || P.y < 1) return false;
     P.y -= STEP_UP + 2; P.vy = -60; P.air = true;
     return true;
   }
@@ -1305,6 +1374,16 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (!c.pass && Math.abs(P.y - base) < FH * 0.6) sideDodge(c);
       return;
     }
+    { const cl = climbOf(); for (let k = 0; k < cl.els.length; k++) { // an elevator car stops the fist; the knock stalls the car
+      const ex = cl.els[k].x - c.side * 56, car = R.el[k];
+      if (car.y > base - FH + 20 && car.y < base + 62 && (ex - x0) * c.side >= 0 && (ex - c.x) * c.side <= 0) {
+        c.x = ex - c.side * 36; c.phase = 'smash'; c.t = 0; S.shake = reduce ? 0 : 8; sfx.thud();
+        if (car.st === 'up') car.stall = 0.9;
+        if (!c.pass && P.el === k + 1) sideDodge(c);
+        return;
+      }
+    } }
+    if (P.el) return;
     if (!c.pass && (P.x - x0) * c.side >= -30 && (P.x - c.x) * c.side <= 36) {
       c.pass = true;
       const inRow = P.y > base - 14 && P.y < base + 62;
@@ -1479,6 +1558,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         for (let j = 0, n = (p.hp0 - p.hp) * 5; j < n; j++) box(p.x - 20 + (j % 5) * 8, ay + 12 + j * 12, 4, 12, '#181425');
         continue;
       }
+      if (p.wall) { // a shaft wall to kick off: concrete with magenta chevrons pointing up
+        box(p.x - 20, py, 40, ph, '#3a4466'); box(p.x - 20, py, 4, ph, '#8b9bb4'); box(p.x + 12, py, 8, ph, '#262b44');
+        for (let j = 0; j < 4; j++) { const cy = py + 20 + j * 44, lit = j < p.hp; for (let q = 0; q < 3; q++) { box(p.x - 12 + q * 4, cy + 8 - q * 4, 4, 4, lit ? '#f6757a' : '#262b44'); box(p.x + 8 - q * 4, cy + 8 - q * 4, 4, 4, lit ? '#f6757a' : '#262b44'); } }
+        continue;
+      }
       box(p.x - 28, py, 56, ph, '#262b44'); box(p.x - 28, py, 4, ph, '#5a6988'); box(p.x + 16, py, 12, ph, '#181425');
       box(p.x - 36, py, 72, 12, '#181425'); box(p.x - 36, py + ph - 16, 72, 16, '#181425'); box(p.x - 36, py + ph - 16, 72, 4, '#5a6988');
       // a neon strip up the pillar: one segment goes dark for every hit it has taken
@@ -1499,6 +1583,42 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       for (let q = 0, m = Math.round(Math.abs(s.x1 - s.x0) / 4); q <= m; q++) box(s.x0 + Math.sign(d) * q * 4 - (d < 0 ? 4 : 0), Math.round((base - rise - 48 - (q / m) * (FH - rise)) / 4) * 4, 4, 4, '#f6757a');
       for (let i = 0; i <= n; i += 3) { const px = s.x0 + (i + 0.5) * d, ty = base - Math.min(n, i + 1) * rise; box(px - 2, ty - 44, 4, 44, '#b55088'); }
     }
+    for (const d of cl.ledges) { // a ledge halfway up: jump onto it, then up through the floor above
+      const y = yOf(d.lv * FH + 100); if (!vis(y, 40)) continue;
+      box(d.x - d.w / 2, y, d.w, 12, '#181425'); box(d.x - d.w / 2, y, d.w, 4, '#2ce8f5'); box(d.x - d.w / 2, y + 4, d.w, 4, '#0099db');
+      box(d.x - d.w / 2 + 8, y + 12, 4, 16, '#3a4466'); box(d.x + d.w / 2 - 12, y + 12, 4, 16, '#3a4466'); box(d.x - 2, y - 100 + 12, 4, 88, '#3a4466');
+    }
+    for (const q of cl.pipes) { // drain pipes on the facade
+      const y1 = yOf((q.lv + q.n) * FH), y0 = yOf(q.lv * FH); if (!vis(y1 - 30, y0 - y1 + 30)) continue;
+      box(q.x - 8, y1 - 24, 16, y0 - y1 + 24, '#5a6988'); box(q.x - 8, y1 - 24, 4, y0 - y1 + 24, '#c0cbdc'); box(q.x + 4, y1 - 24, 4, y0 - y1 + 24, '#3a4466');
+      for (let y = y1 + 20; y < y0; y += 60) { box(q.x - 16, y, 32, 8, '#3a4466'); box(q.x - 16, y, 32, 4, '#8b9bb4'); }
+      box(q.x - 8, y1 - 28, 28, 8, '#5a6988'); box(q.x - 12, y0 - 20, 24, 8, '#feae34'); box(q.x - 12, y0 - 8, 24, 8, '#feae34');
+    }
+    for (const rp of cl.ropes) { // a rope from a beam two floors up; its orange grip hangs just above head height
+      const y1 = yOf((rp.lv + rp.n) * FH), y0 = yOf(rp.lv * FH + 110); if (!vis(y1 - 40, y0 - y1 + 60)) continue;
+      const held = P.grip && P.grip.rope && P.grip.x === rp.x, sway = held ? 0 : Math.round(Math.sin(now / 600 + rp.x) * 2) * 4;
+      box(rp.x - 32, y1 - 44, 64, 8, '#3a4466'); box(rp.x - 32, y1 - 44, 64, 4, '#8b9bb4'); box(rp.x - 30, y1 - 36, 4, 36, '#3a4466'); box(rp.x + 26, y1 - 36, 4, 36, '#3a4466');
+      for (let y = y1 - 36, k = 0; y < y0; y += 8, k++) box(rp.x - 2 + Math.round(sway * (y - y1) / (y0 - y1) / 4) * 4, y, 4, 8, k % 2 ? '#c0cbdc' : '#8b9bb4');
+      box(rp.x - 4 + sway, y0 - 4, 8, 20, '#feae34'); box(rp.x - 8 + sway, y0 + 16, 16, 8, '#feae34');
+    }
+    for (const pl of cl.plats) { // window-cleaning lift: cables from the top of its run, a railed deck
+      const yt = yOf((pl.lv + pl.n) * FH), y = yOf(platY(pl)); if (!vis(yt - 220, y - yt + 260)) continue;
+      box(pl.x - 60, yt - 200, 4, y - yt + 200, '#3a4466'); box(pl.x + 56, yt - 200, 4, y - yt + 200, '#3a4466');
+      box(pl.x - 72, y, 144, 12, '#5a6988'); box(pl.x - 72, y, 144, 4, '#c0cbdc');
+      for (let q = 0; q < 12; q++) box(pl.x - 72 + q * 12, y + 8, 12, 4, q % 2 ? '#181425' : '#feae34');
+      box(pl.x - 72, y - 48, 4, 48, '#8b9bb4'); box(pl.x + 68, y - 48, 4, 48, '#8b9bb4'); box(pl.x - 72, y - 48, 144, 4, '#8b9bb4');
+    }
+    cl.els.forEach((e, k) => { // elevator: a shaft of two rails and an open-fronted car
+      const car = R.el[k], yt = yOf((e.lv + e.n) * FH) - 170, yb = yOf(e.lv * FH); if (!vis(yt, yb - yt)) return;
+      box(e.x - 64, yt, 8, yb - yt, '#262b44'); box(e.x + 56, yt, 8, yb - yt, '#262b44'); box(e.x - 64, yt, 4, yb - yt, '#3a4466');
+      for (let y = yt + 20; y < yb; y += 40) { box(e.x - 60, y, 4, 4, '#0099db'); box(e.x + 56, y, 4, 4, '#0099db'); }
+      const cy = yOf(car.y) - 160, busy = car.st !== 'idle';
+      ctx.fillStyle = 'rgba(24, 20, 37, 0.7)'; ctx.fillRect(e.x - 52, cy + 12, 104, 148);
+      box(e.x - 56, cy, 112, 12, '#5a6988'); box(e.x - 56, cy, 112, 4, '#c0cbdc'); box(e.x - 56, cy + 12, 8, 148, '#5a6988'); box(e.x + 48, cy + 12, 8, 148, '#5a6988');
+      box(e.x - 40, cy + 16, 80, 4, '#2ce8f5'); box(e.x - 12, cy - 12, 24, 12, busy ? (Math.floor(now / 150) % 2 ? '#feae34' : '#f77622') : '#63c74d');
+      if (car.stall > 0) box(e.x - 56, cy + 80, 112, 4, '#e43b44');
+      for (let q = 0; q < 8; q++) box(e.x - 48 + q * 12, yb - 4, 12, 4, q % 2 ? '#181425' : '#feae34');
+    });
     for (const l of cl.ladders) {
       const ly = yOf((l.lv + 1) * FH);
       if (!vis(ly - 40, FH + 40)) continue;
@@ -1795,6 +1915,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const HOWTO = {
     me: [
       '<b>The climb</b>: after the house comes a building. Fists come from the <b>side</b> there and run along one floor. Change floors to dodge: stairs, a ladder (↑ at its foot climbs it, ← → lets go), a jump into a blinking hook, or ↓ to drop a floor. A pillar between you and the fist stops it. Inside, a fist has to smash the glass wall first: watch for the cracks. In the middle stretch you are outside on the facade, where the only way up is a window while its lamp is green.',
+      '<b>More ways up</b> (orange marks where to climb): a <b>drain pipe</b> outside skips two or three floors (↑ at its foot; ↓ slides back down, ← → lets go). Jump to catch a <b>rope</b> and it carries you up two floors; ← → leaps off it. Jump onto a glowing <b>ledge</b>, then up through the floor above. Between two <b>shaft walls</b> with pink arrows, jump and press ↑ again in the air to kick off the wall. The <b>window-cleaning lift</b> outside rides up and down by itself. Press ↑ inside the <b>elevator</b> to ride two floors: fists can\'t reach you in it, but every knock stalls the car.',
       '<b>Goal</b>: walk through the house, room by room, and out of the garage. The door on the right leads on. Run out of hearts and the turn passes to the 兄弟 who hit you most.',
       '<b>Move</b> with ← → (or A D), or drag on the arena. <b>Jump</b> with ↑ / W, the ▲ button, or a swipe up. Red shadows show where hands will land.',
       '<b>Furniture</b> blocks the way. Jump low pieces, climb tall ones from a smaller piece beside them, or stand next to the TV, fridge or wardrobe and let the 兄弟 smash it for you. A broken TV or fridge sparks for a second before the path is clear.',
@@ -1973,7 +2094,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     S.combo = 0; S.fireTier = 0; S.taunt = null; S.blockT = 0; S.blockCd = 0;
     S.dashCd = 0; S.iframe = 0; S.rage = 0; S.bell = 0; S.rainT = 0; S.queue = []; S.stunUntil = {}; S.sn = S.sn || {}; FX.ghosts = []; FX.holes = []; FX.parts = []; FX.cracks = []; FX.slow = 0; FX.hitstop = 0; banner('开打!', TOUCH ? 'Reach the door on the right · swipe up to jump' : 'Reach the door on the right · ↑ jumps', '#ffb703');
     loadRoom(S.startRm || 0); S.won = false; S.handT = null;
-    P.x = 110; P.vx = 0; P.y = 0; P.vy = 0; P.air = false; P.lad = null;
+    P.x = 110; P.vx = 0; P.y = 0; P.vy = 0; P.air = false; P.lad = null; P.grip = null; P.el = null; P.kt = 0;
     setOverlay(false); hud(0, 3); pushTarget(true); maybeBoard(S.hits); fitView();
   }
 
@@ -2150,7 +2271,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // ---------- 格挡 block / parry ----------
   S.blockT = 0; S.blockCd = 0;
   function tryBlock() {
-    if (role !== 'me' || S.st !== 'play' || S.blockCd > 0 || S.blockT > 0 || P.lad) return;
+    if (role !== 'me' || S.st !== 'play' || S.blockCd > 0 || S.blockT > 0 || P.lad || P.grip || P.el) return;
     S.blockT = 0.0001; S.blockCd = 1.2;
     sfx.blockUp();
   }
@@ -2246,7 +2367,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const ch = S.chops.map(c => [Math.round(c.x), Math.round(c.w), PH[c.phase], c.phase === 'warn' ? +(c.t / c.warn).toFixed(2) : Math.round(c.y), c.hit ? 1 : 0, c.sup ? 1 : 0, c.homing ? 1 : 0, c.yq ? 1 : 0, c.side | 0, c.row | 0]);
     room.presence({
       role: 'me', own: isOwner ? 1 : 0, st: S.st, pz: document.hidden || S.paused ? 1 : 0, pzm: S.paused ? 1 : 0, cd: S.cd != null ? Math.max(1, Math.ceil(S.cd)) : 0, cb: S.combo || 0, fire: S.fireTier || 0, cos: curCos, rn: S.rainT > 0 ? 1 : 0, bel: S.bell > 0 ? 1 : 0, sn: S.sn || {}, bl: S.blockT > 0 ? 1 : 0, pr: S.pr || 0, tt: S.taunt ? [S.taunt.id, S.taunt.i] : 0, x: Math.round(P.x), vx: Math.round(P.vx), lives: S.lives, score: S.score,
-      rm: R.i, y: Math.round(P.y), pp: R.props.map(propCode), won: S.won ? 1 : 0, gl: R.gl, gt: +S.t.toFixed(1),
+      rm: R.i, y: Math.round(P.y), pp: R.props.map(propCode), won: S.won ? 1 : 0, gl: R.gl, gt: +S.t.toFixed(1), ey: R.el.map(e => Math.round(e.y)),
       hurt: S.hurt > 0 ? 1 : 0, ch, hits: S.hits, aim: null, chop: null
     }).catch(() => {});
   }
