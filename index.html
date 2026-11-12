@@ -699,15 +699,48 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     addEventListener('pointerdown', unlock, true);
     addEventListener('keydown', unlock, true);
     const ok = () => !muted && ac && ac.state === 'running';
-    // Sound effects go through their own bus, kept well under the music so hits don't drown it.
-    let sg = null;
-    function sfxOut() { if (!sg) { sg = ac.createGain(); sg.gain.value = 0.42; sg.connect(ac.destination); } return sg; }
-    function tone(f0, f1, dur, type, vol, delay = 0) {
+    // ---- mix: music and effects meet on a master bus with a limiter, so stacked hits never clip ----
+    // Effects come in three tiers (big moments, feedback, constant chatter); big moments briefly duck
+    // the music. Pitched effects snap to the scale of the music that is playing, and effects pan to
+    // where they happen on screen. MUSIC_LEVEL sets the recorded tracks against the effects.
+    const MUSIC_LEVEL = 0.5, TIER_DB = { big: 0, fb: -4, c: -9 };
+    const TIER = { ouch: 'big', superThud: 'big', levelup: 'big', bell: 'big', yqHit: 'big', broken: 'big', over: 'big',
+      thud: 'fb', parry: 'fb', combo: 'fb', charged: 'fb', warn: 'fb', palmWarn: 'fb', rainWarn: 'fb', superWarn: 'fb', yqWarn: 'fb',
+      yqWave: 'fb', close: 'fb', taunt: 'fb', fakeOut: 'fb', ignite: 'fb', douse: 'fb', start: 'fb',
+      whoosh: 'c', swing: 'c', miss: 'c', blockUp: 'c', dash: 'c' };
+    let master = null, sg = null, duck = null;
+    function bus() {
+      if (!master) {
+        const lim = ac.createDynamicsCompressor();
+        lim.threshold.value = -6; lim.knee.value = 3; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.15;
+        master = ac.createGain(); master.connect(lim).connect(ac.destination);
+      }
+      return master;
+    }
+    function sfxOut() { if (!sg) { sg = ac.createGain(); sg.gain.value = 0.42; sg.connect(bus()); } return sg; }
+    function musicOut() { if (!duck) { duck = ac.createGain(); duck.connect(bus()); } return duck; }
+    let cur = { g: 1, pan: 0 }, nextPan = 0, scale = null;
+    const recent = {};
+    function voice() {
+      const g = ac.createGain(); g.gain.value = cur.g;
+      if (cur.pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = cur.pan; g.connect(p).connect(sfxOut()); }
+      else g.connect(sfxOut());
+      return g;
+    }
+    function snapF(f) {
+      if (!scale) return f;
+      const m = 69 + 12 * Math.log2(f / 440);
+      let best = Math.round(m), bd = 99;
+      for (let k = Math.floor(m) - 6; k <= Math.ceil(m) + 6; k++) if (scale.includes(((k % 12) + 12) % 12) && Math.abs(k - m) < bd) { bd = Math.abs(k - m); best = k; }
+      return 440 * Math.pow(2, (best - 69) / 12);
+    }
+    function tone(f0, f1, dur, type, vol, delay = 0, pitched = false) {
       if (!ok()) return;
+      if (pitched && scale) { const r = f1 / f0; f0 = snapF(f0); f1 = Math.abs(r - 1) < 0.03 ? f0 * r : snapF(f1); }
       const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
       o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
       g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      o.connect(g).connect(sfxOut()); o.start(t); o.stop(t + dur + 0.02);
+      o.connect(g).connect(voice()); o.start(t); o.stop(t + dur + 0.02);
     }
     function noise(dur, vol, f, sweep, delay = 0) {
       if (!ok()) return;
@@ -717,9 +750,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const fl = ac.createBiquadFilter(); fl.type = 'bandpass'; fl.Q.value = 1.2;
       fl.frequency.setValueAtTime(f, t); if (sweep) fl.frequency.exponentialRampToValueAtTime(sweep, t + dur);
       const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      src.connect(fl).connect(g).connect(sfxOut()); src.start(t); src.stop(t + dur + 0.02);
+      src.connect(fl).connect(g).connect(voice()); src.start(t); src.stop(t + dur + 0.02);
     }
-    // ---- background music: pentatonic chiptune loop, scheduled ahead of time ----
+    // ---- fallback music: the original synthesized chiptune themes, used when the recorded tracks in
+    // music/ can't load (for example when the page is opened straight from disk) ----
     let musicOff = false, musicOn = false, mg = null, timer = null, step = 0, nextT = 0, tempo = 1;
     try { musicOff = localStorage.getItem('chopMusic') === '0'; } catch (e) {}
     // One theme per stage (living room, dojo, rooftop, bamboo, volcano, space). Each has its own scale,
@@ -829,8 +863,68 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         nextT += spb; step++;
       }
     }
+    // ---- recorded music: one seamless loop per stage, plus the menu lobby and game over ----
+    // Files live in music/<id>.ogg. Each is an exact whole number of bars, so it loops with no gap.
+    const STAGE_TRACKS = ['living-room', 'dojo', 'rooftop', 'bamboo', 'volcano', 'space'];
+    const KEYS = { 'living-room': [0, 2, 4, 5, 7, 9, 10], dojo: [9, 0, 2, 4, 7], rooftop: [4, 6, 7, 9, 11, 1, 2], bamboo: [2, 4, 6, 9, 11],
+      volcano: [0, 1, 4, 5, 7, 8, 10], space: [5, 7, 8, 10, 0, 1, 3], menu: [7, 9, 11, 0, 2, 4, 6], 'game-over': [2, 4, 5, 7, 9, 10, 0] };
+    const bufs = {}, failed = {}, offsets = {};
+    let stageIdx = 0, want = null, playing = null, wantScene = null, preloaded = false;
+    function loadTrack(id) {
+      if (bufs[id] || failed[id]) return bufs[id];
+      if (location.protocol === 'file:') { failed[id] = true; return null; }
+      bufs[id] = fetch('music/' + id + '.ogg')
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+        .then(a => new Promise((res, rej) => ac.decodeAudioData(a, res, rej)))
+        .then(b => { bufs[id] = b; return b; })
+        .catch(() => { failed[id] = true; delete bufs[id]; });
+      return bufs[id];
+    }
+    function preload() { // after the first tap: the lobby first, then stages in play order
+      if (preloaded || !ac) return; preloaded = true;
+      ['menu', 'living-room', 'game-over', 'dojo', 'rooftop', 'bamboo', 'volcano', 'space']
+        .reduce((p, id) => p.then(() => loadTrack(id)), Promise.resolve());
+    }
+    function stopTrack(fade = 0.35) {
+      if (!playing) return;
+      const p = playing; playing = null;
+      offsets[p.id] = (p.off + ac.currentTime - p.t0) % p.src.buffer.duration;
+      p.g.gain.cancelScheduledValues(ac.currentTime);
+      p.g.gain.setTargetAtTime(0, ac.currentTime, fade / 4);
+      try { p.src.stop(ac.currentTime + fade + 0.05); } catch (e) {}
+    }
+    function startTrack(id, buf) {
+      const src = ac.createBufferSource(), g = ac.createGain();
+      src.buffer = buf; src.loop = true;
+      g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.setTargetAtTime(MUSIC_LEVEL, ac.currentTime, 0.08);
+      src.connect(g).connect(musicOut());
+      // game over always starts from the top; the lobby and stages pick up where they left off
+      const off = id === 'game-over' ? 0 : (offsets[id] || 0), t0 = ac.currentTime + 0.02;
+      src.start(t0, off);
+      playing = { id, src, g, t0, off };
+    }
+    // scene: 'stage' while a round runs, 'over' after a round, 'menu' in the lobby, null for silence
+    function scene(sc) {
+      if (!ac || ac.state !== 'running') return;
+      if (!preloaded) preload();
+      const on = !musicOff && !muted;
+      const id = !on || !sc ? null : sc === 'stage' ? STAGE_TRACKS[stageIdx] : sc === 'over' ? 'game-over' : 'menu';
+      // a fresh round (from the lobby or game over) starts the stage tracks from the top; a resume after a pause continues
+      if (sc === 'stage' && wantScene && wantScene !== 'stage') STAGE_TRACKS.forEach(t => { offsets[t] = 0; });
+      wantScene = sc; want = id;
+      scale = id ? KEYS[id] : null;
+      if (playing && playing.id !== id) stopTrack();
+      let fallback = false;
+      if (id && !playing) {
+        if (failed[id]) fallback = sc === 'stage';
+        else { const b = loadTrack(id); if (b instanceof AudioBuffer) startTrack(id, b); }
+      }
+      setMusic(fallback);
+    }
+    addEventListener('visibilitychange', () => { if (document.hidden && playing && ac) stopTrack(0.1); });
     function setLevel(level) {
       level = Math.max(1, level | 0);
+      stageIdx = Math.min(STAGE_TRACKS.length - 1, level - 1);
       tier = Math.min(4, level - 1);
       const t = THEMES[Math.min(THEMES.length - 1, level - 1)];
       if (t !== theme) { theme = t; step = 0; }
@@ -842,7 +936,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (want === musicOn) return;
       musicOn = want;
       if (want) {
-        mg = ac.createGain(); mg.gain.value = 0.62; mg.connect(ac.destination);
+        mg = ac.createGain(); mg.gain.value = 0.62; mg.connect(musicOut());
         step = 0; nextT = ac.currentTime + 0.05;
         timer = setInterval(schedule, 40); schedule();
       } else {
@@ -851,44 +945,67 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       }
     }
 
-    return {
-      music: setMusic,
+    const P = true; // marks a pitched effect that should follow the music's key
+    const api = {
+      scene,
       setLevel,
+      // where the next effect happens, as a world x position (pans it left or right)
+      at(x) { nextPan = clamp((x / W) * 2 - 1, -1, 1) * 0.5; return api; },
       setTempo(x) { tempo = clamp(x, 1, 1.5); },
       get musicOff() { return musicOff; },
       toggleMusic() { musicOff = !musicOff; try { localStorage.setItem('chopMusic', musicOff ? '0' : '1'); } catch (e) {} if (!musicOff) unlock(); return musicOff; },
       get muted() { return muted; },
       toggle() { muted = !muted; try { localStorage.setItem('chopMute', muted ? '1' : '0'); } catch (e) {} if (!muted) unlock(); return muted; },
-      warn() { tone(880, 880, 0.05, 'square', 0.05); tone(880, 880, 0.05, 'square', 0.05, 0.11); },
+      warn() { tone(880, 880, 0.05, 'square', 0.05, 0, P); tone(880, 880, 0.05, 'square', 0.05, 0.11, P); },
       whoosh() { noise(0.22, 0.35, 400, 3200); },
       thud() { tone(150, 42, 0.28, 'sine', 0.55); noise(0.12, 0.4, 260); },
       superWarn() { tone(180, 900, 0.9, 'sawtooth', 0.12); tone(90, 450, 0.9, 'square', 0.06); },
       superThud() { tone(110, 28, 0.6, 'sine', 0.8); noise(0.45, 0.6, 180, 60); tone(60, 30, 0.5, 'square', 0.15); },
       taunt() { tone(700, 640, 0.12, 'square', 0.08); tone(940, 860, 0.2, 'square', 0.08, 0.14); tone(470, 430, 0.2, 'triangle', 0.06, 0.14); },
       blockUp() { noise(0.08, 0.2, 1500, 3000); },
-      parry(perfect) { tone(1250, 1180, 0.28, 'square', 0.1); tone(1880, 1760, 0.32, 'triangle', 0.1); noise(0.12, 0.25, 5000);
-        if (perfect) [1319, 1760, 2637].forEach((f, i) => tone(f, f, 0.12, 'triangle', 0.09, 0.08 + i * 0.06)); },
+      parry(perfect) { tone(1250, 1180, 0.28, 'square', 0.1, 0, P); tone(1880, 1760, 0.32, 'triangle', 0.1, 0, P); noise(0.12, 0.25, 5000);
+        if (perfect) [1319, 1760, 2637].forEach((f, i) => tone(f, f, 0.12, 'triangle', 0.09, 0.08 + i * 0.06, P)); },
       broken() { tone(320, 70, 0.4, 'sawtooth', 0.16); noise(0.25, 0.35, 400, 120); },
       dash() { noise(0.18, 0.3, 800, 4000); tone(500, 900, 0.12, 'triangle', 0.06); },
-      bell() { tone(196, 192, 1.2, 'sine', 0.35); tone(392, 388, 1.0, 'sine', 0.15); tone(587, 580, 0.8, 'triangle', 0.06); },
-      rainWarn() { [523, 466, 415, 349, 311].forEach((f, i) => tone(f, f * 0.97, 0.16, 'sawtooth', 0.09, i * 0.09)); noise(0.8, 0.12, 300, 1200); },
+      bell() { tone(196, 192, 1.2, 'sine', 0.35, 0, P); tone(392, 388, 1.0, 'sine', 0.15, 0, P); tone(587, 580, 0.8, 'triangle', 0.06, 0, P); },
+      rainWarn() { [523, 466, 415, 349, 311].forEach((f, i) => tone(f, f * 0.97, 0.16, 'sawtooth', 0.09, i * 0.09, P)); noise(0.8, 0.12, 300, 1200); },
       fakeOut() { tone(520, 300, 0.25, 'triangle', 0.08); tone(300, 520, 0.25, 'triangle', 0.06, 0.12); },
-      palmWarn() { [110, 165, 220, 330].forEach(f => tone(f, f, 1.6, 'sine', 0.08)); tone(880, 875, 1.2, 'triangle', 0.04, 0.2); tone(1320, 1310, 0.9, 'triangle', 0.025, 0.5); },
+      palmWarn() { [110, 165, 220, 330].forEach(f => tone(f, f, 1.6, 'sine', 0.08, 0, P)); tone(880, 875, 1.2, 'triangle', 0.04, 0.2, P); tone(1320, 1310, 0.9, 'triangle', 0.025, 0.5, P); },
       yqWarn() { tone(300, 110, 0.9, 'sawtooth', 0.06); tone(304, 108, 0.9, 'sawtooth', 0.06); noise(0.9, 0.08, 900, 200); },
       yqWave() { noise(0.45, 0.35, 300, 2400, 0.04); tone(70, 140, 0.4, 'sawtooth', 0.12, 0.04); },
       yqHit() { tone(1400, 60, 0.25, 'square', 0.11); tone(90, 28, 0.45, 'sine', 0.6); noise(0.3, 0.3, 2500, 200); },
       ignite(tier) { noise(0.5, 0.3, 300, 3000); tone(220 * tier, 440 * tier, 0.35, 'sawtooth', 0.07); },
       douse() { noise(0.6, 0.25, 3000, 200); tone(400, 120, 0.4, 'triangle', 0.06); },
-      charged() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, 0.08, 'triangle', 0.1, i * 0.05)); },
-      miss() { tone(660, 990, 0.12, 'triangle', 0.12); },
+      charged() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, 0.08, 'triangle', 0.1, i * 0.05, P)); },
+      miss() { tone(660, 990, 0.12, 'triangle', 0.12, 0, P); },
       ouch() { tone(560, 170, 0.38, 'sawtooth', 0.16); tone(430, 140, 0.38, 'square', 0.07, 0.03); },
       swing() { noise(0.15, 0.25, 600, 2600); },
-      close() { tone(1200, 1800, 0.12, 'triangle', 0.12); tone(1800, 2400, 0.1, 'triangle', 0.08, 0.08); },
-      combo() { [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.09, 'square', 0.1, i * 0.06)); },
-      levelup() { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f * 1.01, 0.1, 'square', 0.1, i * 0.05)); noise(0.5, 0.15, 1500, 6000); },
-      start() { [262, 330, 392, 523].forEach((f, i) => tone(f, f, 0.1, 'square', 0.09, i * 0.08)); },
-      over() { [392, 330, 262, 196].forEach((f, i) => tone(f, f * 0.98, 0.22, 'square', 0.11, i * 0.18)); }
+      close() { tone(1200, 1800, 0.12, 'triangle', 0.12, 0, P); tone(1800, 2400, 0.1, 'triangle', 0.08, 0.08, P); },
+      combo() { [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.09, 'square', 0.1, i * 0.06, P)); },
+      levelup() { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f * 1.01, 0.1, 'square', 0.1, i * 0.05, P)); noise(0.5, 0.15, 1500, 6000); },
+      start() { [262, 330, 392, 523].forEach((f, i) => tone(f, f, 0.1, 'square', 0.09, i * 0.08, P)); },
+      over() { [392, 330, 262, 196].forEach((f, i) => tone(f, f * 0.98, 0.22, 'square', 0.11, i * 0.18, P)); }
     };
+    // every effect goes through its tier gain, a voice cap (two of the same sound per 80 ms at most),
+    // its pan, and, for big moments, a short dip in the music
+    Object.keys(TIER).forEach(name => {
+      const fn = api[name];
+      api[name] = (...a) => {
+        const pan = nextPan; nextPan = 0;
+        if (!ok()) return;
+        const now = ac.currentTime, r = (recent[name] || []).filter(t => now - t < 0.08);
+        if (r.length >= 2) return;
+        r.push(now); recent[name] = r;
+        cur = { g: Math.pow(10, TIER_DB[TIER[name]] / 20), pan };
+        fn(...a);
+        cur = { g: 1, pan: 0 };
+        if (TIER[name] === 'big' && duck) {
+          duck.gain.cancelScheduledValues(now); duck.gain.setValueAtTime(duck.gain.value, now);
+          duck.gain.setTargetAtTime(0.56, now, 0.005); duck.gain.setTargetAtTime(1, now + 0.06, 0.12);
+        }
+      };
+    });
+    return api;
   })();
   const muteBtn = document.getElementById('mute');
   function paintMute() { muteBtn.textContent = sfx.muted ? 'Sound off' : 'Sound on'; muteBtn.setAttribute('aria-pressed', sfx.muted ? 'true' : 'false'); }
@@ -1325,7 +1442,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         if (!c.waveHit && !c.hit && S.st === 'play' && S.hurt <= 0 && d < r + P.w / 2 - 12) {
           c.waveHit = true;
           if (S.iframe > 0) { S.pops.push({ x: P.x, y: FLOOR - 150, txt: '闪!', t: 0, col: '#7fe3ff', size: 28 }); }
-          else if (S.bell > 0 || S.blockT > 0) { S.pops.push({ x: P.x, y: FLOOR - 150, txt: '挡住!', t: 0, col: '#5dff9b', size: 28 }); sfx.blockUp(); }
+          else if (S.bell > 0 || S.blockT > 0) { S.pops.push({ x: P.x, y: FLOOR - 150, txt: '挡住!', t: 0, col: '#5dff9b', size: 28 }); sfx.at(P.x).blockUp(); }
           else {
             S.lives--; S.hurt = 1.1; buzz(S.lives <= 0 ? [120, 60, 220] : 120); S.combo = 0; S.taunt = null; hitFx(P.x); S.shake = reduce ? 0 : 18;
             S.hits[c.from] = (S.hits[c.from] || 0) + 1;
@@ -1336,12 +1453,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         }
       }
       if (c.phase === 'warn' && c.t >= c.warn && c.fake) { c.dead = true; S.pops.push({ x: c.x, y: FLOOR - 60, txt: '假的~', t: 0, col: '#c9b6de', size: 26 }); sfx.fakeOut(); }
-      else if (c.phase === 'warn' && c.t >= c.warn) { c.phase = 'drop'; c.t = 0; sfx.whoosh(); }
+      else if (c.phase === 'warn' && c.t >= c.warn) { c.phase = 'drop'; c.t = 0; sfx.at(c.x).whoosh(); }
       else if (c.phase === 'drop') {
         c.y += dropV() * (c.yq ? 2 : c.sup ? 0.75 : 1) * dt;
         if (c.y >= FLOOR - 60) {
           c.y = FLOOR - 60; c.phase = 'smash'; c.t = 0;
-          S.shake = reduce ? 0 : 8 + Math.min(8, S.speed); sfx.thud(); smashFx(c.x, c.w); if (c.sup) superFx(c.x); if (c.yq) yqFx(c.x);
+          S.shake = reduce ? 0 : 8 + Math.min(8, S.speed); sfx.at(c.x).thud(); smashFx(c.x, c.w); if (c.sup) superFx(c.x); if (c.yq) yqFx(c.x);
           const hit = Math.abs(c.x - P.x) < (c.w / 2 + P.w / 2 - 14) && !(S.iframe > 0);
           if (c.yq) { c.wave = 0; if (Math.abs(c.x - P.x) < (c.w / 2 + P.w / 2 - 14)) c.waveHit = true; }
           if (hit && S.bell > 0 && S.st === 'play') {
@@ -1352,7 +1469,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
             if (S.blockT > 0) { S.pops.push({ x: P.x, y: FLOOR - 175, txt: '破防!', t: 0, col: '#ffb703', size: 32 }); sfx.broken(); S.pr = [(S.prId = (S.prId || 0) + 1), 3]; S.blockT = 0; }
             S.lives--; S.hurt = 1.1; c.hit = true; buzz(S.lives <= 0 ? [120, 60, 220] : 120); S.combo = 0; S.taunt = null; hitFx(P.x); S.shake = reduce ? 0 : 18;
             S.hits[c.from] = (S.hits[c.from] || 0) + 1;
-            S.pops.push({ x: P.x, y: FLOOR - 130, txt: '啊!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch();
+            S.pops.push({ x: P.x, y: FLOOR - 130, txt: '啊!', t: 0, col: '#ff5d73', size: 38 }); sfx.at(P.x).ouch();
             maybeBoard(S.hits);
             if (S.lives <= 0) gameOver();
           } else if (!hit && S.st === 'play') {
@@ -1367,7 +1484,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
               S.pops.push({ x: P.x, y: FLOOR - 140, txt: '好险! +2', t: 0, col: '#7fe3ff', size: 28 });
               FX.slow = reduce ? 0 : 0.3; sfx.close();
               burst(P.x, FLOOR - 60, 10, ['#7fe3ff', '#fff4e0'], 300, 1, 500, 4);
-            } else { S.pops.push({ x: c.x, y: FLOOR - 100, txt: '+1', t: 0, col: '#ffb703' }); sfx.miss(); }
+            } else { S.pops.push({ x: c.x, y: FLOOR - 100, txt: '+1', t: 0, col: '#ffb703' }); sfx.at(c.x).miss(); }
             if (S.combo % 5 === 0) { banner(`${S.combo} 连闪!`, `${S.combo}-dodge streak`, '#ffb703'); sfx.combo(); FX.flash = reduce ? 0.08 : 0.2; FX.flashCol = '255,183,3'; }
             const after = levelOf(S.score);
             if (after > before) { banner(`LV ${after} 加速!`, handsFor(after) > handsFor(before) ? `兄弟 now throw ${handsFor(after)} hands at once` : 'Chops come faster now', '#ff5d73'); sfx.levelup(); lifeUp(); FX.flash = reduce ? 0.1 : 0.35; FX.flashCol = '255,244,224'; }
@@ -2814,7 +2931,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (tp) {
       const lives = +tp.lives;
       if (lives < B.lastLives && B.lastTarget === t.peer) {
-        B.pops.push({ x: B.tx, y: FLOOR - 130, txt: '打中!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch(); hitFx(B.tx); shakeB = reduce ? 0 : 16; B.taunt = null;
+        B.pops.push({ x: B.tx, y: FLOOR - 130, txt: '打中!', t: 0, col: '#ff5d73', size: 38 }); sfx.at(B.tx).ouch(); hitFx(B.tx); shakeB = reduce ? 0 : 16; B.taunt = null;
       }
       B.lastLives = lives; B.lastTarget = t.peer;
       const sc = +tp.score || 0, cb = +tp.cb || 0;
@@ -2942,7 +3059,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
           renderWard();
         }
       }
-      sfx.music(S.st === 'play' && !S.paused); sfx.setLevel(levelOf(S.score));
+      sfx.setLevel(levelOf(S.score)); sfx.scene(S.paused ? null : S.st === 'play' ? 'stage' : S.st === 'over' ? 'over' : 'menu');
       if (S.paused) { /* round frozen */ }
       else if (FX.hitstop > 0) FX.hitstop -= dt;
       else if (S.st === 'play') { FX.slow = Math.max(0, FX.slow - dt); update(FX.slow > 0 ? dt * 0.4 : dt); }
@@ -2959,7 +3076,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       }
       B.cool -= dt; B.fakeCool -= dt; B.homeCool -= dt; B.stunT -= dt; B.yqCool = (B.yqCool || 0) - dt;
       const tpm = remoteTarget();
-      sfx.music(!!tpm && tpm.presence.st === 'play' && !tpm.presence.pz); sfx.setLevel(levelOf(tpm && tpm.presence.score));
+      sfx.setLevel(levelOf(tpm && tpm.presence.score)); sfx.scene(!tpm ? 'menu' : tpm.presence.pz ? null : tpm.presence.st === 'play' ? 'stage' : tpm.presence.st === 'over' ? 'over' : 'menu');
       followCam(B.tx, dt);
       drawBroView(dt);
     }
