@@ -47,6 +47,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - 我 (dodger): move, block/perfect block (↓/S/Space), dash (Shift), Golden Bell (E, Rage meter),
   perfect-block stun, on-fire streak buff (5/10/20 combo → +10/20/30% speed), taunts, six unlockable
   costumes (`COS`) each with its own move set (`MOVES`).
+- On-fire speed look (5/10/20 combo tiers, colours in `SPD`): `drawTrail`/`trailSnap` (flat tier-coloured afterimages
+  copied from the lit sprite, faded by ordered dither), `fireAura` (three-tone pixel flame, 8 fps flicker, leans back),
+  `feetFx` (dust per step, heel sparks from x10) and `boltFx` (lightning at x20).
+- Streak captions: `stampFx`/`drawStamp` (manga stamp that slams in on a tier-up, with shake and ink) and
+  `comboMeter` (top-right counter that bumps per dodge, fills to the next tier and shatters with 断! when the streak breaks).
 - 兄弟 (puncher): tap to chop, formations (1/2/3), feint (F), homing (H), 黄泉指 Underworld Finger (Y),
   如来神掌 Buddha Palm (charged super), Punch Rain ultimate (R).
 - 黄泉指: the portal chases 我 during the warning (`YQ_TRACK` px/s), the finger snakes down at 2x speed, and
