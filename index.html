@@ -219,11 +219,16 @@
     const link = document.getElementById('netLink');
     link.value = inviteUrl;
     link.addEventListener('focus', () => link.select());
+    // Phones get the system share sheet (Messages, WhatsApp, …); computers copy the link.
+    const canShare = !!navigator.share && matchMedia('(pointer: coarse)').matches;
+    const label = canShare ? 'Share invite' : 'Copy invite link';
+    document.getElementById('netCopy').textContent = label;
     document.getElementById('netCopy').addEventListener('click', () => {
       const btn = document.getElementById('netCopy');
-      const done = () => { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy invite link', 1500); };
-      if (navigator.clipboard) navigator.clipboard.writeText(inviteUrl).then(done, () => { link.select(); });
-      else link.select();
+      const done = () => { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = label, 1500); };
+      const copy = () => { if (navigator.clipboard) navigator.clipboard.writeText(inviteUrl).then(done, () => { link.select(); }); else link.select(); };
+      if (canShare) navigator.share({ title: 'Punch Your Friend', text: 'Come punch me in Punch Your Friend!', url: inviteUrl }).catch(e => { if (!e || e.name !== 'AbortError') copy(); });
+      else copy();
     });
     document.getElementById('netNew').addEventListener('click', () => { try { sessionStorage.removeItem('pyfHost'); } catch (e) {} location.href = location.pathname; });
     const sub = document.querySelector('.sub');
@@ -406,6 +411,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     </div>
   </div>
   <p class="status" id="status"></p>
+  <p class="rotateTip" id="rotateTip">Turn your phone sideways for a bigger arena.</p>
   <div class="pads" id="pads">
     <button class="pad" id="left" aria-label="Move left">◀</button>
     <button class="pad chop" id="chopBtn" hidden>砍!</button>
@@ -452,10 +458,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const cv = document.getElementById('c'), out = cv.getContext('2d');
   // Pixel pipeline: the world is drawn full size offscreen, shrunk 3x, then blown back up with hard pixels.
   // Text is recorded and drawn afterwards in pixel fonts so it stays readable.
-  const wc = document.createElement('canvas'); wc.width = cv.width; wc.height = cv.height;
+  // On phones the world is drawn straight at the shrunk size (a quarter of the pixels, one pass less).
+  const PX = 2, LOWRES = matchMedia('(pointer: coarse)').matches;
+  const wc = document.createElement('canvas');
+  wc.width = LOWRES ? Math.round(cv.width / PX) : cv.width; wc.height = LOWRES ? Math.round(cv.height / PX) : cv.height;
   const ctx = wc.getContext('2d');
-  const PX = 2, sc = document.createElement('canvas');
-  sc.width = Math.round(cv.width / PX); sc.height = Math.round(cv.height / PX);
+  if (LOWRES) ctx.scale(1 / PX, 1 / PX);
+  const TXT_BASE = new DOMMatrix(LOWRES ? [PX, 0, 0, PX, 0, 0] : [1, 0, 0, 1, 0, 0]);
+  const sc = LOWRES ? wc : document.createElement('canvas');
+  if (!LOWRES) { sc.width = Math.round(cv.width / PX); sc.height = Math.round(cv.height / PX); }
   const sctx = sc.getContext('2d');
   const PF = '"Press Start 2P", "DotGothic16", monospace';
   const HF = '"DotGothic16", "Press Start 2P", "ZCOOL KuaiLe", "PingFang SC", monospace';
@@ -464,15 +475,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     TXT.push({ t: String(t), x, y, m: ctx.getTransform(), font: ctx.font, fill: ctx.fillStyle, a: ctx.globalAlpha, al: ctx.textAlign, bl: ctx.textBaseline });
   };
   function present() {
-    sctx.imageSmoothingEnabled = true;
-    sctx.clearRect(0, 0, sc.width, sc.height);
-    sctx.drawImage(wc, 0, 0, sc.width, sc.height);
+    if (!LOWRES) {
+      sctx.imageSmoothingEnabled = true;
+      sctx.clearRect(0, 0, sc.width, sc.height);
+      sctx.drawImage(wc, 0, 0, sc.width, sc.height);
+    }
     out.setTransform(1, 0, 0, 1, 0, 0);
     out.imageSmoothingEnabled = false;
     out.clearRect(0, 0, cv.width, cv.height);
     out.drawImage(sc, 0, 0, cv.width, cv.height);
     for (const r of TXT) {
-      out.setTransform(r.m); out.font = r.font; out.globalAlpha = r.a; out.textAlign = r.al; out.textBaseline = r.bl;
+      out.setTransform(TXT_BASE.multiply(r.m)); out.font = r.font; out.globalAlpha = r.a; out.textAlign = r.al; out.textBaseline = r.bl;
       if (r.fill !== '#2b1d3a') { out.fillStyle = '#1b1430'; out.fillText(r.t, r.x + 3, r.y + 3); }
       out.fillStyle = r.fill; out.fillText(r.t, r.x, r.y);
     }
@@ -651,6 +664,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   let best = 0;
   try { best = +localStorage.getItem('chopBest') || 0; } catch (e) {}
 
+  // ---------- phone niceties: vibration, keep the screen awake ----------
+  const buzz = ms => { try { if (navigator.vibrate && !sfx.muted) navigator.vibrate(ms); } catch (e) {} };
+  let wakeLock = null;
+  async function keepAwake() {
+    if (wakeLock || document.hidden || !('wakeLock' in navigator)) return;
+    try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } catch (e) {}
+  }
+  addEventListener('pointerdown', keepAwake, { passive: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAwake(); });
   // ---------- shared state ----------
   let room = null, user = null, myPeer = null, isOwner = false;
   let role = 'me';           // 'me' (dodger) or 'bro' (chopper)
@@ -740,6 +762,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
   function renderRole() {
     renderHowto();
+    document.body.classList.toggle('is-bro', role === 'bro');
     $('broMoves').hidden = role !== 'bro';
     $('wardrobe').hidden = role !== 'me';
     $('broTools').hidden = role !== 'bro';
@@ -964,7 +987,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
             parry(c, S.blockT <= 0.15);
           } else if (hit && S.hurt <= 0 && S.st === 'play') {
             if (S.blockT > 0) { S.pops.push({ x: P.x, y: FLOOR - 175, txt: '破防!', t: 0, col: '#ffb703', size: 32 }); sfx.broken(); S.pr = [(S.prId = (S.prId || 0) + 1), 3]; S.blockT = 0; }
-            S.lives--; S.hurt = 1.1; c.hit = true; S.combo = 0; S.taunt = null; hitFx(P.x); S.shake = reduce ? 0 : 18;
+            S.lives--; S.hurt = 1.1; c.hit = true; buzz(S.lives <= 0 ? [120, 60, 220] : 120); S.combo = 0; S.taunt = null; hitFx(P.x); S.shake = reduce ? 0 : 18;
             S.hits[c.from] = (S.hits[c.from] || 0) + 1;
             S.pops.push({ x: P.x, y: FLOOR - 130, txt: '啊!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch();
             maybeBoard(S.hits);
@@ -1023,6 +1046,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     c.phase = 'up'; c.t = 0; c.y -= 30;            // the hand bounces off
     S.blockT = 0; S.blockCd = perfect ? 0.2 : 0.8;  // perfect parry recovers almost instantly
     S.pr = [(S.prId = (S.prId || 0) + 1), perfect ? 2 : 1];
+    if (perfect) buzz(30);
     S.pops.push({ x: P.x, y: FLOOR - 175, txt: perfect ? `完美格挡! +${pts}` : '格挡 +1', t: 0, col: perfect ? '#7fe3ff' : '#fff4e0', size: perfect ? 32 : 26 });
     burst(P.x, FLOOR - 128, perfect ? 22 : 10, ['#7fe3ff', '#fff4e0', '#ffb703'], perfect ? 520 : 320, 1, 700, 4);
     FX.flash = reduce ? 0.1 : perfect ? 0.35 : 0.15; FX.flashCol = '127,227,255';
@@ -2339,9 +2363,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         if (!first && TAUNTS[i]) { B.taunt = { txt: TAUNTS[i], t: 0 }; sfx.taunt(); }
       } else if (!tt && B.ttId === undefined) B.ttId = null;
       hud(+tp.score || 0, lives);
+      const hadHits = B.myHits;
       B.myHits = 0;
       const h = tp.hits || {};
       for (const k in h) if (k === myPeer || (myId && k === myId)) B.myHits += +h[k] || 0;
+      if (B.myHits > hadHits) buzz(60);
       $('best').textContent = B.myHits;
       maybeBoard(h);
       const st = tp.st;
@@ -2578,6 +2604,68 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
 <style>
 [hidden] { display: none !important; }
+/* ---------- phones ---------- */
+html { -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+button { touch-action: manipulation; }
+.rotateTip { display: none; margin: 0; text-align: center; font-size: 12px; color: var(--muted); }
+@media (pointer: coarse) {
+  .inv-name input, .inv-link input { font-size: 16px; } /* below 16px iOS zooms in on focus */
+}
+@media (orientation: portrait) and (max-width: 600px) {
+  body { padding-block: 10px; }
+  .wrap { gap: 8px; }
+  .head .sub { display: none; }
+  .invite { padding: 8px 10px; gap: 6px; }
+  .inv-row { gap: 6px; }
+  .inv-name { font-size: 12px; }
+  .inv-name input { width: 7em; padding: 4px 6px; }
+  .inv-link { flex: 1 1 auto; min-width: 0; }
+  .inv-link input { display: none; }
+  .inv-link button { flex: 1; padding: 10px 12px; }
+  .inv-status { font-size: 12px; line-height: 1.35; }
+  .hud .val { font-size: 15px; }
+  .hearts { font-size: 18px; }
+  .pad { padding: 18px 8px; }
+}
+@media (orientation: portrait) and (max-width: 600px) and (pointer: coarse) {
+  .rotateTip { display: block; }
+}
+/* Landscape phone: the arena in the middle, thumb controls on both sides, everything else below. */
+@media (orientation: landscape) and (max-height: 540px) {
+  body { padding-block: 6px; padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); --side: 96px; --chrome: 58px; }
+  body.is-bro { --chrome: 104px; }
+  .wrap { display: grid; max-width: none; grid-template-columns: minmax(var(--side), 1fr) auto minmax(var(--side), 1fr); grid-template-rows: auto repeat(4, minmax(0, 1fr)) auto; column-gap: 10px; row-gap: 6px; }
+  .wrap > * { grid-column: 1 / -1; }
+  .hud { grid-column: 2; grid-row: 1; align-items: center; }
+  .hud .label { font-size: 9px; }
+  .hud .val { font-size: 14px; }
+  .hearts { font-size: 16px; }
+  #status { grid-column: 3; grid-row: 1; font-size: 10px; text-align: right; align-self: center; min-height: 0; line-height: 1.25; }
+  .stage { grid-column: 2; grid-row: 2 / 6; min-width: 0; align-self: start;
+    width: min(calc(100vw - 2 * var(--side) - 20px - max(8px, env(safe-area-inset-left, 0px)) - max(8px, env(safe-area-inset-right, 0px))), calc((100svh - var(--chrome)) * 2.5)); }
+  .pads, #meSkills, #broMoves { display: contents; }
+  .pad { padding: 4px; font-size: 20px; min-height: 0; }
+  .pad.chop, .pad.block { font-size: 28px; }
+  #left { grid-column: 1; grid-row: 2 / 4; }
+  #right { grid-column: 1; grid-row: 4 / 6; }
+  #blockBtn, #chopBtn { grid-column: 3; grid-row: 2 / 4; }
+  #dashBtn { grid-column: 3; grid-row: 4; }
+  #bellBtn { grid-column: 3; grid-row: 5; }
+  .skill { font-size: 15px; padding: 4px; min-height: 0; }
+  .skill small { font-size: 10px; }
+  .seg { grid-column: 1; grid-row: 6; padding: 2px; gap: 2px; }
+  .seg button { font-size: 12px; padding: 3px 0; }
+  .seg button small { display: none; }
+  #broTools { grid-column: 2; grid-row: 6; gap: 6px; }
+  #fakeBtn { grid-column: 3; grid-row: 4 / 6; font-size: 16px; }
+  .head { grid-row: 7; margin-top: 14px; }
+  .invite { grid-row: 8; }
+  #wardrobe { grid-row: 9; }
+  #keys { grid-row: 10; }
+  .howto { grid-row: 11; }
+  .board { grid-row: 12; }
+}
 :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; font-size: 14px; }
 img { max-width: 100%; }
