@@ -2147,9 +2147,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const X = left - pad * PX, Y = top - pad * PX, DW = pw * PX, DH = ph * PX;
     main.drawImage(SPR, 0, 0, pw, ph, X, Y, DW, DH);
     main.restore();
-    LS.X = X; LS.Y = Y; LS.pw = pw; LS.ph = ph;
   }
-  const LS = { X: 0, Y: 0, pw: 0, ph: 0 };
 
   const COS = [
     { id: 'hoodie', name: 'Hoodie', zh: '卫衣', lv: 1, body: '#ff8c42', legs: '#2b1d3a', hair: '#3b2314', skin: '#f2c094', scarf: '#7fe3ff' },
@@ -2233,7 +2231,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
   function player(x, vx, hurt, danger, label, taunting, blocking, ci) {
     litSprite(x - 110, FLOOR - 245, 220, 262, () => playerRaw(x, vx, hurt, danger, null, taunting, blocking, ci));
-    trailSnap(x);
     if (label) { ctx.fillStyle = '#ffb703'; ctx.font = '8px ' + PF; ctx.textAlign = 'center'; ctx.fillText(label, x, FLOOR + 40); }
   }
   function playerRaw(x, vx, hurt, danger, label, taunting, blocking, ci) {
@@ -2553,53 +2550,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     sfx.douse();
   }
   // ---------- on-fire speed look ----------
-  // A: pixel afterimages (flat tier-coloured copies of 我, faded with an ordered dither, not alpha)
-  // D: dust puffs per step, heel sparks from x10, crackling lightning at x20
-  const SPD = [null, ['#be4a2f', '#f77622', '#feae34', '#fee761'], ['#a22633', '#e43b44', '#f77622', '#feae34'], ['#124e89', '#0099db', '#2ce8f5', '#ffffff']];
-  const fh = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-  const TRAIL = { hist: [], acc: 0, tier: 0, tmp: document.createElement('canvas'), dith: [] };
-  function trailSnap(x) {
-    const T = TRAIL;
-    T.acc += FX.dt || 0.016;
-    if (!T.tier || reduce) { T.hist.length = 0; return; }
-    if (T.acc < 1 / 30) return;
-    T.acc = 0;
-    const e = T.hist.length >= 12 ? T.hist.pop() : { c: document.createElement('canvas') };
-    const { X, Y, pw, ph } = LS;
-    if (e.c.width < pw || e.c.height < ph) { e.c.width = Math.max(e.c.width, pw); e.c.height = Math.max(e.c.height, ph); }
-    const g = e.c.getContext('2d');
-    g.clearRect(0, 0, e.c.width, e.c.height); g.drawImage(SPR, 0, 0, pw, ph, 0, 0, pw, ph);
-    Object.assign(e, { X, Y, pw, ph, x });
-    T.hist.unshift(e);
-  }
-  function ditherPat(g, lv) {
-    if (TRAIL.dith[lv]) return TRAIL.dith[lv];
-    const c = document.createElement('canvas'); c.width = c.height = 4;
-    const x = c.getContext('2d'), B = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
-    x.fillStyle = '#000';
-    for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) if (B[j][i] < lv * 4) x.fillRect(i, j, 1, 1);
-    return (TRAIL.dith[lv] = g.createPattern(c, 'repeat'));
-  }
-  function drawTrail(x, tier) {
-    TRAIL.tier = tier;
-    if (!tier || reduce) return;
-    const n = [0, 2, 3, 5][tier], ramp = SPD[tier], step = Math.floor(performance.now() / 80), t = TRAIL.tmp, g = t.getContext('2d');
-    for (let k = n; k >= 1; k--) {
-      const e = TRAIL.hist[k * 2 - 1];
-      if (!e || Math.abs(e.x - x) < 14) continue;
-      if (t.width < e.pw || t.height < e.ph) { t.width = Math.max(t.width, e.pw); t.height = Math.max(t.height, e.ph); }
-      g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, t.width, t.height);
-      g.drawImage(e.c, 0, 0, e.pw, e.ph, 0, 0, e.pw, e.ph);
-      g.globalCompositeOperation = 'source-in'; g.fillStyle = ramp[(k + step) % 4]; g.fillRect(0, 0, e.pw, e.ph);
-      const lv = Math.max(1, 4 - Math.floor((k - 1) * 3 / n));
-      if (lv < 4) { g.globalCompositeOperation = 'destination-in'; g.fillStyle = ditherPat(g, lv); g.fillRect(0, 0, e.pw, e.ph); }
-      g.globalCompositeOperation = 'source-over';
-      ctx.save(); ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(t, 0, 0, e.pw, e.ph, e.X, e.Y, e.pw * PX, e.ph * PX);
-      ctx.restore();
-    }
-  }
-  const DUST = { acc: 0, list: [], seed: 0, bt: 0 };
+  // Minimal on purpose (Daniel's call): only a dust puff per step while on fire.
+  const DUST = { acc: 0, list: [] };
   function feetFx(x, tier, vx, dt) {
     if (tier && !reduce && Math.abs(vx) > 120) {
       DUST.acc += Math.abs(vx) * dt;
@@ -2607,7 +2559,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         DUST.acc = 0;
         const dir = Math.sign(vx);
         DUST.list.push({ x: x - dir * 18, t: 0, vx: -dir * 60 });
-        if (tier >= 2) burst(x - dir * 12, FLOOR - 4, 4, ['#fee761', '#f77622', '#feae34'], 280, 0.8, 1500, 4);
       }
     }
     const fl = Math.round(FLOOR / PX);
@@ -2618,22 +2569,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       for (let y = -r; y <= r; y++) { const w = Math.floor(Math.sqrt(r * r - y * y + r * 0.8)); ctx.fillRect((cx - w) * PX, (cy + y) * PX, (w * 2 + 1) * PX, PX); }
     }
     DUST.list = DUST.list.filter(p => p.t < 0.34);
-  }
-  function boltFx(x, tier, dt) {
-    if (tier < 3 || reduce) return;
-    DUST.bt -= dt; if (DUST.bt <= 0) { DUST.bt = 0.07; DUST.seed++; }
-    const sd = DUST.seed;
-    ctx.save(); ctx.lineWidth = PX; ctx.lineCap = 'square';
-    for (let b = 0; b < 2; b++) {
-      if (fh(b, sd) < 0.25) continue;
-      let px = x + (fh(sd, b) - .5) * 100, py = FLOOR - 160;
-      for (let k = 0; k < 5; k++) {
-        const nx = px + (fh(sd + k, b + 3) - .5) * 44, ny = py + 28;
-        ctx.strokeStyle = k % 2 ? '#ffffff' : '#2ce8f5'; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.stroke();
-        px = nx; py = ny;
-      }
-    }
-    ctx.restore();
   }
   function streakTag(x, tier, combo) {
     if (!tier) return;
@@ -2823,11 +2758,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     aimers();
     const danger = S.chops.some(c => c.phase !== 'up' && Math.abs(c.x - P.x) < c.w);
     const ftier = S.st === 'play' ? S.fireTier || 0 : 0;
-    drawTrail(P.x, ftier);
     feetFx(P.x, ftier, P.vx, dt);
     drawGhosts(dt, curCos);
     if (!(S.iframe > 0) || Math.floor(performance.now() / 40) % 2) player(P.x, P.vx, S.hurt > 0, danger, room ? 'you' : null, !!S.taunt && !(S.blockT > 0), S.blockT > 0, curCos);
-    boltFx(P.x, ftier, dt);
     if (S.bell > 0) drawBell(P.x);
     if (S.st === 'play') streakTag(P.x, S.fireTier || 0, S.combo || 0);
     cs.forEach(hand);
@@ -2968,11 +2901,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (tp) {
       const danger = cs.some(c => c.phase !== 'up' && Math.abs(c.x - B.tx) < c.w);
       const ftier = tp.st === 'play' ? clamp(+tp.fire || 0, 0, 3) : 0;
-      drawTrail(B.tx, ftier);
       feetFx(B.tx, ftier, +tp.vx || 0, dt);
       drawGhosts(dt, clamp(+tp.cos || 0, 0, COS.length - 1));
       player(B.tx, +tp.vx || 0, !!tp.hurt, danger, null, !!B.taunt && !tp.bl, !!tp.bl, clamp(+tp.cos || 0, 0, COS.length - 1));
-      boltFx(B.tx, ftier, dt);
       if (tp.bel) drawBell(B.tx);
       if (tp.st === 'play') streakTag(B.tx, ftier, +tp.cb || 0);
     }
