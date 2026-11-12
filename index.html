@@ -109,7 +109,7 @@
     setTimeout(() => { if (!connected) guestRelayStart(); }, 8000); // direct link blocked? use the relay
     const c = gPeer.connect('pyf-' + roomId, { serialization: 'json', reliable: true });
     wireGuestConn(c);
-    joinTimer = setTimeout(() => { if (!c.open) { try { c.close(); } catch (e) {} retryJoin(); } }, 10000);
+    joinTimer = setTimeout(() => { if (!c.open) { if (diag.host !== 'not found') diag.host = '?'; diag.direct = '✗'; try { c.close(); } catch (e) {} retryJoin(); } }, 10000);
   }
   function retryJoin() {
     clearTimeout(joinTimer);
@@ -125,7 +125,7 @@
     emitPeers(); ui();
   }
   function wireGuestConn(c) {
-    c.on('open', () => { clearTimeout(joinTimer); joinStart = 0; everJoined = true; status = 'joining'; conns.set('host', c); pendingPatch = { ...local }; guestSend(); setConnected(true); });
+    c.on('open', () => { diag.host = '✓'; diag.direct = '✓'; clearTimeout(joinTimer); joinStart = 0; everJoined = true; status = 'joining'; conns.set('host', c); pendingPatch = { ...local }; guestSend(); setConnected(true); });
     c.on('data', d => { if (conns.get('host') === c) applyHostState(d); });
     c.on('close', () => {
       if (conns.get('host') !== c) return; // a join attempt that never opened
@@ -134,6 +134,11 @@
     });
   }
 
+  // ---------- join diagnostics (shown to guests while a join is slow) ----------
+  const BUILD = 'v9';
+  const diag = { mm: '…', host: '…', direct: '…', relay: '–' };
+  const setDiag = (k, v) => { diag[k] = v; ui(); };
+  const diagText = () => `[${BUILD} · server ${diag.mm} · host ${diag.host} · direct ${diag.direct} · relay ${diag.relay}]`;
   // ---------- relay fallback ----------
   // Some networks (school/office Wi-Fi, strict mobile carriers) block browser-to-browser links.
   // Then guests talk to the host through a public MQTT broker over a normal secure WebSocket instead.
@@ -141,6 +146,7 @@
   const T_UP = 'pyf2/' + roomId + '/up', T_DOWN = 'pyf2/' + roomId + '/down';
   let mqttLoad = null, relayDirty = false, relayClient = null, relayLastState = 0, viaRelay = false;
   const relayGuests = new Map(); // host: guest id -> { last, client }
+  let hostRelayUp = 0;
   function loadMqtt() {
     if (!mqttLoad) mqttLoad = new Promise((res, rej) => {
       if (window.mqtt) return res();
@@ -161,6 +167,7 @@
   function hostRelayStart() {
     loadMqtt().then(() => {
       for (const u of RELAYS) relayConnect(u, hostRelayMsg, () => {
+        hostRelayUp = Math.min(RELAYS.length, hostRelayUp + 1); ui();
         if (status !== 'hosting' && status !== 'reclaiming') { status = 'hosting'; state[myId] = { ...local }; setConnected(true); emitPeers(); ui(); }
       });
     }).catch(() => {});
@@ -195,15 +202,18 @@
     if (relayStarted || isHost) return;
     relayStarted = true;
     if (!myId) myId = 'r' + Math.random().toString(36).slice(2, 10);
+    setDiag('relay', 'loading');
     loadMqtt().then(() => {
+      setDiag('relay', 'connecting');
       let i = 0;
       const tryNext = () => {
         if (relayClient || i >= RELAYS.length) return;
-        const c = relayConnect(RELAYS[i++], guestRelayMsg, cl => { if (!relayClient) { relayClient = cl; relaySend({ t: 'hi' }); } });
-        setTimeout(() => { if (relayClient !== c) { try { c.end(true); } catch (e) {} tryNext(); } }, 7000);
+        const n = i;
+        const c = relayConnect(RELAYS[i++], guestRelayMsg, cl => { if (!relayClient) { relayClient = cl; diag.relay = `up${n + 1}, no host yet`; relaySend({ t: 'hi' }); ui(); } });
+        setTimeout(() => { if (relayClient !== c) { try { c.end(true); } catch (e) {} if (i >= RELAYS.length) setDiag('relay', '✗ blocked'); tryNext(); } }, 7000);
       };
       tryNext();
-    }).catch(() => {});
+    }).catch(() => setDiag('relay', '✗ no library'));
     setInterval(() => {
       if (!relayClient) return;
       relaySend({ t: 'hb' });
@@ -218,6 +228,7 @@
     if (!d || d.t !== 'state' || typeof d.s !== 'object') return;
     if (conns.get('host') && conns.get('host') !== relayHost) return; // a direct link won after all
     relayLastState = Date.now();
+    if (diag.relay !== '✓') { diag.relay = '✓'; diag.host = '✓'; }
     if (conns.get('host') !== relayHost) {
       clearTimeout(joinTimer); joinStart = 0; everJoined = true; viaRelay = true; status = 'joining';
       conns.set('host', relayHost); pendingPatch = { ...local }; guestSend(); setConnected(true);
@@ -231,6 +242,7 @@
     if (!Peer) { status = 'nolib'; ui(); if (!isHost) guestRelayStart(); return; }
     const peer = isHost ? new Peer('pyf-' + roomId, { debug: 0 }) : new Peer(undefined, { debug: 0 });
     peer.on('open', id => {
+      if (!isHost) setDiag('mm', '✓');
       if (!isHost && relayStarted) return; // already joined (or joining) through the relay under another id
       myId = id; status = isHost ? 'hosting' : 'joining';
       if (isHost) { state[myId] = { ...local }; setConnected(true); peer.on('connection', wireHostConn); }
@@ -240,9 +252,9 @@
     peer.on('error', e => {
       const t = e && e.type;
       if (t === 'unavailable-id' && attempt < 6) { peer.destroy(); setTimeout(() => start(attempt + 1), 2500); status = 'reclaiming'; ui(); return; }
-      if (t === 'peer-unavailable') { if (!isHost) retryJoin(); return; }
+      if (t === 'peer-unavailable') { if (!isHost) { diag.host = 'not found'; retryJoin(); } return; }
       if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') {
-        if (isHost) { if (status !== 'hosting') { status = 'offline'; ui(); } } else if (!connected) { status = 'offline'; ui(); guestRelayStart(); }
+        if (isHost) { if (status !== 'hosting') { status = 'offline'; ui(); } } else if (!connected) { diag.mm = '✗'; status = 'offline'; ui(); guestRelayStart(); }
         return;
       }
     });
@@ -282,13 +294,13 @@
     const n = current.length || 1;
     const msgs = {
       starting: 'Connecting…',
-      hosting: `You're hosting room ${roomId.toUpperCase()} · ${n} player${n === 1 ? '' : 's'} here. Send the invite link to your friends.`,
+      hosting: `You're hosting room ${roomId.toUpperCase()} · ${n} player${n === 1 ? '' : 's'} here. Send the invite link to your friends. [${BUILD} · relay ${hostRelayUp}/${RELAYS.length}]`,
       reclaiming: 'Reclaiming your room…',
-      joining: connected ? `Joined room ${roomId.toUpperCase()} · ${n} players here.${viaRelay ? ' (via relay, your network blocks direct links)' : ''}` : `Joining room ${roomId.toUpperCase()}… If the host's game isn't open on their screen, ask them to switch back to it.`,
-      slow: `Still trying to reach room ${roomId.toUpperCase()}. Make sure the host has the game open on their screen. If it never connects, a school or office network may be blocking it: try mobile data.`,
+      joining: connected ? `Joined room ${roomId.toUpperCase()} · ${n} players here.${viaRelay ? ' (via relay, your network blocks direct links)' : ''}` : `Joining room ${roomId.toUpperCase()}… If the host's game isn't open on their screen, ask them to switch back to it. ${diagText()}`,
+      slow: `Still trying to reach room ${roomId.toUpperCase()}. Make sure the host has the game open on their screen and reloaded. ${diagText()}`,
       rejoining: `Lost the host. Reconnecting to room ${roomId.toUpperCase()}…`,
       noroom: `Room ${roomId.toUpperCase()} isn't open right now. The host may have closed it.`,
-      offline: "Can't reach the matchmaking server. Check your connection and reload.",
+      offline: isHost ? "Can't reach the matchmaking server. Check your connection and reload." : `Can't reach the matchmaking server, trying the relay… ${diagText()}`,
       nolib: "The multiplayer library didn't load. Reload the page to try again."
     };
     el.textContent = msgs[status] || '';
