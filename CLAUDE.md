@@ -37,9 +37,17 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   non-ASCII character in index.html, or the new ones fall back to a system font.
 - UI: wood panels with stepped borders and parchment buttons, all in palette colours (CSS variables in `:root`
   and the "cozy pixel UI" block at the end of the last `<style>`).
-- Music: one theme per stage in `THEMES` (scale, melody, bass, lead sound, base bpm rising stage by stage);
-  `setLevel` picks the theme and intensity tier, and levels past the last stage push the tempo further.
-  Sound effects go through their own quieter bus (`sfxOut`).
+- Music: recorded loops in `music/<id>.ogg` (one per stage in `STAGE_TRACKS`, plus `menu` and `game-over`), each an
+  exact whole number of bars so `AudioBufferSourceNode.loop` plays them gaplessly. The game loop calls
+  `sfx.scene('stage' | 'over' | 'menu' | null)` every frame; `setLevel` picks the stage track by level, or
+  `sfx.setSection(id)` picks it by relay section (`SECTION_TRACKS`: house, dojo, bamboo, rooftop-climb, rooftop-jumps,
+  lake-dive, lake, volcano, snow, elevator, space). Only the playing track and the likely next one are fetched
+  (OGG Vorbis q2, about 0.75 MB each), starting after the first tap. If a file can't load (e.g. opened from `file://`), stages fall back to the synthesized
+  `THEMES` and the lobby/game over stay quiet. The tracks were made by an offline synth script (kept outside the repo).
+- Mix: music (`musicOut`, ducked) and effects (`sfxOut`) meet on a master bus with a limiter. Effects are in three
+  tiers (`TIER`, `TIER_DB`); big moments dip the music ~5 dB. Pitched effects (marked `P`) snap to the playing track's
+  scale (`KEYS`). `sfx.at(x)` pans the next effect to its world position. `MUSIC_LEVEL` sets music against effects.
+  Each effect is capped at two starts per 80 ms.
 - Levels: `levelOf(score)` — LV2 at 25 points, LV3 at 75, then triangular growth. Speed curve caps around 4.2.
   A fairness check (`fairSpot`) stops the practice bot from throwing unescapable punches.
 - Six stages by level (living room, dojo, rooftop, bamboo, volcano with fire dragon, space with ships),
@@ -47,11 +55,10 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - 我 (dodger): move, block/perfect block (↓/S/Space), dash (Shift), Golden Bell (E, Rage meter),
   perfect-block stun, on-fire streak buff (5/10/20 combo → +10/20/30% speed), taunts, six unlockable
   costumes (`COS`) each with its own move set (`MOVES`).
-- On-fire speed look (5/10/20 combo tiers, colours in `SPD`): `drawTrail`/`trailSnap` (flat tier-coloured afterimages
-  copied from the lit sprite, faded by ordered dither), `fireAura` (three-tone pixel flame, 8 fps flicker, leans back),
-  `feetFx` (dust per step, heel sparks from x10) and `boltFx` (lightning at x20).
-- Streak captions: `stampFx`/`drawStamp` (manga stamp that slams in on a tier-up, with shake and ink) and
-  `comboMeter` (top-right counter that bumps per dodge, fills to the next tier and shatters with 断! when the streak breaks).
+- On-fire speed look: only `feetFx` (a pixel dust puff per step while on fire). Daniel turned down afterimages,
+  flame aura, sparks, lightning, manga stamp and combo meter as too busy: keep the speed effect minimal.
+- Fire caption: `ticker(tier, sub)` reuses `#caption` under the arena as a wood strip (`.caption.tick`) with a stepped
+  pixel flame (`.tkf`) and typed text; `banner()` resets it. A small `streakTag` "xN" sits over 我's head.
 - 兄弟 (puncher): tap to chop, formations (1/2/3), feint (F), homing (H), 黄泉指 Underworld Finger (Y),
   如来神掌 Buddha Palm (charged super), Punch Rain ultimate (R).
 - 黄泉指: the portal chases 我 during the warning (`YQ_TRACK` px/s), the finger snakes down at 2x speed, and
@@ -131,4 +138,5 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
 - Edit `index.html` directly; there is no build step.
 - To test multiplayer locally, serve the folder (`python3 -m http.server`) and open two browser windows:
   one at `/` (host) and one at the invite link it shows.
-- Keep the game working inside a single file so it can be dropped onto any static host.
+- Keep the game working inside a single file so it can be dropped onto any static host. The only extra files are
+  the optional music loops in `music/`; without them the game still runs with its synthesized fallback music.

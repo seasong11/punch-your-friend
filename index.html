@@ -700,15 +700,48 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     addEventListener('pointerdown', unlock, true);
     addEventListener('keydown', unlock, true);
     const ok = () => !muted && ac && ac.state === 'running';
-    // Sound effects go through their own bus, kept well under the music so hits don't drown it.
-    let sg = null;
-    function sfxOut() { if (!sg) { sg = ac.createGain(); sg.gain.value = 0.42; sg.connect(ac.destination); } return sg; }
-    function tone(f0, f1, dur, type, vol, delay = 0) {
+    // ---- mix: music and effects meet on a master bus with a limiter, so stacked hits never clip ----
+    // Effects come in three tiers (big moments, feedback, constant chatter); big moments briefly duck
+    // the music. Pitched effects snap to the scale of the music that is playing, and effects pan to
+    // where they happen on screen. MUSIC_LEVEL sets the recorded tracks against the effects.
+    const MUSIC_LEVEL = 0.5, TIER_DB = { big: 0, fb: -4, c: -9 };
+    const TIER = { ouch: 'big', superThud: 'big', levelup: 'big', bell: 'big', yqHit: 'big', broken: 'big', over: 'big',
+      thud: 'fb', parry: 'fb', combo: 'fb', charged: 'fb', warn: 'fb', palmWarn: 'fb', rainWarn: 'fb', superWarn: 'fb', yqWarn: 'fb',
+      yqWave: 'fb', close: 'fb', taunt: 'fb', fakeOut: 'fb', ignite: 'fb', douse: 'fb', start: 'fb',
+      whoosh: 'c', swing: 'c', miss: 'c', blockUp: 'c', dash: 'c' };
+    let master = null, sg = null, duck = null;
+    function bus() {
+      if (!master) {
+        const lim = ac.createDynamicsCompressor();
+        lim.threshold.value = -6; lim.knee.value = 3; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.15;
+        master = ac.createGain(); master.connect(lim).connect(ac.destination);
+      }
+      return master;
+    }
+    function sfxOut() { if (!sg) { sg = ac.createGain(); sg.gain.value = 0.42; sg.connect(bus()); } return sg; }
+    function musicOut() { if (!duck) { duck = ac.createGain(); duck.connect(bus()); } return duck; }
+    let cur = { g: 1, pan: 0 }, nextPan = 0, scale = null;
+    const recent = {};
+    function voice() {
+      const g = ac.createGain(); g.gain.value = cur.g;
+      if (cur.pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = cur.pan; g.connect(p).connect(sfxOut()); }
+      else g.connect(sfxOut());
+      return g;
+    }
+    function snapF(f) {
+      if (!scale) return f;
+      const m = 69 + 12 * Math.log2(f / 440);
+      let best = Math.round(m), bd = 99;
+      for (let k = Math.floor(m) - 6; k <= Math.ceil(m) + 6; k++) if (scale.includes(((k % 12) + 12) % 12) && Math.abs(k - m) < bd) { bd = Math.abs(k - m); best = k; }
+      return 440 * Math.pow(2, (best - 69) / 12);
+    }
+    function tone(f0, f1, dur, type, vol, delay = 0, pitched = false) {
       if (!ok()) return;
+      if (pitched && scale) { const r = f1 / f0; f0 = snapF(f0); f1 = Math.abs(r - 1) < 0.03 ? f0 * r : snapF(f1); }
       const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
       o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
       g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      o.connect(g).connect(sfxOut()); o.start(t); o.stop(t + dur + 0.02);
+      o.connect(g).connect(voice()); o.start(t); o.stop(t + dur + 0.02);
     }
     function noise(dur, vol, f, sweep, delay = 0) {
       if (!ok()) return;
@@ -718,9 +751,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const fl = ac.createBiquadFilter(); fl.type = 'bandpass'; fl.Q.value = 1.2;
       fl.frequency.setValueAtTime(f, t); if (sweep) fl.frequency.exponentialRampToValueAtTime(sweep, t + dur);
       const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      src.connect(fl).connect(g).connect(sfxOut()); src.start(t); src.stop(t + dur + 0.02);
+      src.connect(fl).connect(g).connect(voice()); src.start(t); src.stop(t + dur + 0.02);
     }
-    // ---- background music: pentatonic chiptune loop, scheduled ahead of time ----
+    // ---- fallback music: the original synthesized chiptune themes, used when the recorded tracks in
+    // music/ can't load (for example when the page is opened straight from disk) ----
     let musicOff = false, musicOn = false, mg = null, timer = null, step = 0, nextT = 0, tempo = 1;
     try { musicOff = localStorage.getItem('chopMusic') === '0'; } catch (e) {}
     // One theme per stage (living room, dojo, rooftop, bamboo, volcano, space). Each has its own scale,
@@ -830,8 +864,81 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         nextT += spb; step++;
       }
     }
+    // ---- recorded music: one seamless loop per stage, plus the menu lobby and game over ----
+    // Files live in music/<id>.ogg. Each is an exact whole number of bars, so it loops with no gap.
+    const STAGE_TRACKS = ['living-room', 'dojo', 'rooftop', 'bamboo', 'volcano', 'space'];
+    // The relay journey's sections, in play order, and the track each one plays. A section-based game calls
+    // sfx.setSection(id); until then the stage track follows the level (STAGE_TRACKS).
+    const SECTION_TRACKS = { house: 'living-room', dojo: 'dojo', bamboo: 'bamboo', 'rooftop-climb': 'rooftop', 'rooftop-jumps': 'rooftop-run',
+      'lake-dive': 'lake-dive', lake: 'lake-deep', volcano: 'volcano', snow: 'snow-slope', elevator: 'tower-lift', space: 'space' };
+    const JOURNEY = Object.values(SECTION_TRACKS);
+    let sectionTrack = null;
+    const KEYS = { 'living-room': [0, 2, 4, 5, 7, 9, 10], dojo: [9, 0, 2, 4, 7], rooftop: [4, 6, 7, 9, 11, 1, 2], bamboo: [2, 4, 6, 9, 11],
+      volcano: [0, 1, 4, 5, 7, 8, 10], space: [5, 7, 8, 10, 0, 1, 3], menu: [7, 9, 11, 0, 2, 4, 6], 'game-over': [2, 4, 5, 7, 9, 10, 0],
+      'rooftop-run': [11, 1, 2, 4, 6, 8, 9], 'lake-dive': [9, 11, 1, 2, 4, 6, 8], 'lake-deep': [6, 9, 11, 1, 4],
+      'snow-slope': [4, 6, 7, 9, 11, 0, 2], 'tower-lift': [0, 2, 3, 5, 7, 9, 10] };
+    const bufs = {}, failed = {}, offsets = {};
+    let stageIdx = 0, want = null, playing = null, wantScene = null;
+    function loadTrack(id) {
+      if (bufs[id] || failed[id]) return bufs[id];
+      if (location.protocol === 'file:') { failed[id] = true; return null; }
+      bufs[id] = fetch('music/' + id + '.ogg')
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+        .then(a => new Promise((res, rej) => ac.decodeAudioData(a, res, rej)))
+        .then(b => { bufs[id] = b; return b; })
+        .catch(() => { failed[id] = true; delete bufs[id]; });
+      return bufs[id];
+    }
+    // Light on data: only the track playing now and the one most likely next are fetched (about 0.8 MB each).
+    function stageTrack() { return sectionTrack || STAGE_TRACKS[stageIdx]; }
+    function nextTrack(id) {
+      const order = sectionTrack ? JOURNEY : STAGE_TRACKS, i = order.indexOf(id);
+      return i >= 0 && i + 1 < order.length ? order[i + 1] : null;
+    }
+    function stopTrack(fade = 0.35) {
+      if (!playing) return;
+      const p = playing; playing = null;
+      offsets[p.id] = (p.off + ac.currentTime - p.t0) % p.src.buffer.duration;
+      p.g.gain.cancelScheduledValues(ac.currentTime);
+      p.g.gain.setTargetAtTime(0, ac.currentTime, fade / 4);
+      try { p.src.stop(ac.currentTime + fade + 0.05); } catch (e) {}
+    }
+    function startTrack(id, buf) {
+      const src = ac.createBufferSource(), g = ac.createGain();
+      src.buffer = buf; src.loop = true;
+      g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.setTargetAtTime(MUSIC_LEVEL, ac.currentTime, 0.08);
+      src.connect(g).connect(musicOut());
+      // game over always starts from the top; the lobby and stages pick up where they left off
+      const off = id === 'game-over' ? 0 : (offsets[id] || 0), t0 = ac.currentTime + 0.02;
+      src.start(t0, off);
+      playing = { id, src, g, t0, off };
+    }
+    // scene: 'stage' while a round runs, 'over' after a round, 'menu' in the lobby, null for silence
+    function scene(sc) {
+      if (!ac || ac.state !== 'running') return;
+      const on = !musicOff && !muted;
+      const id = !on || !sc ? null : sc === 'stage' ? stageTrack() : sc === 'over' ? 'game-over' : 'menu';
+      // a fresh round (from the lobby or game over) starts the stage tracks from the top; a resume after a pause continues
+      if (sc === 'stage' && wantScene && wantScene !== 'stage') Object.keys(offsets).forEach(t => { if (t !== 'menu') offsets[t] = 0; });
+      wantScene = sc; want = id;
+      scale = id ? KEYS[id] : null;
+      if (playing && playing.id !== id) stopTrack();
+      let fallback = false;
+      if (id && !playing) {
+        if (failed[id]) fallback = sc === 'stage';
+        else { const b = loadTrack(id); if (b instanceof AudioBuffer) startTrack(id, b); }
+      }
+      setMusic(fallback);
+      if (id && bufs[id] instanceof AudioBuffer) { // warm up what comes next
+        const nx = sc === 'stage' ? nextTrack(id) || 'game-over' : sc === 'menu' ? stageTrack() : 'menu';
+        if (nx) loadTrack(nx);
+        if (sc === 'stage') loadTrack('game-over');
+      }
+    }
+    addEventListener('visibilitychange', () => { if (document.hidden && playing && ac) stopTrack(0.1); });
     function setLevel(level) {
       level = Math.max(1, level | 0);
+      stageIdx = Math.min(STAGE_TRACKS.length - 1, level - 1);
       tier = Math.min(4, level - 1);
       const t = THEMES[Math.min(THEMES.length - 1, level - 1)];
       if (t !== theme) { theme = t; step = 0; }
@@ -843,7 +950,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (want === musicOn) return;
       musicOn = want;
       if (want) {
-        mg = ac.createGain(); mg.gain.value = 0.62; mg.connect(ac.destination);
+        mg = ac.createGain(); mg.gain.value = 0.62; mg.connect(musicOut());
         step = 0; nextT = ac.currentTime + 0.05;
         timer = setInterval(schedule, 40); schedule();
       } else {
@@ -852,44 +959,68 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       }
     }
 
-    return {
-      music: setMusic,
+    const P = true; // marks a pitched effect that should follow the music's key
+    const api = {
+      scene,
       setLevel,
+      setSection(id) { sectionTrack = SECTION_TRACKS[id] || null; },
+      // where the next effect happens, as a world x position (pans it left or right)
+      at(x) { nextPan = clamp((x / W) * 2 - 1, -1, 1) * 0.5; return api; },
       setTempo(x) { tempo = clamp(x, 1, 1.5); },
       get musicOff() { return musicOff; },
       toggleMusic() { musicOff = !musicOff; try { localStorage.setItem('chopMusic', musicOff ? '0' : '1'); } catch (e) {} if (!musicOff) unlock(); return musicOff; },
       get muted() { return muted; },
       toggle() { muted = !muted; try { localStorage.setItem('chopMute', muted ? '1' : '0'); } catch (e) {} if (!muted) unlock(); return muted; },
-      warn() { tone(880, 880, 0.05, 'square', 0.05); tone(880, 880, 0.05, 'square', 0.05, 0.11); },
+      warn() { tone(880, 880, 0.05, 'square', 0.05, 0, P); tone(880, 880, 0.05, 'square', 0.05, 0.11, P); },
       whoosh() { noise(0.22, 0.35, 400, 3200); },
       thud() { tone(150, 42, 0.28, 'sine', 0.55); noise(0.12, 0.4, 260); },
       superWarn() { tone(180, 900, 0.9, 'sawtooth', 0.12); tone(90, 450, 0.9, 'square', 0.06); },
       superThud() { tone(110, 28, 0.6, 'sine', 0.8); noise(0.45, 0.6, 180, 60); tone(60, 30, 0.5, 'square', 0.15); },
       taunt() { tone(700, 640, 0.12, 'square', 0.08); tone(940, 860, 0.2, 'square', 0.08, 0.14); tone(470, 430, 0.2, 'triangle', 0.06, 0.14); },
       blockUp() { noise(0.08, 0.2, 1500, 3000); },
-      parry(perfect) { tone(1250, 1180, 0.28, 'square', 0.1); tone(1880, 1760, 0.32, 'triangle', 0.1); noise(0.12, 0.25, 5000);
-        if (perfect) [1319, 1760, 2637].forEach((f, i) => tone(f, f, 0.12, 'triangle', 0.09, 0.08 + i * 0.06)); },
+      parry(perfect) { tone(1250, 1180, 0.28, 'square', 0.1, 0, P); tone(1880, 1760, 0.32, 'triangle', 0.1, 0, P); noise(0.12, 0.25, 5000);
+        if (perfect) [1319, 1760, 2637].forEach((f, i) => tone(f, f, 0.12, 'triangle', 0.09, 0.08 + i * 0.06, P)); },
       broken() { tone(320, 70, 0.4, 'sawtooth', 0.16); noise(0.25, 0.35, 400, 120); },
       dash() { noise(0.18, 0.3, 800, 4000); tone(500, 900, 0.12, 'triangle', 0.06); },
-      bell() { tone(196, 192, 1.2, 'sine', 0.35); tone(392, 388, 1.0, 'sine', 0.15); tone(587, 580, 0.8, 'triangle', 0.06); },
-      rainWarn() { [523, 466, 415, 349, 311].forEach((f, i) => tone(f, f * 0.97, 0.16, 'sawtooth', 0.09, i * 0.09)); noise(0.8, 0.12, 300, 1200); },
+      bell() { tone(196, 192, 1.2, 'sine', 0.35, 0, P); tone(392, 388, 1.0, 'sine', 0.15, 0, P); tone(587, 580, 0.8, 'triangle', 0.06, 0, P); },
+      rainWarn() { [523, 466, 415, 349, 311].forEach((f, i) => tone(f, f * 0.97, 0.16, 'sawtooth', 0.09, i * 0.09, P)); noise(0.8, 0.12, 300, 1200); },
       fakeOut() { tone(520, 300, 0.25, 'triangle', 0.08); tone(300, 520, 0.25, 'triangle', 0.06, 0.12); },
-      palmWarn() { [110, 165, 220, 330].forEach(f => tone(f, f, 1.6, 'sine', 0.08)); tone(880, 875, 1.2, 'triangle', 0.04, 0.2); tone(1320, 1310, 0.9, 'triangle', 0.025, 0.5); },
+      palmWarn() { [110, 165, 220, 330].forEach(f => tone(f, f, 1.6, 'sine', 0.08, 0, P)); tone(880, 875, 1.2, 'triangle', 0.04, 0.2, P); tone(1320, 1310, 0.9, 'triangle', 0.025, 0.5, P); },
       yqWarn() { tone(300, 110, 0.9, 'sawtooth', 0.06); tone(304, 108, 0.9, 'sawtooth', 0.06); noise(0.9, 0.08, 900, 200); },
       yqWave() { noise(0.45, 0.35, 300, 2400, 0.04); tone(70, 140, 0.4, 'sawtooth', 0.12, 0.04); },
       yqHit() { tone(1400, 60, 0.25, 'square', 0.11); tone(90, 28, 0.45, 'sine', 0.6); noise(0.3, 0.3, 2500, 200); },
       ignite(tier) { noise(0.5, 0.3, 300, 3000); tone(220 * tier, 440 * tier, 0.35, 'sawtooth', 0.07); },
       douse() { noise(0.6, 0.25, 3000, 200); tone(400, 120, 0.4, 'triangle', 0.06); },
-      charged() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, 0.08, 'triangle', 0.1, i * 0.05)); },
-      miss() { tone(660, 990, 0.12, 'triangle', 0.12); },
+      charged() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, 0.08, 'triangle', 0.1, i * 0.05, P)); },
+      miss() { tone(660, 990, 0.12, 'triangle', 0.12, 0, P); },
       ouch() { tone(560, 170, 0.38, 'sawtooth', 0.16); tone(430, 140, 0.38, 'square', 0.07, 0.03); },
       swing() { noise(0.15, 0.25, 600, 2600); },
-      close() { tone(1200, 1800, 0.12, 'triangle', 0.12); tone(1800, 2400, 0.1, 'triangle', 0.08, 0.08); },
-      combo() { [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.09, 'square', 0.1, i * 0.06)); },
-      levelup() { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f * 1.01, 0.1, 'square', 0.1, i * 0.05)); noise(0.5, 0.15, 1500, 6000); },
-      start() { [262, 330, 392, 523].forEach((f, i) => tone(f, f, 0.1, 'square', 0.09, i * 0.08)); },
-      over() { [392, 330, 262, 196].forEach((f, i) => tone(f, f * 0.98, 0.22, 'square', 0.11, i * 0.18)); }
+      close() { tone(1200, 1800, 0.12, 'triangle', 0.12, 0, P); tone(1800, 2400, 0.1, 'triangle', 0.08, 0.08, P); },
+      combo() { [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.09, 'square', 0.1, i * 0.06, P)); },
+      levelup() { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f * 1.01, 0.1, 'square', 0.1, i * 0.05, P)); noise(0.5, 0.15, 1500, 6000); },
+      start() { [262, 330, 392, 523].forEach((f, i) => tone(f, f, 0.1, 'square', 0.09, i * 0.08, P)); },
+      over() { [392, 330, 262, 196].forEach((f, i) => tone(f, f * 0.98, 0.22, 'square', 0.11, i * 0.18, P)); }
     };
+    // every effect goes through its tier gain, a voice cap (two of the same sound per 80 ms at most),
+    // its pan, and, for big moments, a short dip in the music
+    Object.keys(TIER).forEach(name => {
+      const fn = api[name];
+      api[name] = (...a) => {
+        const pan = nextPan; nextPan = 0;
+        if (!ok()) return;
+        const now = ac.currentTime, r = (recent[name] || []).filter(t => now - t < 0.08);
+        if (r.length >= 2) return;
+        r.push(now); recent[name] = r;
+        cur = { g: Math.pow(10, TIER_DB[TIER[name]] / 20), pan };
+        fn(...a);
+        cur = { g: 1, pan: 0 };
+        if (TIER[name] === 'big' && duck) {
+          duck.gain.cancelScheduledValues(now); duck.gain.setValueAtTime(duck.gain.value, now);
+          duck.gain.setTargetAtTime(0.56, now, 0.005); duck.gain.setTargetAtTime(1, now + 0.06, 0.12);
+        }
+      };
+    });
+    return api;
   })();
   const muteBtn = document.getElementById('mute');
   function paintMute() { muteBtn.textContent = sfx.muted ? 'Sound off' : 'Sound on'; muteBtn.setAttribute('aria-pressed', sfx.muted ? 'true' : 'false'); }
@@ -1772,7 +1903,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         if (!c.waveHit && !c.hit && S.st === 'play' && S.hurt <= 0 && d < r + P.w / 2 - 12) {
           c.waveHit = true;
           if (S.iframe > 0) { S.pops.push({ x: P.x, y: FLOOR - 150, txt: '闪!', t: 0, col: '#7fe3ff', size: 28 }); }
-          else if (S.bell > 0 || S.blockT > 0) { S.pops.push({ x: P.x, y: FLOOR - 150, txt: '挡住!', t: 0, col: '#5dff9b', size: 28 }); sfx.blockUp(); }
+          else if (S.bell > 0 || S.blockT > 0) { S.pops.push({ x: P.x, y: FLOOR - 150, txt: '挡住!', t: 0, col: '#5dff9b', size: 28 }); sfx.at(P.x).blockUp(); }
           else {
             S.lives--; S.hurt = 1.1; buzz(S.lives <= 0 ? [120, 60, 220] : 120); S.combo = 0; S.taunt = null; hitFx(P.x); S.shake = reduce ? 0 : 18;
             S.hits[c.from] = (S.hits[c.from] || 0) + 1;
@@ -1783,13 +1914,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         }
       }
       if (c.phase === 'warn' && c.t >= c.warn && c.fake) { c.dead = true; S.pops.push({ x: c.x, y: FLOOR - 60, txt: '假的~', t: 0, col: '#c9b6de', size: 26 }); sfx.fakeOut(); }
-      else if (c.phase === 'warn' && c.t >= c.warn) { c.phase = 'drop'; c.t = 0; sfx.whoosh(); }
+      else if (c.phase === 'warn' && c.t >= c.warn) { c.phase = 'drop'; c.t = 0; sfx.at(c.x).whoosh(); }
       else if (c.phase === 'drop') {
         c.y += dropV() * (c.yq ? 2 : c.sup ? 0.75 : 1) * dt;
         const gh = surfAt(c.x);
         if (c.y >= FLOOR - 60 - gh) {
           c.y = FLOOR - 60 - gh; c.phase = 'smash'; c.t = 0; hitProps(c);
-          S.shake = reduce ? 0 : 8 + Math.min(8, S.speed); sfx.thud(); smashFx(c.x, c.w); if (c.sup) superFx(c.x); if (c.yq) yqFx(c.x);
+          S.shake = reduce ? 0 : 8 + Math.min(8, S.speed); sfx.at(c.x).thud(); smashFx(c.x, c.w); if (c.sup) superFx(c.x); if (c.yq) yqFx(c.x);
           const hit = Math.abs(c.x - P.x) < (c.w / 2 + P.w / 2 - 14) && !(S.iframe > 0) && gh < P.y + 110; // a fist stopped by something taller than 我 can't reach
           if (c.yq) { c.wave = 0; if (Math.abs(c.x - P.x) < (c.w / 2 + P.w / 2 - 14)) c.waveHit = true; }
           if (hit && S.bell > 0 && S.st === 'play') {
@@ -1800,7 +1931,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
             if (S.blockT > 0) { S.pops.push({ x: P.x, y: FLOOR - 175, txt: '破防!', t: 0, col: '#ffb703', size: 32 }); sfx.broken(); S.pr = [(S.prId = (S.prId || 0) + 1), 3]; S.blockT = 0; }
             S.lives--; S.hurt = 1.1; c.hit = true; buzz(S.lives <= 0 ? [120, 60, 220] : 120); S.combo = 0; S.taunt = null; hitFx(P.x); S.shake = reduce ? 0 : 18;
             S.hits[c.from] = (S.hits[c.from] || 0) + 1;
-            S.pops.push({ x: P.x, y: FLOOR - 130, txt: '啊!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch();
+            S.pops.push({ x: P.x, y: FLOOR - 130, txt: '啊!', t: 0, col: '#ff5d73', size: 38 }); sfx.at(P.x).ouch();
             maybeBoard(S.hits);
             if (S.lives <= 0) gameOver();
           } else if (!hit && S.st === 'play') {
@@ -1815,7 +1946,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
               S.pops.push({ x: P.x, y: FLOOR - 140, txt: '好险! +2', t: 0, col: '#7fe3ff', size: 28 });
               FX.slow = reduce ? 0 : 0.3; sfx.close();
               burst(P.x, FLOOR - 60, 10, ['#7fe3ff', '#fff4e0'], 300, 1, 500, 4);
-            } else { S.pops.push({ x: c.x, y: FLOOR - 100, txt: '+1', t: 0, col: '#ffb703' }); sfx.miss(); }
+            } else { S.pops.push({ x: c.x, y: FLOOR - 100, txt: '+1', t: 0, col: '#ffb703' }); sfx.at(c.x).miss(); }
             if (S.combo % 5 === 0) { banner(`${S.combo} 连闪!`, `${S.combo}-dodge streak`, '#ffb703'); sfx.combo(); FX.flash = reduce ? 0.08 : 0.2; FX.flashCol = '255,183,3'; }
             const after = levelOf(S.score);
             if (after > before) { banner(`LV ${after} 加速!`, handsFor(after) > handsFor(before) ? `兄弟 now throw ${handsFor(after)} hands at once` : 'Chops come faster now', '#ff5d73'); sfx.levelup(); lifeUp(); FX.flash = reduce ? 0.1 : 0.35; FX.flashCol = '255,244,224'; }
@@ -2601,9 +2732,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const X = left - pad * PX, Y = top - pad * PX, DW = pw * PX, DH = ph * PX;
     main.drawImage(SPR, 0, 0, pw, ph, X, Y, DW, DH);
     main.restore();
-    LS.X = X; LS.Y = Y; LS.pw = pw; LS.ph = ph;
   }
-  const LS = { X: 0, Y: 0, pw: 0, ph: 0 };
 
   const COS = [
     { id: 'hoodie', name: 'Hoodie', zh: '卫衣', lv: 1, body: '#ff8c42', legs: '#2b1d3a', hair: '#3b2314', skin: '#f2c094', scarf: '#7fe3ff' },
@@ -2687,7 +2816,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 
   function player(x, vx, hurt, danger, label, taunting, blocking, ci) {
     litSprite(x - 110, FLOOR - 245, 220, 262, () => playerRaw(x, vx, hurt, danger, null, taunting, blocking, ci));
-    trailSnap(x);
     if (label) { ctx.fillStyle = '#ffb703'; ctx.font = '8px ' + PF; ctx.textAlign = 'center'; ctx.fillText(label, x, FLOOR + 40); }
   }
   function playerRaw(x, vx, hurt, danger, label, taunting, blocking, ci) {
@@ -2907,7 +3035,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.save();
     ctx.font = '34px ' + HF;
     const tw = ctx.measureText(tt.txt).width + 40, bh = 56;
-    const bx = clamp(x, tw / 2 + 6, W - tw / 2 - 6), by = FLOOR - 232;
+    const bx = clamp(x, tw / 2 + 6, W - tw / 2 - 6), by = FLOOR - 232; // above the xN streak tag (FLOOR - 172)
     ctx.globalAlpha = Math.max(0, fade);
     ctx.translate(bx, by); ctx.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
     ctx.fillStyle = '#fff4e0'; ctx.strokeStyle = '#1b1430'; ctx.lineWidth = 5;
@@ -2998,7 +3126,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const FIRE_PAL = [null, ['#ff6a2b', '#ffb703', '#fff4e0'], ['#c0392b', '#ff6a2b', '#ffd36b'], ['#2f80ed', '#7fe3ff', '#fff4e0']];
   const FIRE_TXT = [null, ['热身!', 'Streak x5 · Speed +10%', '#ffb703'], ['燃起来了!', 'Streak x10 · Speed +20%', '#ff8c2b'], ['爆燃!!', 'Streak x20 · Speed +30%', '#7fe3ff']];
   function igniteFx(tier, x) {
-    stampFx(tier); sfx.ignite(tier);
+    ticker(tier, FIRE_TXT[tier][1]); sfx.ignite(tier);
     if (!reduce) burst(x, FLOOR - 60, 14 + tier * 6, FIRE_PAL[tier], 260 + tier * 60, 1.2, -200, 6);
     FX.flash = reduce ? 0.08 : 0.15 + tier * 0.05; FX.flashCol = tier >= 3 ? '127,227,255' : '255,140,40';
   }
@@ -3008,75 +3136,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     sfx.douse();
   }
   // ---------- on-fire speed look ----------
-  // A: pixel afterimages (flat tier-coloured copies of 我, faded with an ordered dither, not alpha)
-  // C: three-tone pixel flame that flickers on an 8 fps step and leans back while running
-  // D: dust puffs per step, heel sparks from x10, crackling lightning at x20
-  const SPD = [null, ['#be4a2f', '#f77622', '#feae34', '#fee761'], ['#a22633', '#e43b44', '#f77622', '#feae34'], ['#124e89', '#0099db', '#2ce8f5', '#ffffff']];
-  const fh = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-  const TRAIL = { hist: [], acc: 0, tier: 0, tmp: document.createElement('canvas'), dith: [] };
-  function trailSnap(x) {
-    const T = TRAIL;
-    T.acc += FX.dt || 0.016;
-    if (!T.tier || reduce) { T.hist.length = 0; return; }
-    if (T.acc < 1 / 30) return;
-    T.acc = 0;
-    const e = T.hist.length >= 12 ? T.hist.pop() : { c: document.createElement('canvas') };
-    const { X, Y, pw, ph } = LS;
-    if (e.c.width < pw || e.c.height < ph) { e.c.width = Math.max(e.c.width, pw); e.c.height = Math.max(e.c.height, ph); }
-    const g = e.c.getContext('2d');
-    g.clearRect(0, 0, e.c.width, e.c.height); g.drawImage(SPR, 0, 0, pw, ph, 0, 0, pw, ph);
-    Object.assign(e, { X, Y, pw, ph, x });
-    T.hist.unshift(e);
-  }
-  function ditherPat(g, lv) {
-    if (TRAIL.dith[lv]) return TRAIL.dith[lv];
-    const c = document.createElement('canvas'); c.width = c.height = 4;
-    const x = c.getContext('2d'), B = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
-    x.fillStyle = '#000';
-    for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) if (B[j][i] < lv * 4) x.fillRect(i, j, 1, 1);
-    return (TRAIL.dith[lv] = g.createPattern(c, 'repeat'));
-  }
-  function drawTrail(x, tier) {
-    TRAIL.tier = tier;
-    if (!tier || reduce) return;
-    const n = [0, 2, 3, 5][tier], ramp = SPD[tier], step = Math.floor(performance.now() / 80), t = TRAIL.tmp, g = t.getContext('2d');
-    for (let k = n; k >= 1; k--) {
-      const e = TRAIL.hist[k * 2 - 1];
-      if (!e || Math.abs(e.x - x) < 14) continue;
-      if (t.width < e.pw || t.height < e.ph) { t.width = Math.max(t.width, e.pw); t.height = Math.max(t.height, e.ph); }
-      g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, t.width, t.height);
-      g.drawImage(e.c, 0, 0, e.pw, e.ph, 0, 0, e.pw, e.ph);
-      g.globalCompositeOperation = 'source-in'; g.fillStyle = ramp[(k + step) % 4]; g.fillRect(0, 0, e.pw, e.ph);
-      const lv = Math.max(1, 4 - Math.floor((k - 1) * 3 / n));
-      if (lv < 4) { g.globalCompositeOperation = 'destination-in'; g.fillStyle = ditherPat(g, lv); g.fillRect(0, 0, e.pw, e.ph); }
-      g.globalCompositeOperation = 'source-over';
-      ctx.save(); ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(t, 0, 0, e.pw, e.ph, e.X, e.Y, e.pw * PX, e.ph * PX);
-      ctx.restore();
-    }
-  }
-  function fireAura(x, tier, vx, dt) {
-    if (!tier) return;
-    const ramp = SPD[tier], st = Math.floor(performance.now() / 125), lean = clamp(-vx / 600, -1, 1);
-    const cx = Math.round(x / PX), fl = Math.round(FLOOR / PX), base = [0, 38, 44, 50][tier];
-    for (let L = 0; L < 3; L++) {
-      ctx.fillStyle = ramp[L];
-      const half = 10 - L * 2;
-      for (let i = -half; i <= half; i++) {
-        const edge = (half - Math.abs(i)) / half;
-        const h = Math.max(2, Math.round(base * (1 - L * 0.2) * (0.3 + 0.7 * Math.sqrt(edge)) + fh(i * 7 + L, st) * 7 - 3));
-        let j0 = 0, o0 = 0;
-        for (let j = 1; j <= h; j++) { // runs of the column that share the same lean offset
-          const o = j === h ? null : Math.round(lean * 5 * (j / h) * (j / h));
-          if (o !== o0) { ctx.fillRect((cx + i + o0) * PX, (fl - j) * PX, PX, (j - j0) * PX); j0 = j; o0 = o; }
-        }
-      }
-    }
-    if (tier >= 3) { ctx.fillStyle = ramp[3]; for (let i = -3; i <= 3; i++) if (fh(i, st) < 0.4) ctx.fillRect((cx + i + Math.round(lean * 5)) * PX, (fl - base - 2 - Math.round(fh(st, i) * 4)) * PX, PX, PX); }
-    if (!reduce && Math.random() < dt * (6 + tier * 6)) burst(x + (Math.random() - .5) * 60, FLOOR - 40 - Math.random() * 90, 1, ramp.slice(1), 60, 1, -260, 4);
-    if (tier >= 2 && Math.abs(vx) > 150 && Math.random() < dt * 8) FX.prints.push({ x: x + (Math.random() - .5) * 16, t: 0 });
-  }
-  const DUST = { acc: 0, list: [], seed: 0, bt: 0 };
+  // Minimal on purpose (Daniel's call): only a dust puff per step while on fire.
+  const DUST = { acc: 0, list: [] };
   function feetFx(x, tier, vx, dt) {
     if (tier && !reduce && Math.abs(vx) > 120) {
       DUST.acc += Math.abs(vx) * dt;
@@ -3084,7 +3145,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         DUST.acc = 0;
         const dir = Math.sign(vx);
         DUST.list.push({ x: x - dir * 18, t: 0, vx: -dir * 60 });
-        if (tier >= 2) burst(x - dir * 12, FLOOR - 4, 4, ['#fee761', '#f77622', '#feae34'], 280, 0.8, 1500, 4);
       }
     }
     const fl = Math.round(FLOOR / PX);
@@ -3096,89 +3156,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     DUST.list = DUST.list.filter(p => p.t < 0.34);
   }
-  function boltFx(x, tier, dt) {
-    if (tier < 3 || reduce) return;
-    DUST.bt -= dt; if (DUST.bt <= 0) { DUST.bt = 0.07; DUST.seed++; }
-    const sd = DUST.seed;
-    ctx.save(); ctx.lineWidth = PX; ctx.lineCap = 'square';
-    for (let b = 0; b < 2; b++) {
-      if (fh(b, sd) < 0.25) continue;
-      let px = x + (fh(sd, b) - .5) * 100, py = FLOOR - 160;
-      for (let k = 0; k < 5; k++) {
-        const nx = px + (fh(sd + k, b + 3) - .5) * 44, ny = py + 28;
-        ctx.strokeStyle = k % 2 ? '#ffffff' : '#2ce8f5'; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.stroke();
-        px = nx; py = ny;
-      }
-    }
-    ctx.restore();
-  }
-  // ---------- streak captions ----------
-  // 3: manga stamp that slams down when a fire tier is reached (with shake and ink splatter)
-  function stampFx(tier) {
-    FX.stamp = { tier, t: 0, ink: Array.from({ length: 16 }, () => ({ a: Math.random() * 6.283, r: 70 + Math.random() * 50 })) };
-    if (!reduce) { S.shake = Math.max(S.shake || 0, 14); shakeB = Math.max(shakeB, 14); }
-  }
-  function drawStamp(dt) {
-    const s = FX.stamp;
-    if (!s) return;
-    s.t += dt;
-    if (s.t > 1.05) { FX.stamp = null; return; }
-    const [txt, sub] = FIRE_TXT[s.tier], blue = s.tier >= 3, a = s.t;
-    const sc = reduce ? 1 : a < 0.06 ? 2 : a < 0.11 ? 1.5 : 1, cx = Math.round((CAM.x + CAM.w / 2) / PX) * PX, cy = CAM.w < W ? 300 : 168; // below the combo meter on narrow views
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (sc === 1) {
-      ctx.font = '64px ' + HF;
-      const bw = Math.round((ctx.measureText(txt).width + 72) / (2 * PX)) * 2 * PX, bh = 112, bx = cx - bw / 2, by = cy - bh / 2;
-      if (a < 0.5 && !reduce) {
-        ctx.fillStyle = blue ? '#124e89' : '#a22633';
-        for (const p of s.ink) { const rr = p.r + a * 220; ctx.fillRect(Math.round((cx + Math.cos(p.a) * rr * 1.6) / PX) * PX, Math.round((cy + Math.sin(p.a) * rr * 0.6) / PX) * PX, 2 * PX, 2 * PX); }
-      }
-      ctx.fillStyle = '#181425'; ctx.fillRect(bx, by - PX, bw, bh + 2 * PX); ctx.fillRect(bx - PX, by, bw + 2 * PX, bh);
-      ctx.fillStyle = blue ? '#124e89' : '#a22633'; ctx.fillRect(bx + PX, by, bw - 2 * PX, bh); ctx.fillRect(bx, by + PX, bw, bh - 2 * PX);
-      ctx.fillStyle = blue ? '#0099db' : '#e43b44'; ctx.fillRect(bx + 2 * PX, by + 2 * PX, bw - 4 * PX, bh - 4 * PX);
-      ctx.fillStyle = '#ffffff'; ctx.fillText(txt, cx, cy - 12);
-      ctx.font = '24px ' + HF; ctx.fillStyle = blue ? '#ffffff' : '#fee761'; ctx.fillText(sub, cx, cy + 36);
-    } else {
-      ctx.font = Math.round(64 * sc) + 'px ' + HF; ctx.fillStyle = '#ffffff'; ctx.fillText(txt, cx, cy - 12);
-    }
-    ctx.restore();
-  }
-  // 4: combo meter in the top-right corner: bumps on every hit, bar fills to the next tier,
-  // flashes on a tier-up and shatters when the streak breaks
-  const MT = { c: 0, bump: 0, flash: 0, tier: 0, brk: 0, shards: [] };
-  function comboMeter(combo, dt, playing) {
-    combo = playing ? Math.max(0, combo | 0) : 0;
-    const m = MT, t = combo >= 20 ? 3 : combo >= 10 ? 2 : combo >= 5 ? 1 : 0;
-    const fsb = MT.fsb || (MT.fsb = document.getElementById('fsBtn')), y0 = fsb && fsb.offsetParent ? 96 : 28; // under the full-screen button on phones
-    const bw = 192, bh = 124, x0 = Math.round((CAM.x + CAM.w - bw - 28) / PX) * PX;
-    if (combo > m.c) m.bump = 0.12;
-    if (t > m.tier) m.flash = 0.3;
-    if (playing && combo < m.c && m.c >= 3 && !reduce) {
-      m.brk = 0.9; m.shards = [];
-      for (let i = 0; i < 18; i++) m.shards.push({ x: x0 + 20 + Math.random() * (bw - 40), y: y0 + 10 + Math.random() * 60, vx: (Math.random() - .5) * 420, vy: -160 - Math.random() * 200, c: ['#feae34', '#f77622', '#ffffff', '#ead4aa'][i % 4] });
-    }
-    m.c = combo; m.tier = t;
-    m.bump = Math.max(0, m.bump - dt); m.flash = Math.max(0, m.flash - dt);
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (m.brk > 0) {
-      m.brk -= dt;
-      for (const p of m.shards) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x / PX) * PX, Math.round(p.y / PX) * PX, 2 * PX, PX); }
-      if (m.brk > 0.3) { ctx.font = '40px ' + HF; ctx.fillStyle = '#c0cbdc'; ctx.fillText('断!', x0 + bw / 2, y0 + 40); }
-      ctx.restore();
-      return;
-    }
-    if (combo < 2) { ctx.restore(); return; }
-    const ramp = SPD[t];
-    ctx.fillStyle = '#181425'; ctx.fillRect(x0 - PX, y0 - PX, bw + 2 * PX, bh + 2 * PX);
-    ctx.fillStyle = m.flash > 0 && Math.floor(m.flash * 20) % 2 ? '#ffffff' : '#3e2731'; ctx.fillRect(x0, y0, bw, bh);
-    ctx.fillStyle = '#733e39'; ctx.fillRect(x0, y0, bw, PX);
-    ctx.font = (m.bump > 0.06 ? 64 : 48) + 'px ' + HF; ctx.fillStyle = t ? ramp[3] : '#ead4aa';
-    ctx.fillText('x' + combo, x0 + bw / 2, y0 + 36);
-    const goal = combo < 5 ? 5 : combo < 10 ? 10 : 20, from = combo < 5 ? 0 : combo < 10 ? 5 : 10, fr = Math.min(1, (combo - from) / (goal - from));
-    ctx.fillStyle = '#181425'; ctx.fillRect(x0 + 4 * PX, y0 + 62, bw - 8 * PX, 3 * PX);
-    ctx.fillStyle = t ? ramp[1] : '#8b9bb4'; ctx.fillRect(x0 + 5 * PX, y0 + 62 + PX, Math.round((bw - 10 * PX) * fr / PX) * PX, PX);
-    if (t) { ctx.font = '24px ' + HF; ctx.fillStyle = ramp[2]; ctx.fillText(FIRE_TXT[t][0], x0 + bw / 2, y0 + 96); }
-    ctx.restore();
+  function streakTag(x, tier, combo) {
+    if (!tier) return;
+    ctx.fillStyle = FIRE_TXT[tier][2]; ctx.font = '16px ' + PF; ctx.textAlign = 'center';
+    ctx.fillText('x' + combo, x, FLOOR - 172);
   }
   function hitFx(x) {
     if (FX.anim) FX.anim.flat = 1; // squash 我 flat like a pancake
@@ -3187,15 +3168,36 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     burst(x, FLOOR - 100, 14, ['#ffb703', '#fff4e0', '#ff5d73'], 380, 1, 600, 5);
   }
   // Captions show on a line under the arena (never on top of the action).
-  let capTimer = 0;
+  let capTimer = 0, tickT = 0, tickI = 0;
   function banner(txt, sub, col) {
     const el = $('caption');
+    clearInterval(tickI); clearTimeout(tickT); el.className = 'caption';
     el.replaceChildren();
     const b = document.createElement('b'); b.textContent = txt; b.style.color = col || '#ffb703';
     el.append(b);
     if (sub) { const sm = document.createElement('span'); sm.textContent = sub; el.append(sm); }
     el.hidden = false; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
     clearTimeout(capTimer); capTimer = setTimeout(() => { el.hidden = true; }, 1600);
+  }
+  // On-fire caption: a wood strip slides up under the arena, a pixel flame flickers, the text types itself out,
+  // then the strip slides away again.
+  function ticker(tier, sub) {
+    const [txt, , col] = FIRE_TXT[tier], el = $('caption');
+    clearTimeout(capTimer); clearInterval(tickI); clearTimeout(tickT);
+    el.replaceChildren(); el.className = 'caption tick';
+    const ic = document.createElement('i'); ic.className = 'tkf t' + tier;
+    const b = document.createElement('b'); b.style.color = col;
+    const sm = document.createElement('span');
+    el.append(ic, b, sm); el.hidden = false; void el.offsetWidth; el.classList.add('in');
+    if (reduce) { b.textContent = txt; sm.textContent = sub; }
+    else {
+      const parts = [[b, [...txt]], [sm, [...sub]]]; let p = 0, i = 0;
+      tickI = setInterval(() => {
+        const [node, chars] = parts[p]; node.textContent += chars[i++] || '';
+        if (i >= chars.length) { p++; i = 0; if (p >= parts.length) clearInterval(tickI); }
+      }, 30);
+    }
+    capTimer = setTimeout(() => { el.classList.add('out'); tickT = setTimeout(() => { el.hidden = true; el.className = 'caption'; }, 220); }, 2800);
   }
   function speedLines(dt, level) {
     if (level < 2 || reduce) { FX.lines.length = 0; return; }
@@ -3345,21 +3347,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const danger = S.chops.some(c => c.phase !== 'up' && Math.abs(c.x - P.x) < c.w);
     ctx.save(); ctx.translate(0, -Math.round(P.y / PX) * PX);
     const ftier = S.st === 'play' ? S.fireTier || 0 : 0;
-    drawTrail(P.x, ftier);
-    fireAura(P.x, ftier, P.vx, dt);
     feetFx(P.x, ftier, P.vx, dt);
     drawGhosts(dt, curCos);
     if (!(S.iframe > 0) || Math.floor(performance.now() / 40) % 2) player(P.x, P.vx, S.hurt > 0, danger, room ? 'you' : null, !!S.taunt && !(S.blockT > 0), S.blockT > 0, curCos);
-    boltFx(P.x, ftier, dt);
     if (S.bell > 0) drawBell(P.x);
+    if (S.st === 'play') streakTag(P.x, S.fireTier || 0, S.combo || 0);
     ctx.restore();
     cs.forEach(hand);
     drawRings(dt);
     drawParts(dt);
     S.pops = pops(S.pops, dt);
     ctx.translate(0, -camY()); drawOverlayFx(dt, S.st === 'play' && S.lives === 1); ctx.translate(0, camY());
-    drawStamp(dt);
-    comboMeter(S.combo || 0, dt, S.st === 'play');
     tauntBubble(S, P.x, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -3378,7 +3376,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     B.belOn = !!(tp && tp.bel);
     const fireNow = tp ? clamp(+tp.fire || 0, 0, 3) : 0;
     if (B.fire != null && fireNow !== B.fire && tp && tp.st === 'play') {
-      if (fireNow > B.fire) { stampFx(fireNow); banner(FIRE_TXT[fireNow][0], `我 is on fire · x${+tp.cb || 0} streak. Land a hit to put it out!`, FIRE_TXT[fireNow][2]); sfx.ignite(fireNow); }
+      if (fireNow > B.fire) { ticker(fireNow, `我 is on fire · x${+tp.cb || 0} streak. Land a hit to put it out!`); sfx.ignite(fireNow); }
       else if (fireNow === 0) { if (!reduce) burst(B.tx, FLOOR - 60, 16, ['#8a7f7f', '#b0a6a6', '#5a5050'], 120, 1, -120, 9); B.pops.push({ x: B.tx, y: FLOOR - 190, txt: '熄火!', t: 0, col: '#c9b6de', size: 24 }); sfx.douse(); }
     }
     B.fire = fireNow;
@@ -3433,7 +3431,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (tp) {
       const lives = +tp.lives;
       if (lives < B.lastLives && B.lastTarget === t.peer) {
-        B.pops.push({ x: B.tx, y: FLOOR - 130, txt: '打中!', t: 0, col: '#ff5d73', size: 38 }); sfx.ouch(); hitFx(B.tx); shakeB = reduce ? 0 : 16; B.taunt = null;
+        B.pops.push({ x: B.tx, y: FLOOR - 130, txt: '打中!', t: 0, col: '#ff5d73', size: 38 }); sfx.at(B.tx).ouch(); hitFx(B.tx); shakeB = reduce ? 0 : 16; B.taunt = null;
       }
       B.lastLives = lives; B.lastTarget = t.peer;
       const sc = +tp.score || 0, cb = +tp.cb || 0;
@@ -3497,13 +3495,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const danger = cs.some(c => c.phase !== 'up' && Math.abs(c.x - B.tx) < c.w);
       ctx.save(); ctx.translate(0, -Math.round((B.ty || 0) / PX) * PX);
       const ftier = tp.st === 'play' ? clamp(+tp.fire || 0, 0, 3) : 0;
-      drawTrail(B.tx, ftier);
-      fireAura(B.tx, ftier, +tp.vx || 0, dt);
       feetFx(B.tx, ftier, +tp.vx || 0, dt);
       drawGhosts(dt, clamp(+tp.cos || 0, 0, COS.length - 1));
       player(B.tx, +tp.vx || 0, !!tp.hurt, danger, null, !!B.taunt && !tp.bl, !!tp.bl, clamp(+tp.cos || 0, 0, COS.length - 1));
-      boltFx(B.tx, ftier, dt);
       if (tp.bel) drawBell(B.tx);
+      if (tp.st === 'play') streakTag(B.tx, ftier, +tp.cb || 0);
       ctx.restore();
     }
     cs.forEach(hand);
@@ -3511,8 +3507,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawParts(dt);
     B.pops = pops(B.pops, dt);
     ctx.translate(0, -camY()); drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1); ctx.translate(0, camY());
-    drawStamp(dt);
-    comboMeter(tp ? +tp.cb || 0 : 0, dt, !!tp && tp.st === 'play');
     if (tp) tauntBubble(B, B.tx, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -3571,7 +3565,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
           renderWard();
         }
       }
-      sfx.music(S.st === 'play' && !S.paused); sfx.setLevel(climbOf() ? 3 : levelOf(S.score));
+      sfx.setSection(climbOf() ? 'rooftop-climb' : 'house'); sfx.setLevel(levelOf(S.score)); sfx.scene(S.paused ? null : S.st === 'play' ? 'stage' : S.st === 'over' ? 'over' : 'menu');
       if (S.paused) { /* round frozen */ }
       else if (FX.hitstop > 0) FX.hitstop -= dt;
       else if (S.st === 'play') { FX.slow = Math.max(0, FX.slow - dt); update(FX.slow > 0 ? dt * 0.4 : dt); }
@@ -3588,7 +3582,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       }
       B.cool -= dt; B.fakeCool -= dt; B.homeCool -= dt; B.stunT -= dt; B.yqCool = (B.yqCool || 0) - dt;
       const tpm = remoteTarget();
-      sfx.music(!!tpm && tpm.presence.st === 'play' && !tpm.presence.pz); sfx.setLevel(tpm && climbOf() ? 3 : levelOf(tpm && tpm.presence.score));
+      sfx.setSection(climbOf() ? 'rooftop-climb' : 'house'); sfx.setLevel(levelOf(tpm && tpm.presence.score)); sfx.scene(!tpm ? 'menu' : tpm.presence.pz ? null : tpm.presence.st === 'play' ? 'stage' : tpm.presence.st === 'over' ? 'over' : 'menu');
       followCam(B.tx, dt);
       drawBroView(dt);
     }
@@ -3776,7 +3770,21 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
 .caption span { font-size: 13px; color: var(--muted); font-weight: 600; }
 .caption.pop { animation: capPop .18s ease-out; }
 @keyframes capPop { from { transform: scale(1.25); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .caption.pop { animation: none; } }
+/* on-fire ticker: wood strip, stepped pixel flame, typed text */
+.caption.tick { background: #733e39; box-shadow: inset 0 3px 0 #b86f50, inset 0 -3px 0 #3e2731, 0 0 0 3px #181425; padding: 4px 14px; align-items: center; gap: 8px; }
+.caption.tick.in { animation: tickIn .15s steps(3) both; }
+.caption.tick.out { animation: tickOut .2s steps(3) forwards; }
+.caption.tick span { color: #ead4aa; }
+@keyframes tickIn { from { transform: translateY(70%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tickOut { to { transform: translateY(70%); opacity: 0; } }
+.tkf { --f: #f77622; --k: #fee761; width: 12px; height: 16px; flex: none; display: inline-block;
+  background: linear-gradient(to top, var(--k) 0 37%, var(--f) 37%);
+  clip-path: polygon(33% 0, 50% 0, 50% 25%, 67% 25%, 67% 12%, 83% 12%, 83% 50%, 100% 50%, 100% 100%, 0 100%, 0 50%, 17% 50%, 17% 25%, 33% 25%);
+  animation: tkf .25s steps(1) infinite; }
+.tkf.t2 { --f: #e43b44; --k: #feae34; }
+.tkf.t3 { --f: #0099db; --k: #ffffff; }
+@keyframes tkf { 50% { transform: scaleX(-1); } }
+@media (prefers-reduced-motion: reduce) { .caption.pop, .caption.tick.in, .caption.tick.out, .tkf { animation: none; } }
 /* ---------- phones ---------- */
 html { -webkit-text-size-adjust: 100%; }
 body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
