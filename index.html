@@ -1655,12 +1655,6 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     for (let x = 0; x < W; x += 120) ctx.fillRect(x, sy - 18, 9, sh + 36);
     ctx.fillStyle = '#5a3b22'; ctx.fillRect(0, sy + sh + 18, W, FLOOR - (sy + sh + 18));
     ctx.fillStyle = '#4a301b'; for (let x = 0; x < W; x += 30) ctx.fillRect(x, sy + sh + 18, 3, FLOOR - (sy + sh + 18));
-    // scroll
-    const scx = W / 2;
-    ctx.fillStyle = '#2b1d3a'; ctx.fillRect(scx - 42, 72, 84, 6);
-    ctx.fillStyle = '#f5ecd2'; ctx.fillRect(scx - 33, 78, 66, 174);
-    ctx.fillStyle = '#c0392b'; ctx.fillRect(scx - 33, 78, 66, 12); ctx.fillRect(scx - 33, 240, 66, 12);
-    ctx.fillStyle = '#2b1d3a'; ctx.font = '48px ' + HF; ctx.textAlign = 'center'; ctx.fillText('打', scx, 186);
     // swaying lanterns
     for (const [lx, ph] of [[66, 0], [W - 66, 1.7]]) {
       const sw = Math.round(Math.sin(FX.st * 1.6 + ph) * 6);
