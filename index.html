@@ -1136,13 +1136,20 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'box', x: 330, w: 90, h: 60 }, { k: 'box', x: 560, w: 110, h: 96 }, { k: 'box', x: 800, w: 90, h: 60 }, { k: 'box', x: 1030, w: 130, h: 112 }, { k: 'box', x: 1280, w: 100, h: 70 }] },
     { name: 'GARDEN', outdoor: 1, gate: 1, wall: ['#124e89', '#124e89', '#b86f50'], floor: ['#3e8948', '#265c42'], decor: [['tree', 520], ['tree', 920]], props: [
       { k: 'hedge', x: 420, w: 170, h: 70 }, { k: 'pot', x: 760, w: 70, h: 56 }, { k: 'hedge', x: 1130, w: 220, h: 84 }] },
+    { name: 'DOJO HALL', sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor: [['scroll', 250], ['lamp', 620], ['scroll', 930], ['rack', 1230]], props: [
+      { k: 'shoji', x: 450, w: 40, h: 230, hp: 1 }, { k: 'shoji', x: 800, w: 40, h: 230, hp: 1 }, { k: 'shoji', x: 1150, w: 40, h: 230, hp: 1 }] },
+    { name: 'DOJO DUMMIES', sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor: [['rack', 200], ['lamp', 560], ['scroll', 700], ['lamp', 1000], ['scroll', 1180]], props: [
+      { k: 'dummy', x: 420, w: 60, h: 110 }, { k: 'dummy', x: 740, w: 60, h: 110 }, { k: 'shoji', x: 940, w: 40, h: 230, hp: 1 }, { k: 'dummy', x: 1180, w: 60, h: 110 }] },
+    { name: 'DOJO BEAM', sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor: [['scroll', 200], ['lamp', 500], ['rack', 760], ['lamp', 1100], ['scroll', 1340]], props: [
+      { k: 'box', x: 300, w: 90, h: 80 }, ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ k: 'beam', plat: 1, x: 440 + i * 100, w: 100, h: 160, hp: 2 })),
+      { k: 'dummy', x: 600, w: 60, h: 110 }, { k: 'dummy', x: 880, w: 60, h: 110 }, { k: 'dummy', x: 1140, w: 60, h: 110 }] },
     { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(16) }
   ];
   const R = { i: 0, props: [], gl: [0, 0], t: 0, el: [] }; // gl: broken glass panels per side (bit = row), t: 我's clock
   if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom }; // test hook
   function loadRoom(i) {
     R.i = clamp(i | 0, 0, ROOMS.length - 1);
-    R.props = ROOMS[R.i].props.map(p => ({ ...p, hp0: p.hp, sparkT: 0, dead: false }));
+    R.props = ROOMS[R.i].props.map(p => ({ ...p, hp0: p.hp, sparkT: 0, spinT: 0, open: false, dead: false }));
     R.gl = [0, 0];
     R.el = ((ROOMS[R.i].climb || {}).els || []).map(e => ({ y: e.lv * 200, st: 'idle', t: 0, stall: 0 }));
     P.grip = null; P.el = null; P.kt = 0;
@@ -1154,9 +1161,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return Math.round((r.up ? k : 1 - k) * r.h);
   }
   // Height of whatever stands at x (ramp or the tallest prop within `half` px), measured up from the floor.
-  function surfAt(x, half) {
+  function surfAt(x, half, y) { // with y: one-way platforms (beams) only count once 我 is on or above them
     let g = rampAt(x); half = half || 0;
-    for (const p of R.props) if (!p.dead && Math.abs(x - p.x) < p.w / 2 + half) g = Math.max(g, p.h);
+    for (const p of R.props) if (!p.dead && !p.open && Math.abs(x - p.x) < p.w / 2 + half && (!p.plat || y == null || p.h <= y + STEP_UP)) g = Math.max(g, p.h);
     return g;
   }
   function tryJump() {
@@ -1171,6 +1178,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (!reduce) burst(wl.x + P.kd * 20, FLOOR - P.y - 30, 6, ['#f6757a', '#ffffff'], 200, 0.6, 300, 4);
       sfx.dash(); return;
     }
+    { const sh = R.props.find(p => p.k === 'shoji' && !p.dead && !p.open && Math.abs(P.x - p.x) < p.w / 2 + 64); if (sh) { sh.open = true; sfx.whoosh(); return; } } // ↑ next to a paper door slides it open
     if (cl) {
       const l = cl.ladders.find(l => Math.abs(l.lv * FH - P.y) < 3 && Math.abs(P.x - l.x) < 36 && ladderOpen(l)); if (l) { P.lad = l; P.vx = 0; S.blockT = 0; return; }
       const pp = cl.pipes.find(q => Math.abs(P.x - q.x) < 36 && P.y > q.lv * FH - 3 && P.y < (q.lv + q.n) * FH - 3 && Math.abs(P.y % FH) < 3);
@@ -1187,9 +1195,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     let nx = P.x + P.vx * dt;
     if (nx < P.w / 2) { nx = P.w / 2; P.vx = 0; }
     if (nx > W - P.w / 2) nx = W - P.w / 2;
-    if (surfAt(nx, 18) > P.y + STEP_UP) { nx = P.x; if (!P.air) P.vx = 0; } // a prop is in the way
+    if (surfAt(nx, 18, P.y) > P.y + STEP_UP) { nx = P.x; if (!P.air) P.vx = 0; } // a prop is in the way
     P.x = nx;
-    const g = surfAt(P.x, 18);
+    const g = surfAt(P.x, 18, P.y);
     if (!P.air && Math.abs(P.y - g) <= STEP_UP) { P.y = g; P.vy = 0; }
     else {
       P.vy -= GRAV * dt; P.y += P.vy * dt;
@@ -1197,12 +1205,14 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     if (P.x >= W - P.w / 2 - 1 && !P.air) nextRoom();
   }
+  const secOf = i => ROOMS[i].climb ? 'climb' : ROOMS[i].sec || 'house';
   function nextRoom() {
     if (R.i >= ROOMS.length - 1) { houseDone(); return; }
     loadRoom(R.i + 1);
-    if (climbOf() && !ROOMS[R.i - 1].climb) { // a new section: hearts refill, and a lost turn restarts from here
+    if (secOf(R.i) !== secOf(R.i - 1)) { // a new section: hearts refill, and a lost turn restarts from here
       S.lives = 3; S.startRm = R.i; hud(S.score, 3);
-      banner('天台!', 'House and garden cleared · hearts refilled · climb to the roof', '#2ce8f5');
+      if (climbOf()) banner('天台!', 'Dojo cleared · hearts refilled · climb to the roof', '#2ce8f5');
+      else banner('DOJO!', 'House cleared · hearts refilled · fists fall faster here', '#feae34');
     }
     P.x = 70; P.vx = 0; P.y = surfAt(70, 18); P.vy = 0; P.air = false; P.lad = null; P.grip = null; P.el = null; P.kt = 0;
     S.chops = []; S.queue = []; S.rainT = 0; S.spawnIn = 1.4; S.blockT = 0;
@@ -1213,7 +1223,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     S.won = true; S.lives = 3; S.st = 'over'; S.cd = null; S.chops = []; S.startRm = 0;
     sfx.levelup(); hud(S.score, 3);
     if (S.score > best) { best = S.score; try { localStorage.setItem('chopBest', best); } catch (e) {} }
-    setOverlay(true, 'ROOF REACHED!', 'You crossed the house and climbed the building. That is the whole prototype so far. The next game starts back in the living room.', 'Again', null);
+    setOverlay(true, 'ROOF REACHED!', 'You crossed the house and the dojo and climbed the building. That is the whole prototype so far. The next game starts back in the living room.', 'Again', null);
     pushTarget(true);
     $('ovBtn').focus();
   }
@@ -1225,15 +1235,20 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // A fist that lands on a breakable prop wears it down.
   function hitProps(c) {
     for (const p of R.props) {
+      if (p.k === 'dummy' && !p.dead && Math.abs(c.x - p.x) < c.w / 2 + p.w / 2 - 8) { // a hit spins the dummy; its arms shove 我 a step, no heart lost
+        p.spinT = 0.6;
+        if (role === 'me' && !P.air && P.y < 20 && Math.abs(P.x - p.x) < 150) { P.x = clamp(P.x + (P.x >= p.x ? 1 : -1) * 110, P.w / 2, W - P.w / 2); S.pops.push({ x: P.x, y: FLOOR - 150, txt: 'WHACK!', t: 0, col: '#feae34', size: 24 }); sfx.dash(); }
+        continue;
+      }
       if (p.dead || p.hp == null || p.sparkT > 0) continue;
-      if (Math.abs(c.x - p.x) >= c.w / 2 + p.w / 2 - 8) continue;
+      if (Math.abs(c.x - p.x) >= (p.plat ? p.w / 2 + 10 : c.w / 2 + p.w / 2 - 8)) continue; // a beam loses only the plank under the fist
       p.hp -= c.sup ? 3 : 1;
       propFx(p, p.hp <= 0);
       if (p.hp <= 0) { if (p.elec) p.sparkT = 1; else p.dead = true; }
     }
   }
-  function tickProps(dt) { for (const p of R.props) if (p.sparkT > 0) { p.sparkT -= dt; if (p.sparkT <= 0) p.dead = true; } }
-  const propCode = p => p.dead ? 0 : p.sparkT > 0 ? -1 : p.hp == null ? 9 : p.hp;
+  function tickProps(dt) { for (const p of R.props) { if (p.spinT > 0) p.spinT -= dt; if (p.sparkT > 0) { p.sparkT -= dt; if (p.sparkT <= 0) p.dead = true; } } }
+  const propCode = p => p.dead ? 0 : p.sparkT > 0 ? -1 : p.open ? 7 : p.spinT > 0 ? 6 : p.hp == null ? 9 : p.hp;
   // 兄弟 side: follow 我's room and prop state.
   function syncRoom(tp, dt) {
     const i = clamp(+tp.rm || 0, 0, ROOMS.length - 1);
@@ -1242,6 +1257,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     R.props.forEach((p, k) => {
       const v = +pp[k], was = propCode(p);
       if (!isFinite(v) || v === was) return;
+      if (v === 7) { p.open = true; return; } if (v === 6) { p.spinT = 0.5; return; }
       if (was > 0 && v <= 0) propFx(p, true); else if (was > 0 && v < was) propFx(p, false);
       p.dead = v === 0; p.sparkT = v === -1 ? 1 : 0; if (v > 0 && p.hp != null) p.hp = v;
     });
@@ -1338,7 +1354,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!P.air && P.y >= cl.top * FH - 1 && P.x >= W - WALL - P.w / 2 - 1) nextRoom();
   }
   function tryDrop() { // ↓ on a floor or stair above the ground: drop through to whatever is below
-    if (role !== 'me' || S.st !== 'play' || S.paused || !climbOf() || P.lad || P.el) return false;
+    if (role !== 'me' || S.st !== 'play' || S.paused || P.lad || P.el) return false;
+    if (!climbOf()) { // in a room: ↓ on a beam drops through it
+      if (P.air || !R.props.some(p => p.plat && !p.dead && Math.abs(P.x - p.x) < p.w / 2 + 18 && Math.abs(P.y - p.h) < 3)) return false;
+      P.y -= STEP_UP + 2; P.vy = -60; P.air = true; return true;
+    }
     if (P.grip) { if (!P.grip.rope) P.slide = 1; return true; } // on a pipe: slide down fast
     if (P.air || P.y < 1) return false;
     P.y -= STEP_UP + 2; P.vy = -60; P.air = true;
@@ -1739,6 +1759,16 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       for (let k = 0; k < 7; k++) { const h = 28 + Math.floor(rnd(k + x) * 4) * 8; bx(x + 8 + k * 14, 200 - h, 12, h, cols[(k + (x | 0)) % 6]); bx(x + 8 + k * 14, 200 - h + 8, 12, 4, '#ead4aa'); }
       bx(x + 116, 180, 24, 20, '#b86f50'); bx(x + 120, 160, 8, 20, '#3e8948'); bx(x + 128, 152, 8, 28, '#63c74d'); bx(x + 112, 168, 8, 12, '#3e8948');
       bx(x + 148, 176, 20, 24, '#c0cbdc'); bx(x + 148, 172, 20, 4, '#733e39'); bx(x + 152, 184, 12, 12, '#f77622');
+    } else if (kind === 'scroll') { // hanging scroll with one brush stroke
+      bx(x - 4, 60, 72, 8, '#3e2731'); bx(x, 68, 64, 150, '#ffffff'); bx(x, 68, 64, 4, '#c0cbdc'); bx(x - 4, 218, 72, 8, '#3e2731'); bx(x + 30, 48, 4, 12, '#181425');
+      const v = Math.floor(rnd(x) * 3);
+      if (v === 0) { bx(x + 28, 84, 8, 96, '#181425'); bx(x + 16, 108, 32, 8, '#181425'); bx(x + 12, 164, 40, 8, '#181425'); }
+      else if (v === 1) { for (let q = 0; q < 6; q++) bx(x + 12 + q * 6, 92 + q * 14, 12, 16, '#181425'); bx(x + 12, 180, 40, 8, '#181425'); }
+      else { bx(x + 16, 88, 32, 32, '#e43b44'); bx(x + 24, 96, 16, 16, '#ffffff'); bx(x + 28, 132, 8, 60, '#181425'); }
+      bx(x + 44, 196, 12, 12, '#e43b44');
+    } else if (kind === 'rack') { // weapon rack: staffs and wooden swords
+      bx(x, 150, 180, 8, '#733e39'); bx(x, 250, 180, 8, '#733e39'); bx(x + 4, 130, 8, 150, '#3e2731'); bx(x + 168, 130, 8, 150, '#3e2731');
+      for (let k = 0; k < 5; k++) { const sx = x + 28 + k * 30; bx(sx, 90 + (k % 2) * 20, 8, 190 - (k % 2) * 20, k % 2 ? '#b86f50' : '#e4a672'); if (k % 2) { bx(sx - 4, 230, 16, 8, '#3e2731'); bx(sx, 238, 8, 40, '#a22633'); } }
     } else if (kind === 'pots') { // kitchen rail: pans and a string of onions
       bx(x, 160, 200, 4, '#5a6988');
       for (let k = 0; k < 4; k++) { const px = x + 12 + k * 44; bx(px + 10, 164, 4, 12, '#181425'); bx(px, 176, 24, 24 + (k % 2) * 8, k % 2 ? '#3a4466' : '#b86f50'); bx(px, 176, 24, 4, k % 2 ? '#5a6988' : '#e4a672'); }
@@ -1795,6 +1825,20 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     else if (p.k === 'hedge') { R_('#265c42', l, t, w, h); R_('#3e8948', l, t, w, 9); for (let k = 0; k < w - 18; k += 30) R_('#63c74d', l + 9 + k, t + 18 + (k % 60 ? 12 : 0), 9, 9); }
     else if (p.k === 'pot') { R_('#b86f50', l + 6, t + 18, w - 12, h - 18); R_('#e4a672', l, t + 12, w, 9); R_('#63c74d', p.x - 9, t - 24, 6, 36); R_('#e43b44', p.x - 15, t - 36, 18, 15); R_('#fee761', p.x + 3, t - 18, 15, 15); }
     else if (p.k === 'wardrobe') { R_('#733e39', l, t, w, h); R_('#b86f50', l + 9, t + 12, w / 2 - 15, h - 30); R_('#b86f50', p.x + 6, t + 12, w / 2 - 15, h - 30); R_('#feae34', p.x - 15, t + h / 2, 6, 15); R_('#feae34', p.x + 9, t + h / 2, 6, 15); R_('#3e2731', l, t, w, 6); }
+    else if (p.k === 'shoji') { // paper sliding door: shut, or slid open into a thin stack
+      if (p.open) { R_('#733e39', l, t, 12, h); R_('#ead4aa', l + 4, t + 8, 4, h - 16); R_('#733e39', l, t, w, 8); }
+      else { R_('#733e39', l, t, w, h); R_('#ffffff', l + 6, t + 8, w - 12, h - 16); for (let y = t + 8 + 50; y < t + h - 12; y += 54) R_('#733e39', l + 6, y, w - 12, 4); R_('#733e39', p.x - 2, t + 8, 4, h - 16); R_('#3e2731', l, t + h - 40, w, 32); R_('#feae34', l + w - 12, t + h / 2, 6, 14); }
+    } else if (p.k === 'dummy') { // wooden training dummy; its arms swap sides while it spins
+      const sp = p.spinT > 0 && Math.floor(performance.now() / 70) % 2;
+      R_('#733e39', l - 6, FLOOR - 12, w + 12, 12); R_('#b86f50', p.x - 16, t, 32, h - 12); R_('#e4a672', p.x - 16, t, 8, h - 12); R_('#733e39', p.x + 8, t, 8, h - 12); R_('#e4a672', p.x - 16, t, 32, 6);
+      R_('#733e39', sp ? p.x + 16 : p.x - 44, t + 22, 28, 8); R_('#733e39', sp ? p.x - 44 : p.x + 16, t + 40, 28, 8); R_('#733e39', sp ? p.x - 40 : p.x + 16, t + 72, 24, 8);
+      R_('#a22633', p.x - 16, t + 56, 32, 8);
+    } else if (p.k === 'beam') { // one plank of the raised walkway, on two thin posts
+      R_('#733e39', l + 4, t + 16, 8, h - 16); R_('#733e39', l + w - 12, t + 16, 8, h - 16);
+      R_(hurt ? '#733e39' : '#b86f50', l, t, w, 16); R_('#e4a672', l, t, w, 4); R_('#3e2731', l, t + 12, w, 4);
+      if (hurt) { R_('#181425', p.x - 8, t, 6, 12); R_('#181425', p.x + 14, t + 4, 6, 12); }
+      return;
+    }
     if (hurt && !fried) { // cracks
       ctx.fillStyle = '#181425';
       for (let k = 0, n = (p.hp0 - p.hp) * 5; k < n; k++) ctx.fillRect(Math.round(p.x - 24 + (k % 5) * 9 + ((k / 5) | 0) * 15), Math.round(t + 15 + k * 9 * ((k % 2) ? 1 : 0.7)), 6, 12);
@@ -1807,6 +1851,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (st === 'plank') { // vertical boards with seams, nail rows and knots
       for (let x = 0, k = 0; x < W; x += 52, k++) { bx(x, 0, 4, FLOOR, w2); if (rnd(k + seed) < 0.5) bx(x + 4, 0, 4, FLOOR, w1); if (rnd(k + seed + 5) < 0.4) { const ky = 60 + Math.floor(rnd(k + seed + 2) * 40) * 8; bx(x + 20, ky, 12, 8, w2); bx(x + 24, ky + 2, 4, 4, w1); } }
       for (const y of [44, 300]) for (let x = 24; x < W; x += 52) bx(x, y, 4, 4, w2);
+    } else if (st === 'shoji') { // dojo: paper panels in a dark wooden grid
+      for (let x = 0; x < W; x += 96) { bx(x, 0, 8, FLOOR, w2); bx(x + 8, 0, 4, FLOOR, w1); }
+      for (const y of [120, 232, 344]) { bx(0, y, W, 8, w2); bx(0, y + 8, W, 4, w1); }
+      for (let k = 0; k < 9; k++) bx(Math.floor(rnd(k + seed) * 16) * 96 + 28, 40 + Math.floor(rnd(k + seed + 3) * 3) * 112, 40, 4, w1);
     } else if (st === 'block') { // garage: concrete blocks
       for (let y = 20, r = 0; y < FLOOR; y += 44, r++) { bx(0, y, W, 4, w2); for (let x = (r % 2) * 60; x < W; x += 120) bx(x, y, 4, 44, w2); }
       for (let k = 0; k < 14; k++) bx(Math.floor(rnd(k + seed) * W / 8) * 8, 40 + Math.floor(rnd(k + seed + 3) * 50) * 8, 12, 4, w1);
@@ -1990,6 +2038,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     me: [
       '<b>The climb</b>: after the house comes a building. Fists come from the <b>side</b> there and run along one floor. Change floors to dodge: stairs, a ladder (↑ at its foot climbs it, ← → lets go), a jump into a blinking hook, or ↓ to drop a floor. A pillar between you and the fist stops it. Inside, a fist has to smash the glass wall first: watch for the cracks. In the middle stretch you are outside on the facade, where the only way up is a window while its lamp is green.',
       '<b>More ways up</b> (orange marks where to climb): a <b>drain pipe</b> outside skips two or three floors (↑ at its foot; ↓ slides back down, ← → lets go). Jump to catch a <b>rope</b> and it carries you up two floors; ← → leaps off it. Jump onto a glowing <b>ledge</b>, then up through the floor above. Between two <b>shaft walls</b> with pink arrows, jump and press ↑ again in the air to kick off the wall. The <b>window-cleaning lift</b> outside rides up and down by itself. Press ↑ inside the <b>elevator</b> to ride two floors: fists can\'t reach you in it, but every knock stalls the car.',
+      '<b>The dojo</b> comes after the garden, and fists fall faster there. <b>Paper doors</b> block the way: ↑ slides one open, a dash tears through it, and a shut door shields you from one fist before it tears. A fist that lands on a <b>training dummy</b> spins it and its arms shove you a step. On the <b>raised beam</b> you can\'t block: ↓ drops you through it, and under it the beam is your roof until the 兄弟 break its planks.',
       '<b>Goal</b>: walk through the house, room by room, and out of the garage. The door on the right leads on. Run out of hearts and the turn passes to the 兄弟 who hit you most.',
       '<b>Move</b> with ← → (or A D), or drag on the arena. <b>Jump</b> with ↑ / W, the ▲ button, or a swipe up. Red shadows show where hands will land.',
       '<b>Furniture</b> blocks the way. Jump low pieces, climb tall ones from a smaller piece beside them, or stand next to the TV, fridge or wardrobe and let the 兄弟 smash it for you. A broken TV or fridge sparks for a second before the path is clear.',
@@ -2188,7 +2237,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
 
   function moveMax() { return 340 + S.speed * 35; }
-  function dropV() { return Math.min(2300, 1400 + S.speed * 220); }
+  function dropV() { return Math.min(2300, 1400 + S.speed * 220) * (secOf(R.i) === 'dojo' ? 1.25 : 1); }
   const DROP_DIST = FLOOR - 60 + 260;
   function landIn(c) {
     if (c.phase === 'warn') return (c.warn - c.t) + DROP_DIST / dropV();
@@ -2395,7 +2444,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (role !== 'me' || S.st !== 'play' || S.dashCd > 0) return;
     const d = ((keys.r ? 1 : 0) - (keys.l ? 1 : 0)) || P.face || 1;
     const from = P.x;
-    for (let i = 0; i < 15; i++) { const n = clamp(P.x + d * 10, P.w / 2, W - P.w / 2); if (surfAt(n, 18) > P.y + STEP_UP) break; P.x = n; }
+    for (let i = 0; i < 15; i++) { const n = clamp(P.x + d * 10, P.w / 2, W - P.w / 2); const sh = R.props.find(p => p.k === 'shoji' && !p.dead && !p.open && Math.abs(n - p.x) < p.w / 2 + 18); if (sh) { sh.dead = true; propFx(sh, true); } if (surfAt(n, 18, P.y) > P.y + STEP_UP) break; P.x = n; }
     P.vx = d * 300; S.iframe = 0.3; S.dashCd = 3; S.blockT = 0;
     if (FX.anim) FX.anim.sq = 1;
     for (let i = 1; i <= 4; i++) FX.ghosts.push({ x: from + (P.x - from) * i / 5, t: -i * 0.03 });
@@ -3940,7 +3989,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
           renderWard();
         }
       }
-      sfx.setSection(climbOf() ? 'rooftop-climb' : 'house'); sfx.setLevel(levelOf(S.score)); sfx.scene(S.paused ? null : S.st === 'play' ? 'stage' : S.st === 'over' ? 'over' : 'menu');
+      sfx.setSection({ house: 'house', dojo: 'dojo', climb: 'rooftop-climb' }[secOf(R.i)]); sfx.setLevel(levelOf(S.score)); sfx.scene(S.paused ? null : S.st === 'play' ? 'stage' : S.st === 'over' ? 'over' : 'menu');
       if (S.paused) { /* round frozen */ }
       else if (FX.hitstop > 0) FX.hitstop -= dt;
       else if (S.st === 'play') { FX.slow = Math.max(0, FX.slow - dt); update(FX.slow > 0 ? dt * 0.4 : dt); }
@@ -3957,7 +4006,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       }
       B.cool -= dt; B.fakeCool -= dt; B.homeCool -= dt; B.stunT -= dt; B.yqCool = (B.yqCool || 0) - dt;
       const tpm = remoteTarget();
-      sfx.setSection(climbOf() ? 'rooftop-climb' : 'house'); sfx.setLevel(levelOf(tpm && tpm.presence.score)); sfx.scene(!tpm ? 'menu' : tpm.presence.pz ? null : tpm.presence.st === 'play' ? 'stage' : tpm.presence.st === 'over' ? 'over' : 'menu');
+      sfx.setSection({ house: 'house', dojo: 'dojo', climb: 'rooftop-climb' }[secOf(R.i)]); sfx.setLevel(levelOf(tpm && tpm.presence.score)); sfx.scene(!tpm ? 'menu' : tpm.presence.pz ? null : tpm.presence.st === 'play' ? 'stage' : tpm.presence.st === 'over' ? 'over' : 'menu');
       followCam(B.tx, dt);
       drawBroView(dt);
     }

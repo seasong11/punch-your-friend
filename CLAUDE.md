@@ -117,6 +117,12 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   `P.kt`/`P.kd`), half-height ledges and the window-cleaning lift (`platY`, both handled in `climbGround`), wall kicks
   (↑ in the air near a shaft wall, max 2, `P.kicks`), and an elevator (`R.el[]`, `tickElevators`, `P.el`; a side fist
   stops at the car and stalls it; car heights go out in presence `ey`). Orange always marks "climb here".
+- Dojo test section (rooms with `sec: 'dojo'`, between the garden and the climb; `secOf(i)` names a room's section and a
+  section change refills hearts and sets `S.startRm`). Fists fall 1.25x faster there (`dropV`). Props: `shoji` paper doors
+  (block the way; ↑ slides one open = `p.open`, a dash tears it, a fist tears it and is absorbed), `dummy` (a fist spins
+  it, `spinT`, and shoves 我 a step, no heart lost), `beam` planks (`plat: 1`, one-way via `surfAt(x, half, y)`; ↓ drops
+  through, no block on it; a fist breaks only the plank under it). `propCode` 7 = open, 6 = spinning. The crooked-scroll
+  secret is not built. Each stage is meant to get one unique stage punch (designed in the punch thread): leave room.
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
 - The hoodie no longer has 我 printed on the chest.
 
