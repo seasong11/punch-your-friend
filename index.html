@@ -1989,7 +1989,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.save();
     ctx.font = '34px ' + HF;
     const tw = ctx.measureText(tt.txt).width + 40, bh = 56;
-    const bx = clamp(x, tw / 2 + 6, W - tw / 2 - 6), by = FLOOR - 175;
+    const bx = clamp(x, tw / 2 + 6, W - tw / 2 - 6), by = FLOOR - 232; // above the xN streak tag (FLOOR - 172)
     ctx.globalAlpha = Math.max(0, fade);
     ctx.translate(bx, by); ctx.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
     ctx.fillStyle = '#fff4e0'; ctx.strokeStyle = '#1b1430'; ctx.lineWidth = 5;
