@@ -1981,15 +1981,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const tt = obj.taunt;
     if (!tt) return;
     tt.t += dt;
-    if (tt.t > 1.6) { obj.taunt = null; return; }
-    const pop = Math.min(1, tt.t / 0.12), fade = tt.t > 1.35 ? (1.6 - tt.t) / 0.25 : 1;
+    if (tt.t > 2.4) { obj.taunt = null; return; }
+    const pop = Math.min(1, tt.t / 0.12), fade = tt.t > 2.1 ? (2.4 - tt.t) / 0.3 : 1;
     ctx.save();
-    ctx.font = '24px ' + HF;
-    const tw = ctx.measureText(tt.txt).width + 28, bh = 40;
+    ctx.font = '34px ' + HF;
+    const tw = ctx.measureText(tt.txt).width + 40, bh = 56;
     const bx = clamp(x, tw / 2 + 6, W - tw / 2 - 6), by = FLOOR - 175;
     ctx.globalAlpha = Math.max(0, fade);
     ctx.translate(bx, by); ctx.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
-    ctx.fillStyle = '#fff4e0'; ctx.strokeStyle = '#2b1d3a'; ctx.lineWidth = 3;
+    ctx.fillStyle = '#fff4e0'; ctx.strokeStyle = '#1b1430'; ctx.lineWidth = 5;
     ctx.beginPath(); ctx.roundRect(-tw / 2, -bh / 2, tw, bh, 14); ctx.fill(); ctx.stroke();
     const tx = clamp(x - bx, -tw / 2 + 16, tw / 2 - 16);
     ctx.beginPath(); ctx.moveTo(tx - 8, bh / 2 - 1); ctx.lineTo(tx + 2, bh / 2 + 14); ctx.lineTo(tx + 10, bh / 2 - 1); ctx.closePath(); ctx.fill();
@@ -2158,12 +2158,14 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const T = 1.3;
       if (b.t > T) FX.banner = null;
       else {
-        const inS = Math.min(1, b.t / 0.15), out = b.t > T - 0.25 ? (T - b.t) / 0.25 : 1, sc = 1.6 - 0.6 * inS;
-        ctx.save(); ctx.globalAlpha = Math.max(0, out); ctx.translate(W / 2, H * 0.36);
-        ctx.fillStyle = 'rgba(43,29,58,.7)'; ctx.fillRect(-W / 2, -46, W, b.sub ? 98 : 80);
-        ctx.scale(sc, sc); ctx.textAlign = 'center';
-        ctx.fillStyle = b.col; ctx.font = '48px ' + HF; ctx.fillText(b.txt, 0, 12);
-        if (b.sub) { ctx.font = '16px ' + HF; ctx.fillStyle = '#fff4e0'; ctx.fillText(b.sub, 0, 40); }
+        // Captions live in a strip along the bottom so they never cover the taunt bubble or the action.
+        const inS = Math.min(1, b.t / 0.15), out = b.t > T - 0.25 ? (T - b.t) / 0.25 : 1, sc = 1.2 - 0.2 * inS;
+        const bh = b.sub ? 92 : 70;
+        ctx.save(); ctx.globalAlpha = Math.max(0, out); ctx.translate(W / 2, H - bh / 2);
+        ctx.fillStyle = 'rgba(27,20,48,.82)'; ctx.fillRect(-W / 2, -bh / 2, W, bh);
+        ctx.scale(sc, sc); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = b.col; ctx.font = '44px ' + HF; ctx.fillText(b.txt, 0, b.sub ? -14 : 2);
+        if (b.sub) { ctx.font = '20px ' + HF; ctx.fillStyle = '#fff4e0'; ctx.fillText(b.sub, 0, 28); }
         ctx.restore();
       }
     }
@@ -2260,9 +2262,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     cs.forEach(hand);
     drawRings(dt);
     drawParts(dt);
-    tauntBubble(S, P.x, dt);
     S.pops = pops(S.pops, dt);
     drawOverlayFx(dt, S.st === 'play' && S.lives === 1);
+    tauntBubble(S, P.x, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
 
@@ -2403,9 +2405,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     cs.forEach(hand);
     drawRings(dt);
     drawParts(dt);
-    if (tp) tauntBubble(B, B.tx, dt);
     B.pops = pops(B.pops, dt);
     drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1);
+    if (tp) tauntBubble(B, B.tx, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
 
