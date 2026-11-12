@@ -123,6 +123,24 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   it, `spinT`, and shoves 我 a step, no heart lost), `beam` planks (`plat: 1`, one-way via `surfAt(x, half, y)`; ↓ drops
   through, no block on it; a fist breaks only the plank under it). `propCode` 7 = open, 6 = spinning. The crooked-scroll
   secret is not built. Each stage is meant to get one unique stage punch (designed in the punch thread): leave room.
+- Rough sections after the dojo (first pass, all rules are Claude's placeholders for Daniel to revise). Room order:
+  house, garden, dojo x3, bamboo x2, ROOFTOP CLIMB, roof jumps x2, lake dive, lake, volcano x2, snow x2, tower lift,
+  SPACE STATION. A room's `sec` is also its music id; `secOf` gives `climb` / `space` for the two towers; `SEC_INFO`
+  holds each section's banner. Rooms with `scene` are drawn by `drawScene(rm)` (flat backdrops) instead of the house shell.
+  - Terrain: `hill` (polyline of `[x, height]`, read by `rampAt`), `void: 1` (no floor, only props such as `roof`),
+    `ghost: 1` props (not solid: `stalk`, `shroom`), `raw: 1` props (drawn without `litSprite`), `drift` props (move
+    with `R.t`, `driftProps`), `hh` (visible height of a rock standing on a slope), `enterY` (start height).
+  - Bamboo: ↑ at a `stalk` or ↓ on a `shroom` is a high jump (vy 1280); `thick` thickets block the path; `leaf` canopy
+    planks are one-way cover that take two fists.
+  - Roof jumps: falling below the screen costs a heart and returns 我 to the last safe spot (`P.sx`, `P.sy`, `loseHeart`).
+  - Lake dive / lake: `water: { x0, top }`, `inWater()`. Slow sink, ↑ is a swim stroke, 0.6x sideways speed; a fist slows
+    down with depth and lands on a swimmer under it; `turtle` plats are cover.
+  - Volcano: `lava` zones burn (one heart, and always a bounce); `slab` stepping stones have 2 hp, `rock` ones are safe.
+  - Snow: `slide: 1`, on a slope anything but pushing uphill slides 我 back (`slopeAt`); flat ledges are rests.
+    Punches at a right angle to the slope are not built.
+  - Tower lift: `ride` seconds (`rideLeft()`, `R.t0`); the exit only opens when the ride is over.
+  - Space: `buildClimb(8, { space: 1, seed: 23 })`, gravity x0.35 in `moveClimb`, stars instead of the city. Finishing it
+    ends the journey (`houseDone`, "JOURNEY DONE!").
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
 - The hoodie no longer has 我 printed on the chest.
 
