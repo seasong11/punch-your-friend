@@ -23,6 +23,13 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 ## Game systems (all inside the main game script)
 - Rendering: world drawn to an offscreen 1600x640 canvas, downscaled 2x and upscaled with hard pixels;
   `fillText` calls are recorded and replayed crisp in pixel fonts (Press Start 2P / DotGothic16).
+- Lit sprites: `litSprite()` draws 我 (and fists) on a small output-resolution canvas (`ctx` is temporarily
+  swapped to it), then adds a light ramp, rim light, far-edge shade, pixel outline and a cast shadow, using the
+  stage's `LIGHT` entry. Lit fists are cached in `HAND_CACHE` (motion streaks drawn fresh by `handMotion`).
+  `depthBlur()` softens the back wall (desktop only); the vignette is CSS (`.stage::after`).
+- Music: one theme per stage in `THEMES` (scale, melody, bass, lead sound, base bpm rising stage by stage);
+  `setLevel` picks the theme and intensity tier, and levels past the last stage push the tempo further.
+  Sound effects go through their own quieter bus (`sfxOut`).
 - Levels: `levelOf(score)` — LV2 at 25 points, LV3 at 75, then triangular growth. Speed curve caps around 4.2.
   A fairness check (`fairSpot`) stops the practice bot from throwing unescapable punches.
 - Six stages by level (living room, dojo, rooftop, bamboo, volcano with fire dragon, space with ships),
@@ -32,6 +39,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   costumes (`COS`) each with its own move set (`MOVES`).
 - 兄弟 (puncher): tap to chop, formations (1/2/3), feint (F), homing (H), 黄泉指 Underworld Finger (Y),
   如来神掌 Buddha Palm (charged super), Punch Rain ultimate (R).
+- 黄泉指: the portal chases 我 during the warning (`YQ_TRACK` px/s), the finger snakes down at 2x speed, and
+  the landing sends a ghost-fire wave `YQ_REACH` px each way (`c.wave`); dash, bell or block stop the wave.
+- Switch sides: between rounds the overlay shows "⇄ Switch sides". 我 hands the role to a 兄弟 (the one who
+  asked, else the top hitter) by setting presence `hand: '<peer>:<nonce>'`; a 兄弟 asks with presence `sw`.
+- Controls sit in one compact `.dock` under the arena; a round start scrolls the HUD, arena and dock into view.
 
 ## Publishing (GitHub Pages)
 The site is served by GitHub Pages from **Deploy from a branch → main → / (root)** (Settings → Pages).
