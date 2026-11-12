@@ -76,6 +76,7 @@
       if (myId) state[myId] = { ...(state[myId] || {}), ...local };
       const msg = { t: 'state', s: state };
       conns.forEach(c => { try { if (c.open) c.send(msg); } catch (e) {} });
+      relayDirty = true;
     }, 33);
   }
   function guestSend() {
@@ -103,28 +104,29 @@
   let gPeer = null, joinTimer = null, joinStart = 0, everJoined = false;
   function tryJoin() {
     clearTimeout(joinTimer);
-    if (!gPeer || connected) return;
+    if (!gPeer || connected || relayClient) return;
     if (!joinStart) joinStart = Date.now();
+    setTimeout(() => { if (!connected) guestRelayStart(); }, 8000); // direct link blocked? use the relay
     const c = gPeer.connect('pyf-' + roomId, { serialization: 'json', reliable: true });
     wireGuestConn(c);
     joinTimer = setTimeout(() => { if (!c.open) { try { c.close(); } catch (e) {} retryJoin(); } }, 10000);
   }
   function retryJoin() {
     clearTimeout(joinTimer);
-    if (connected) return;
+    if (connected || relayClient) return;
     const waited = Date.now() - joinStart;
     status = everJoined ? 'rejoining' : waited > 30000 ? 'slow' : 'joining'; ui();
     joinTimer = setTimeout(tryJoin, 3000);
   }
+  function applyHostState(d) {
+    if (!d || d.t !== 'state' || typeof d.s !== 'object') return;
+    for (const id in state) if (!(id in d.s)) delete state[id];
+    for (const id in d.s) if (id !== myId) state[id] = d.s[id];
+    emitPeers(); ui();
+  }
   function wireGuestConn(c) {
     c.on('open', () => { clearTimeout(joinTimer); joinStart = 0; everJoined = true; status = 'joining'; conns.set('host', c); pendingPatch = { ...local }; guestSend(); setConnected(true); });
-    c.on('data', d => {
-      if (conns.get('host') !== c) return;
-      if (!d || d.t !== 'state' || typeof d.s !== 'object') return;
-      for (const id in state) if (!(id in d.s)) delete state[id];
-      for (const id in d.s) if (id !== myId) state[id] = d.s[id];
-      emitPeers(); ui();
-    });
+    c.on('data', d => { if (conns.get('host') === c) applyHostState(d); });
     c.on('close', () => {
       if (conns.get('host') !== c) return; // a join attempt that never opened
       conns.delete('host'); for (const id in state) if (id !== myId) delete state[id]; setConnected(false); emitPeers();
@@ -132,12 +134,104 @@
     });
   }
 
+  // ---------- relay fallback ----------
+  // Some networks (school/office Wi-Fi, strict mobile carriers) block browser-to-browser links.
+  // Then guests talk to the host through a public MQTT broker over a normal secure WebSocket instead.
+  const RELAYS = MOCK && qs.get('relay') ? [qs.get('relay')] : ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
+  const T_UP = 'pyf2/' + roomId + '/up', T_DOWN = 'pyf2/' + roomId + '/down';
+  let mqttLoad = null, relayDirty = false, relayClient = null, relayLastState = 0, viaRelay = false;
+  const relayGuests = new Map(); // host: guest id -> { last, client }
+  function loadMqtt() {
+    if (!mqttLoad) mqttLoad = new Promise((res, rej) => {
+      if (window.mqtt) return res();
+      const sc = document.createElement('script');
+      sc.src = 'https://unpkg.com/mqtt@5.10.4/dist/mqtt.min.js'; sc.onload = () => res(); sc.onerror = rej;
+      document.head.appendChild(sc);
+    });
+    return mqttLoad;
+  }
+  function relayConnect(url, onMsg, onUp) {
+    const c = window.mqtt.connect(url, { clientId: 'pyf_' + Math.random().toString(36).slice(2, 12), clean: true, keepalive: 30, reconnectPeriod: 3000, connectTimeout: 8000 });
+    c.on('connect', () => { c.subscribe(isHost ? T_UP : T_DOWN, { qos: 0 }); if (onUp) onUp(c); });
+    c.on('message', (t, buf) => { let d; try { d = JSON.parse(String(buf)); } catch (e) { return; } onMsg(d, c); });
+    c.on('error', () => {});
+    return c;
+  }
+  // Host: listen on every broker, publish to the ones that have guests (at most ~15 times a second).
+  function hostRelayStart() {
+    loadMqtt().then(() => {
+      for (const u of RELAYS) relayConnect(u, hostRelayMsg, () => {
+        if (status !== 'hosting' && status !== 'reclaiming') { status = 'hosting'; state[myId] = { ...local }; setConnected(true); emitPeers(); ui(); }
+      });
+    }).catch(() => {});
+    let lastPub = 0;
+    setInterval(() => {
+      const now = Date.now();
+      let left = false;
+      relayGuests.forEach((g, id) => { if (now - g.last > 8000) { relayGuests.delete(id); if (!conns.has(id)) delete state[id]; left = true; } });
+      if (left) { hostBroadcast(); emitPeers(); ui(); }
+      if (!relayGuests.size || (!relayDirty && now - lastPub < 1500)) return;
+      relayDirty = false; lastPub = now;
+      if (myId) state[myId] = { ...(state[myId] || {}), ...local };
+      const msg = JSON.stringify({ t: 'state', s: state });
+      new Set([...relayGuests.values()].map(g => g.client)).forEach(c => { try { if (c.connected) c.publish(T_DOWN, msg); } catch (e) {} });
+    }, 66);
+  }
+  function hostRelayMsg(d, client) {
+    if (!d || typeof d !== 'object' || typeof d.id !== 'string' || d.id.length > 40 || d.id === myId || conns.has(d.id)) return;
+    const id = d.id;
+    if (d.t === 'bye') { if (relayGuests.delete(id)) { delete state[id]; hostBroadcast(); emitPeers(); ui(); } return; }
+    let g = relayGuests.get(id);
+    if (!g) { g = { last: 0, client }; relayGuests.set(id, g); state[id] = state[id] || {}; emitPeers(); ui(); }
+    g.last = Date.now(); g.client = client;
+    if (d.t === 'p' && d.patch && typeof d.patch === 'object' && JSON.stringify(d.patch).length < 6000) { merge(state[id], d.patch); emitPeers(); }
+    hostBroadcast();
+  }
+  // Guest: use the first broker that answers, say hello, and treat the host's state messages as the link.
+  const relayHost = { open: true, send: d => relaySend(d) };
+  function relaySend(d) { try { if (relayClient && relayClient.connected) relayClient.publish(T_UP, JSON.stringify({ ...d, id: myId })); } catch (e) {} }
+  let relayStarted = false;
+  function guestRelayStart() {
+    if (relayStarted || isHost) return;
+    relayStarted = true;
+    if (!myId) myId = 'r' + Math.random().toString(36).slice(2, 10);
+    loadMqtt().then(() => {
+      let i = 0;
+      const tryNext = () => {
+        if (relayClient || i >= RELAYS.length) return;
+        const c = relayConnect(RELAYS[i++], guestRelayMsg, cl => { if (!relayClient) { relayClient = cl; relaySend({ t: 'hi' }); } });
+        setTimeout(() => { if (relayClient !== c) { try { c.end(true); } catch (e) {} tryNext(); } }, 7000);
+      };
+      tryNext();
+    }).catch(() => {});
+    setInterval(() => {
+      if (!relayClient) return;
+      relaySend({ t: 'hb' });
+      if (conns.get('host') === relayHost && Date.now() - relayLastState > 8000) { // host went quiet
+        conns.delete('host'); for (const id in state) if (id !== myId) delete state[id];
+        status = 'rejoining'; setConnected(false); emitPeers(); ui();
+      }
+    }, 2000);
+    addEventListener('pagehide', () => relaySend({ t: 'bye' }));
+  }
+  function guestRelayMsg(d) {
+    if (!d || d.t !== 'state' || typeof d.s !== 'object') return;
+    if (conns.get('host') && conns.get('host') !== relayHost) return; // a direct link won after all
+    relayLastState = Date.now();
+    if (conns.get('host') !== relayHost) {
+      clearTimeout(joinTimer); joinStart = 0; everJoined = true; viaRelay = true; status = 'joining';
+      conns.set('host', relayHost); pendingPatch = { ...local }; guestSend(); setConnected(true);
+    }
+    applyHostState(d);
+  }
+
   let status = 'starting';
   function start(attempt = 0) {
     const Peer = MOCK ? window.MockPeer : window.Peer;
-    if (!Peer) { status = 'nolib'; ui(); return; }
+    if (!Peer) { status = 'nolib'; ui(); if (!isHost) guestRelayStart(); return; }
     const peer = isHost ? new Peer('pyf-' + roomId, { debug: 0 }) : new Peer(undefined, { debug: 0 });
     peer.on('open', id => {
+      if (!isHost && relayStarted) return; // already joined (or joining) through the relay under another id
       myId = id; status = isHost ? 'hosting' : 'joining';
       if (isHost) { state[myId] = { ...local }; setConnected(true); peer.on('connection', wireHostConn); }
       else { gPeer = peer; tryJoin(); }
@@ -147,7 +241,10 @@
       const t = e && e.type;
       if (t === 'unavailable-id' && attempt < 6) { peer.destroy(); setTimeout(() => start(attempt + 1), 2500); status = 'reclaiming'; ui(); return; }
       if (t === 'peer-unavailable') { if (!isHost) retryJoin(); return; }
-      if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') { status = 'offline'; ui(); return; }
+      if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') {
+        if (isHost) { if (status !== 'hosting') { status = 'offline'; ui(); } } else if (!connected) { status = 'offline'; ui(); guestRelayStart(); }
+        return;
+      }
     });
     peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
   }
@@ -187,7 +284,7 @@
       starting: 'Connecting…',
       hosting: `You're hosting room ${roomId.toUpperCase()} · ${n} player${n === 1 ? '' : 's'} here. Send the invite link to your friends.`,
       reclaiming: 'Reclaiming your room…',
-      joining: connected ? `Joined room ${roomId.toUpperCase()} · ${n} players here.` : `Joining room ${roomId.toUpperCase()}… If the host's game isn't open on their screen, ask them to switch back to it.`,
+      joining: connected ? `Joined room ${roomId.toUpperCase()} · ${n} players here.${viaRelay ? ' (via relay, your network blocks direct links)' : ''}` : `Joining room ${roomId.toUpperCase()}… If the host's game isn't open on their screen, ask them to switch back to it.`,
       slow: `Still trying to reach room ${roomId.toUpperCase()}. Make sure the host has the game open on their screen. If it never connects, a school or office network may be blocking it: try mobile data.`,
       rejoining: `Lost the host. Reconnecting to room ${roomId.toUpperCase()}…`,
       noroom: `Room ${roomId.toUpperCase()} isn't open right now. The host may have closed it.`,
@@ -236,6 +333,7 @@
     ui();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountBar); else mountBar();
+  if (isHost) { myId = 'pyf-' + roomId; hostRelayStart(); }
   start();
 })();
 
