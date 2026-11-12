@@ -53,6 +53,9 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   the landing sends a ghost-fire wave `YQ_REACH` px each way (`c.wave`); dash, bell or block stop the wave.
 - Switch sides: between rounds the overlay shows "⇄ Switch sides". 我 hands the role to a 兄弟 (the one who
   asked, else the top hitter) by setting presence `hand: '<peer>:<nonce>'`; a 兄弟 asks with presence `sw`.
+- Stop: `#pauseBtn` (or P / Esc) stops a round in play. 我's page holds the pause (`S.paused`, update skipped) and
+  sends presence `pz: 1, pzm: 1`; a 兄弟 asks with presence `pq: '<nonce>:<p|r|e>'` (pause, resume, end round).
+  The pause menu (Resume / End round) uses `ovMode = 'paused'` on the overlay buttons.
 - Controls sit in one compact `.dock` under the arena; a round start scrolls the HUD, arena and dock into view.
 
 ## Publishing (GitHub Pages)
