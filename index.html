@@ -948,7 +948,24 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // next room, and the last door ends the section. Props are solid boxes 我 can jump onto; the ones with `hp`
   // break under punches (`elec` ones spark for a second first). Both sides build the room from ROOMS; 我's page
   // owns the prop state and sends it in presence (`rm`, `pp`, `y`).
-  const JOURNEY = true, GRAV = 2600, JUMP_V = 940, STEP_UP = 14;
+  const JOURNEY = true, GRAV = 2600, JUMP_V = 940, STEP_UP = 14, W_ = 1600;
+  // The tower is generated from a fixed seed: every floor gets one staircase (alternating direction), most get a
+  // ladder or a hook as a faster, more exposed way up, and one or two pillars for cover (fewer near the top).
+  function buildClimb(top) {
+    let seed = 7; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const stairs = [], ladders = [], hooks = [], props = [];
+    for (let lv = 0; lv < top; lv++) {
+      const a = 200 + Math.floor(r() * 5) * 100, b = a + 400, right = lv % 2 === 0;
+      stairs.push(right ? { lv, x0: a, x1: b } : { lv, x0: W_ - a, x1: W_ - b });
+      const lo = Math.min(stairs[lv].x0, stairs[lv].x1), hi = lo + 400;
+      const free = () => { for (let k = 0; k < 20; k++) { const x = 160 + Math.floor(r() * 13) * 100; if (x < lo - 90 || x > hi + 90) return x; } return lo > 800 ? 200 : 1400; };
+      const pick = r();
+      if (pick < 0.5) ladders.push({ lv, x: free() }); else if (pick < 0.8 && lv > 0) hooks.push({ lv, x: free() });
+      const np = lv > top - 4 ? (r() < 0.5 ? 1 : 0) : 1 + (r() < 0.5 ? 1 : 0);
+      for (let k = 0; k < np; k++) props.push({ k: 'pillar', lv, x: 300 + k * 500 + Math.floor(r() * 5) * 100, w: 54, h: 0, hp: 3 });
+    }
+    return { props, climb: { top, stairs, ladders, hooks } };
+  }
   const ROOMS = [
     { name: 'LIVING ROOM', wall: ['#4a3466', '#56407a', '#3c2a52'], floor: ['#733e39', '#3e2731'], decor: [['pic', 230], ['win', 700]], props: [
       { k: 'table', x: 520, w: 150, h: 64 }, { k: 'side', x: 955, w: 90, h: 92 }, { k: 'tv', x: 1085, w: 170, h: 196, hp: 2, elec: 1 }] },
@@ -963,14 +980,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'box', x: 330, w: 90, h: 60 }, { k: 'box', x: 560, w: 110, h: 96 }, { k: 'box', x: 800, w: 90, h: 60 }, { k: 'box', x: 1030, w: 130, h: 112 }, { k: 'box', x: 1280, w: 100, h: 70 }] },
     { name: 'GARDEN', outdoor: 1, gate: 1, wall: ['#124e89', '#124e89', '#b86f50'], floor: ['#3e8948', '#265c42'], decor: [['moon', 1180], ['tree', 300], ['tree', 980]], props: [
       { k: 'hedge', x: 420, w: 170, h: 70 }, { k: 'pot', x: 760, w: 70, h: 56 }, { k: 'hedge', x: 1130, w: 220, h: 84 }] },
-    { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], props: [
-      { k: 'pillar', lv: 0, x: 900, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 1, x: 600, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 1, x: 1100, w: 54, h: 0, hp: 3 },
-      { k: 'pillar', lv: 2, x: 1000, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 3, x: 500, w: 54, h: 0, hp: 3 }, { k: 'pillar', lv: 3, x: 1000, w: 54, h: 0, hp: 3 },
-      { k: 'pillar', lv: 4, x: 600, w: 54, h: 0, hp: 3 }],
-      climb: { top: 5,
-        stairs: [{ lv: 0, x0: 300, x1: 700 }, { lv: 1, x0: 1300, x1: 900 }, { lv: 2, x0: 400, x1: 800 }, { lv: 3, x0: 700, x1: 300 }, { lv: 4, x0: 900, x1: 1300 }],
-        ladders: [{ lv: 0, x: 1300 }, { lv: 1, x: 250 }, { lv: 3, x: 1400 }, { lv: 4, x: 200 }],
-        hooks: [{ lv: 1, x: 760 }, { lv: 2, x: 1250 }] } }
+    { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(16) }
   ];
   const R = { i: 0, props: [] };
   if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom }; // test hook
@@ -1183,6 +1193,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.fillStyle = '#3a4466'; ctx.fillRect(0, FLOOR, W, H - FLOOR + 200);
     ctx.fillStyle = '#5a6988'; ctx.fillRect(0, FLOOR, W, 6);
     for (let k = 1; k <= top; k++) { ctx.fillStyle = '#5a6988'; ctx.fillRect(k === top ? 0 : WALL, yOf(k * FH), k === top ? W : W - WALL * 2, 12); ctx.fillStyle = '#8b9bb4'; ctx.fillRect(k === top ? 0 : WALL, yOf(k * FH), k === top ? W : W - WALL * 2, 3); }
+    ctx.fillStyle = '#5a6988'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
+    for (let k = 0; k <= top; k++) ctx.fillText(k === top ? 'ROOF' : (k + 1) + 'F', WALL + 18, yOf(k * FH) - 160);
     // pillars (cover)
     for (const p of R.props) {
       if (p.dead) continue;

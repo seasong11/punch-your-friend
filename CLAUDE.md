@@ -77,7 +77,7 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - Relay: at zero hearts `gameOver` sets `S.handT`; `relayHand` then hands the role to the top hitter who has not
   been 我 this round (`S.was`, passed along in presence `was`). The new 我 starts the house from room 1.
 - A garden (`outdoor`, `gate`) follows the garage and ends the house section.
-- Rooftop climb (the last entry of `ROOMS`, `climb: { top, stairs, ladders, hooks }`): floors are one-way platforms
+- Rooftop climb (the last entry of `ROOMS`, built by `buildClimb(16)` from a fixed seed into `climb: { top, stairs, ladders, hooks }` plus pillar props): floors are one-way platforms
   `FH` apart (`climbGround`, `moveClimb`). ↑ at a ladder's foot climbs it in one go (← → lets go), a jump into a
   hook pulls 我 up a floor, ↓ drops through a floor (`tryDrop`). The view scrolls with 我 (`CAMV`, `camFollow`,
   `camY`); everything in the world is drawn under `translate(0, camY())`.
