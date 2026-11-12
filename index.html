@@ -1974,6 +1974,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     'Missed me, loser!', 'Zero hits. Zero friends.', 'Touch grass. Then touch me.', 'Are you even trying?', 'Lag? No. You are just bad.'
   ];
   function taunt() {
+    if (S.taunt && S.taunt.t < 3) return; // let the current insult sink in before the next one
     let i;
     do { i = Math.floor(Math.random() * TAUNTS.length); } while (S.taunt && i === S.taunt.i && TAUNTS.length > 1);
     S.tid = (S.tid || 0) + 1;
@@ -1984,8 +1985,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const tt = obj.taunt;
     if (!tt) return;
     tt.t += dt;
-    if (tt.t > 2.4) { obj.taunt = null; return; }
-    const pop = Math.min(1, tt.t / 0.12), fade = tt.t > 2.1 ? (2.4 - tt.t) / 0.3 : 1;
+    if (tt.t > 4.5) { obj.taunt = null; return; }
+    const pop = Math.min(1, tt.t / 0.12), fade = tt.t > 4.1 ? (4.5 - tt.t) / 0.4 : 1;
     ctx.save();
     ctx.font = '34px ' + HF;
     const tw = ctx.measureText(tt.txt).width + 40, bh = 56;
