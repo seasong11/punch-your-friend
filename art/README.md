@@ -7,7 +7,7 @@ grid and the Endesga 64 palette, then embedded in `index.html`. Nothing in this 
 
 | Folder | What goes in it |
 | --- | --- |
-| `characters/<number>-<name>/` | PixelLab results for that character: the reference views and one PNG per action |
+| `characters/<number>-<name>/` | PixelLab results for that character. `rotations/` holds the 8 reference views (`east.png` is the one to animate from); add one PNG per action next to it |
 | `backgrounds/` | Stage backgrounds, tiles and props |
 | `effects/` | Effect sprites (most effects come from pixelfx in code) |
 | `palette/` | Endesga 64, the game palette. Upload `palette-endesga64-1px.png` to PixelLab as the target palette |
