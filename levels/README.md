@@ -1,43 +1,55 @@
-# Punch Your Friend: LDtk project of the journey prototype
+# Punch Your Friend: chunk library (LDtk)
 
-Generated from branch `house-prototype` at commit `c1ad7b5` (2026-11-13 09:27 UTC, "Longer stages, rooftop features and a space finale").
-That's the version with the longer stages (173 screens), the rooftop vents, zip cables and billboards, and the space finale. Later changes to the prototype aren't in here; the scripts in `tools/` can rebuild it.
+Open `punch-your-friend.ldtk` in LDtk 1.5.3 or newer. Keep this folder together, because the file loads `sprites.png` and `reference/` from next to it.
 
-## Opening it
+## How levels are built
 
-1. Pull this branch (or unzip the downloaded copy) and keep the `levels/` folder together: the `.ldtk` file looks for `sprites.png` and `backgrounds/` next to it.
-2. In LDtk (1.5.3 or newer): **Load project** and pick `punch-your-friend.ldtk`.
-3. Press **W** (world view) to see the whole journey as one map, then double-click a room to edit it.
+A run is put together from **chunks**. The game follows each section's **beat list** and, for each beat, picks a chunk that fits from a shared seed, so 我 and every 兄弟 get the same run. Then it rolls each chunk's **random parts**.
 
-## Working on it together
+- **Chunks join seamlessly.** They aren't rooms: there are no doors and no visible edges, and the ground of one runs straight into the next. Two chunks fit together when the terrain heights match at the seam (the right edge of one, the left edge of the next). The game reads those heights from the Terrain layer, so there is nothing to fill in by hand.
+- **Sizes.** Pixels are the game's own art pixels. The grid is 16 px. The screen is 400 x 160 (25 x 10 tiles), and Hoodie Guy is about 3 tiles tall. A chunk is 400 wide by default but can be any multiple of 16. The floor line is the top of the bottom tile row (y = 144).
+- **Set pieces** (`setPiece` on) are never picked at random. The beat list places them on purpose: the rooftop climb, the tower lift and elevator, the mothership gate and core.
 
-- Pull before you start editing, and push when you're done. The project is one big file, so take turns rather than editing at the same time.
-- Turning on *Project settings → Save levels to separate files* in LDtk splits each screen into its own file, which makes edits to different screens merge cleanly.
+## Level fields (select a level, then the Level panel)
 
-## What's in it
+| field | meaning |
+|---|---|
+| `section` | House, Dojo, Bamboo, Climb, Rooftop, Lake, Volcano, Snow, Space |
+| `beats` | which beat slots this chunk can fill: Warmup, Challenge, Rest, Checkpoint, SetPiece, Finale |
+| `difficulty` | 1 easy to 5 hard |
+| `weight` | how often it's picked compared with other chunks that fit (1 = normal) |
+| `setPiece` | placed by the beat list on purpose, never at random |
+| `void`, `slide`, `vacuum`, `gravityScale`, `speedScale` | physics for this chunk (falling out costs a heart, snow sliding, spacewalk, and so on) |
+| `fromScreen` | the prototype screen it was made from |
 
-- **173 levels, one per screen**, in journey order: `R001_LivingRoom` style names up to `R173_MothershipCore`. Each section gets its own row in the world view (house, dojo, bamboo, the tall rooftop climb, rooftop run, lake, volcano, snow, space), and inside a row the screens sit side by side the way the follow camera joins them, so floors line up across the seams.
-- **Background image per room**: the room drawn by the prototype itself, without the furniture, decor or climbing pieces, so those can move freely on top.
-- **Entities layer**: every prop, wall decoration and climbing piece, each shown with its real sprite from the game. They're grouped by section in the entity panel (House, Dojo, Bamboo, Climb, RooftopRun, Lake, Volcano, Snow, Space, Decor), so you can also drop in new ones.
-- **Terrain layer** (IntGrid, 10 px cells, see-through): `ground`, `water`, `lava`, `floor_slab` (the climb's one-way floors) and `glass_wall` (the climb's side glass). Ramps and hills are stepped in 10 px columns.
-- **Level fields** (Level panel): section, scene, style, wall and floor colours, outdoor/void/slide, checkpoint, vacuum (spacewalk), speed and gravity scale, lift ride time, entry height.
+## Layers
 
-Units are game world units: one room is 1600 x 640, the floor line is at y = 550 (5980 in the climb), one art pixel is 4 units and a climb floor is 200.
+- **Spawns** (the random parts):
+  - `ItemSpawn`: a spot where an item may appear. `chance` runs from 0 to 1. `pool` lists which of the 17 items can show up, with their icons; leave it empty to allow any item for the section. Spawns that share a `group` give at most one item between them.
+  - `HazardSpawn`: a spot where a hazard or prop may appear. `kind` is the entity name, e.g. `LaserGate`.
+  - `VariantZone`: a pick-one area. Draw two or more zones with the same `group` and different `variant` numbers. Each run keeps one variant, and the other zones disappear with everything inside them.
+- **Entities**: fixed props and climbing pieces, with their prototype pictures. Mapping rules as before: props anchor at top-centre, the standing height is the top edge, and climb pieces sit on their floor.
+- **Terrain** (IntGrid, 16 px): `ground`, `platform` (one-way), `water`, `lava`, `wall`. Tile auto-layers will read this layer once the art bundles are in, so painting Terrain will paint the art too.
 
-## How things map back to the game
+The level backgrounds in `reference/` are the prototype's drawings, kept only as a guide. They still show the old doors and room edges. Tiles will replace them.
 
-Each entity's pivot point is the number the game uses:
+## Starter chunks
 
-- **Furniture and other props** (pivot top-centre): x = the prop's `x`, the top edge is its standing height `h` (550 minus y), width is `w`. `hp` empty means unbreakable. One-way platforms (cyan) are thin bars at their top height; non-solid things (green) are stalks and mushrooms.
-- **Climb pieces** (pivot bottom-centre): the bottom edge sits on the floor `lv` they start from. Pipes, ropes, the window lift and the elevator span `n` floors (height = n x 200). Hooks sit 150 above their floor, ledges 100 above theirs. Windows have the open/shut `offset`.
-- **Laser gates and zip cables** (pivot bottom-centre): the bottom edge is their base. Laser `off` is the timing offset; a cable's ends are its `cx0/cy0` and `cx1/cy1` fields (they don't follow the box when you drag it). Billboards keep their bridge in `bx/bw/bh`.
-- **Wall decor** (pivot top-left): only x matters to the game; y is fixed for each kind. Game x = entity x minus this offset: Pic -2, Lamp -166, Win -56, Clock -4, Books 2, Rug -36, Tiles 20, Pots 0, Shelf 0, Tree -24, Scroll -24 to -26, Rack -2.
-- **The rooftop climb** is generated from a seed in the prototype; here every floor's stairs, ladders and pillars are laid out as ordinary entities so you can rearrange them by hand.
+There are 49 chunks, made from the prototype's screens: House 8, Dojo 4, Bamboo 4, Climb 1 (set piece), Rooftop 8, Lake 4, Volcano 4, Snow 4, Space 12. Each has a couple of `ItemSpawn` examples on top of props. Their beats, difficulty and weights are placeholders for you to set.
 
-Sprites stretch when you resize something. That only changes the preview; the game draws each prop at its real size.
+The climb keeps the prototype's 50 px floors, which don't sit on the 16 px grid; it needs its own pass. Slopes and hills are stepped to 16 px.
 
-## Not covered yet
+## Beat lists (proposal, yours to change)
 
-- The game doesn't read this file yet. Making the prototype load it is a separate step; the mapping above is what that loader would follow.
-- Doors are drawn into the backgrounds, not entities. Fists, music and section rules stay in code.
-- `tools/` holds the scripts that made this (render the prototype in a headless browser, then build the `.ldtk`), so it can be regenerated after the prototype changes.
+Each section is a list of beats, and the game fills each beat with a random chunk that has that beat:
+
+- House: Warmup, Warmup, Challenge, Rest, Challenge, Challenge, Checkpoint, Challenge
+- Climb: SetPiece (the glass tower)
+- Rooftop: Warmup, Challenge x2, Rest, Challenge x2, Checkpoint, Challenge x3
+- Space: SetPiece (lift), SetPiece (elevator), Warmup, Challenge x3, Checkpoint, Challenge x3, Finale (gate), Finale (core)
+
+The other sections follow the House pattern, at the length the stage needs to last a few minutes.
+
+## Rebuilding
+
+`tools/` holds the scripts that made this library. `run.js` renders the prototype in a headless browser, `gen.py` builds the full-map export from those renders, and `gen_chunks.py` turns that export into this chunk library.
