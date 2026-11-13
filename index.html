@@ -629,16 +629,31 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const want = Math.min(Math.max(0, x - CAM.w / 2), WORLD_W - CAM.w);
     CAM.x += (want - CAM.x) * Math.min(1, dt * 6);
   }
-  // One palette for everything (Endesga 32): every frame, each art pixel is snapped to its nearest palette
+  // One palette for everything (Endesga 64): every frame, each art pixel is snapped to its nearest palette
   // colour through a 15-bit lookup table. This also removes soft anti-aliased edges, so shapes stay crisp.
-  const PAL = ['be4a2f', 'd77643', 'ead4aa', 'e4a672', 'b86f50', '733e39', '3e2731', 'a22633', 'e43b44', 'f77622', 'feae34', 'fee761',
-    '63c74d', '3e8948', '265c42', '193c3e', '124e89', '0099db', '2ce8f5', 'ffffff', 'c0cbdc', '8b9bb4', '5a6988', '3a4466',
-    '262b44', '181425', 'ff0044', '68386c', 'b55088', 'f6757a', 'e8b796', 'c28569'].map(h => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]);
+  const PAL = ['ff0040', '131313', '1b1b1b', '272727', '3d3d3d', '5d5d5d', '858585', 'b4b4b4', 'ffffff', 'c7cfdd', '92a1b9', '657392',
+    '424c6e', '2a2f4e', '1a1932', '0e071b', '1c121c', '391f21', '5d2c28', '8a4836', 'bf6f4a', 'e69c69', 'f6ca9f', 'f9e6cf',
+    'edab50', 'e07438', 'c64524', '8e251d', 'ff5000', 'ed7614', 'ffa214', 'ffc825', 'ffeb57', 'd3fc7e', '99e65f', '5ac54f',
+    '33984b', '1e6f50', '134c4c', '0c2e44', '00396d', '0069aa', '0098dc', '00cdf9', '0cf1ff', '94fdff', 'fdd2ed', 'f389f5',
+    'db3ffd', '7a09fa', '3003d9', '0c0293', '03193f', '3b1443', '622461', '93388f', 'ca52c9', 'c85086', 'f68187', 'f5555d',
+    'ea323c', 'c42430', '891e2b', '571c27'].map(h => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]);
+  // Nearest palette colour in OKLab, with hue and colourfulness weighted 3x over lightness, so muted greens
+  // and browns keep their hue instead of collapsing onto Endesga 64's neutral greys.
+  const lin = c => (c /= 255) <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const oklab = (r, g, b) => {
+    r = lin(r); g = lin(g); b = lin(b);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+  };
+  const PAL_LAB = PAL.map(c => oklab(...c));
   const nearest = (r, g, b) => {
+    const [L, A, B] = oklab(r, g, b);
     let best = 0, bd = Infinity;
-    for (let i = 0; i < PAL.length; i++) {
-      const [pr, pg, pb] = PAL[i], rm = (r + pr) / 2, dr = r - pr, dg = g - pg, db = b - pb;
-      const d = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db; // "redmean" distance
+    for (let i = 0; i < PAL_LAB.length; i++) {
+      const p = PAL_LAB[i], d = (L - p[0]) ** 2 + 3 * ((A - p[1]) ** 2 + (B - p[2]) ** 2);
       if (d < bd) { bd = d; best = i; }
     }
     return PAL[best];
@@ -1873,13 +1888,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
 
   function stBamboo() {
-    ctx.fillStyle = grad(0, FLOOR, [[0, '#0b1a17'], [1, '#1e3b30']]); ctx.fillRect(0, 0, W, FLOOR);
+    ctx.fillStyle = grad(0, FLOOR, [[0, '#0c2e44'], [1, '#134c4c']]); ctx.fillRect(0, 0, W, FLOOR);
     glow(W * 0.7, 108, 130, '230,255,220', 0.3);
     ctx.fillStyle = '#e8f5d0'; ctx.beginPath(); ctx.arc(W * 0.7, 108, 36, 0, 7); ctx.fill();
     for (let i = 0; i < 14; i++) {
       const x = Math.floor(rnd(i + 80) * W), w = 9 + Math.floor(rnd(i + 81) * 3) * 3;
-      ctx.fillStyle = '#1f4a2a'; ctx.fillRect(x, 0, w, FLOOR);
-      ctx.fillStyle = '#163a20'; for (let y = 30 + Math.floor(rnd(i) * 20) * 3; y < FLOOR; y += 69) ctx.fillRect(x - 3, y, w + 6, 3);
+      ctx.fillStyle = '#1e6f50'; ctx.fillRect(x, 0, w, FLOOR);
+      ctx.fillStyle = '#134c4c'; for (let y = 30 + Math.floor(rnd(i) * 20) * 3; y < FLOOR; y += 69) ctx.fillRect(x - 3, y, w + 6, 3);
     }
     ctx.fillStyle = grad(FLOOR - 170, FLOOR, [[0, 'rgba(200,230,210,0)'], [1, 'rgba(200,230,210,.25)']]); ctx.fillRect(0, FLOOR - 170, W, 170);
     for (let i = 0; i < 7; i++) {
@@ -2280,6 +2295,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     main.restore();
   }
 
+  // Hoodie Guy is a hand-made pixel sprite (made in PixelLab, 20x47 art pixels, facing east and west); one sprite
+  // pixel is one art pixel. The other costumes are still drawn in code.
+  const HOODIE = { ok: 0, w: 20, h: 47, cx: 10 };
+  for (const [k, b64] of [['east', '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'], ['west', 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAvCAYAAADjNOpjAAAGyklEQVR42pWXf2yV5RXHP8/74/5oL7e2o78EmgpZoRPBDpg1OOIPDIuJ0KECJkuXLQjLoolbspFNs+HEzTiNZigJCW7OZPPXiFimE8GRguAFqndAoaMIxbbQlpYWbi+39973x9kf9/bCzXvL4Ene5L7v8zzf53vO+Z7nnKu4gaFpFaKLAA6WDKtCa4wbAdR1H0/eW4WbGmNTqyVjMuoB1W4E0LJ61aZ/9zCtehLNjbWYKiwehppWIQZ+0m5P7jTTnCzYCgcHHRsHAx0dDD9pO0VP32iWi9dAQxebBVUhDvaXZU+zefLeWnxukmjnGPW3BDKm+IPsPzLM0f4k3YNw4NQFQPcAKgCfKpLFNdU01AUBSFpCwMx3T9LKnNfRleRSWjjYf7FgYAyAtCTU7u4RSYuGT7kAOXCAaOcYmXUaoNE400fQ1GntQRxl4LrnlYfhjxpnEPK7dHQlaagL5rFMWsLh02lmTAkQ8rt5jDa2DpOWPnVFWiosy751CyG/S+TEFZ9FTozlNgVMxdzpPupriwmYKvd0dCWZWeJHU2W5aGs6fmqnBvMAWg7FOdofo/PcFVV0dCX5ZP+gxwWVYTOjgHGtilay/tDpMWrDJUT6ziEpH5sfb2JGIMDOjnP0jdhUlRoMXbQB6L9gkxaNsxecHEj3KDgSewZAM3SLtNuj9p0fBvz8ae0yvvvM3/jFjgj/vRRj/fJFHD6dpqEuyO7ukWxgrow9vUkspTLaBTTLGlLjWaCuEupP1jzGH5c0UlZeiu0E2Xdc4/z2XzMQszzaE6dbjePkSV0nTt38Kfz5B/fT9NrvsT5+OZNym+OsX74ot86nXNKi0dpzEUsGlUfYAJoKS9+b6ygq9XsYDJ4cYH/rcdrODPDpmSGmlei0D4zRnxKEyyhs0pJQeZeDKzFV2/y8BywxkgJgKClsPnyCcFDjUloYStm8uLCElxbezIsLawiqSeK5bZQK88GW3XywZXceaMuOYwB8u6qcaH+caH+cNXNr+OJcnPOXbb53Twmdz82i2KyUPB9aMsqy1ffk3jvbzrI3coLXI8c5d2mEz5+eRTD4jat2VGd8b8c5ENFI2y6e5DZVWBTFVwUqxd8fnML8xkwGtR9xePvgeQYdP+V6ilWzQ5n0xGTF9rPeC82SmPKpYvnl7cV8OSy80lxDyIxzIJJkW/sI00oCbFhdjW4ncIwynt7SR9Ps0tzx1ywBrzRPBmDT+5nAbFhdjUkCSBBtc4BRmmaX0ry9i2eXLAL6KVhoTFUuLSunsfHzSzwx12TufB3NgI6oQ31D/qVqUcTMp74GZZJwz6oJaorD7Dk6024uoqExAzbRMEnw89vDWDJ2rSKVuQieeOFlLIpyTN74Io5rg2vnr144M5zbMwFghlLJ3l9lfZZhMuj4+XS/d8vsOTqmmlQY0DSnSjD7eRxsfDxaX8RPd3ThGEVeCpKagKEdo/O5Stojo3REnQLO8OXmxudNEry2pJpis1ImLPQNjTpH+7z+Uhjs67Gpb9DzIn7HgiLS9piXoc+4Uu1WPKDzj08yLKIRh5APDFzWPlLqIXDqpAX4CwclesSfM6c0ZOa+x9OFrXFtCDgJlAp4AS9bA2r5OyfpHTXZuSczvXOPxlDazPpQ46voaB7Y4TaHiykTU08XzhRNqxBDdFAGSMaJgg04KPzsX1NFx9c2UydZ9I6ahHzQvL2LUYmrCYNiKahb/H3q7n8EyqczZ+mPsbUQhtLYuHOQuxcFqG/QuXtRgG3tI6RwJ+4P5ao6O2tBAwBf/vM9DHeMge3rGDw5wKoXtgIQNNMMxIxcCShssioTUX7MydNZ+thqioNB3vzNz+j/6+OemlP24O+wJKau2XC6MqxUVvnFwWBWvAZ/eOn9Au2bff0d7G133kX7oWjWp4pnN6wi8q/2XCX88J0oUiANCzfoRpXMW7ZOlF4jP9zwtjz81F9EU2ExVbloWoVoWoWYqlwKNpzXAhXxcet9TbngfNbyEbfd8R1aW7ZhXehBnG51Y0275Lcedy19gKMHDrLg3sUFRaJdi91bH+9C4XBs13vseutdPmv5KN88lbg+QNOcKkfPdDJyMc6md1tAmSx+dAVLVj6UAz117Dh3Prw2r9mcUNiOk2Zv5HjmcrgpU3e3Pv9bbr2viSUrHwLgq/aOLE0D5P9FWIVF0ypEadWiGVWyo+2MJG1HdrSdEVOViZmd17QKUXqNcL1DM6rkWG9MkraTe16tnCevVs6TpO3Isd6YB/C6/uu1/qcn9/ubH25lalUZb2w7ROlNIQzNxXKuV4dahaBp4CTQDV++n8VAVzbjnev4+B+JYusnh+OedwAAAABJRU5ErkJggg==']]) {
+    const im = new Image(); im.onload = () => { HOODIE.ok++; }; im.src = 'data:image/png;base64,' + b64; HOODIE[k] = im;
+  }
   const COS = [
     { id: 'hoodie', name: 'Hoodie', zh: '卫衣', lv: 1, body: '#ff8c42', legs: '#2b1d3a', hair: '#3b2314', skin: '#f2c094', scarf: '#7fe3ff' },
     { id: 'gi', name: 'Karate Gi', zh: '道服', lv: 2, body: '#f2efe6', legs: '#e3ddcc', hair: '#3b2314', skin: '#f2c094', scarf: '#c0392b' },
@@ -2361,7 +2382,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
 
   function player(x, vx, hurt, danger, label, taunting, blocking, ci) {
-    litSprite(x - 110, FLOOR - 245, 220, 262, () => playerRaw(x, vx, hurt, danger, null, taunting, blocking, ci));
+    if ((COS[ci | 0] || COS[0]).id === 'hoodie' && HOODIE.ok >= 2) playerRaw(x, vx, hurt, danger, null, taunting, blocking, ci); // already shaded and outlined
+    else litSprite(x - 110, FLOOR - 245, 220, 262, () => playerRaw(x, vx, hurt, danger, null, taunting, blocking, ci));
     if (label) { ctx.fillStyle = '#ffb703'; ctx.font = '8px ' + PF; ctx.textAlign = 'center'; ctx.fillText(label, x, FLOOR + 40); }
   }
   function playerRaw(x, vx, hurt, danger, label, taunting, blocking, ci) {
@@ -2405,6 +2427,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.scale(1 + A.sq * 0.18, (1 - A.sq * 0.16 + breathe) * crouch);
     if (A.flat > 0) ctx.scale(1 + 0.95 * fl - wob, 1 - 0.8 * fl + wob);
 
+    if (C.id === 'hoodie' && HOODIE.ok >= 2) { hoodieSprite(A, running ? stride : 0, blocking && !hurt, C, lean); ctx.restore(); return; }
     if (C.scarf) {
       const k = Math.min(1, sp / 450);
       ctx.fillStyle = C.scarf;
@@ -2516,6 +2539,25 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (label) {
       ctx.fillStyle = '#ffb703'; ctx.font = '8px ' + PF; ctx.textAlign = 'center';
       ctx.fillText(label, x, FLOOR + 40);
+    }
+  }
+
+  // Hoodie Guy from his pixel sprite. It has one pose per side, so running adds a small step tilt and blocking
+  // draws crossed forearms over the head, as the code-drawn costumes do.
+  function hoodieSprite(A, stride, blocking, C, lean) {
+    const im = A.face < 0 ? HOODIE.west : HOODIE.east, H = HOODIE.h * PX;
+    ctx.save(); ctx.rotate(stride * 0.05 - lean * 0.7); ctx.imageSmoothingEnabled = false; // keep most of the run lean off: rotated pixel art turns jagged
+    ctx.drawImage(im, -HOODIE.cx * PX, -H, HOODIE.w * PX, H);
+    ctx.restore();
+    if (blocking) {
+      ctx.fillStyle = '#e07438';
+      ctx.save(); ctx.translate(0, -H - 12);
+      ctx.rotate(0.45); ctx.fillRect(-28, -6, 56, 12);
+      ctx.rotate(-0.9); ctx.fillRect(-28, -6, 56, 12);
+      ctx.restore();
+      ctx.fillStyle = C.skin; ctx.fillRect(-32, -H - 32, 12, 12); ctx.fillRect(20, -H - 32, 12, 12);
+      ctx.strokeStyle = 'rgba(127,227,255,.75)'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(0, -H + 50, 64, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
     }
   }
 
