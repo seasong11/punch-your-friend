@@ -1,0 +1,520 @@
+{
+  "groups": [
+    {
+      "group_id": "e777d12b-c12d-4dc7-b4fb-e03e5bef00b3",
+      "folder": "characters/Idle",
+      "states": [
+        {
+          "character": {
+            "id": "2d971fe7-9243-4652-b726-cd944d293ca1",
+            "name": "Idle",
+            "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: An anthropomorphic shiba inu standing upright on two legs, the same height as a person. Orange fur, pointed ears with cream insides, cream eyebrow dots, cream muzzle and black nose, red bandana around the neck, cream belly and paws, curled fluffy tail. Leans forward eagerly, about to bolt. Cheeky happy expression.",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "side",
+            "created_at": "2026-11-13T15:54:02.000491+00:00"
+          },
+          "folder": "characters/Idle/Idle",
+          "frames": {
+            "rotations": {
+              "south": "characters/Idle/Idle/rotations/south.png",
+              "south-east": "characters/Idle/Idle/rotations/south-east.png",
+              "east": "characters/Idle/Idle/rotations/east.png",
+              "north-east": "characters/Idle/Idle/rotations/north-east.png",
+              "north": "characters/Idle/Idle/rotations/north.png",
+              "north-west": "characters/Idle/Idle/rotations/north-west.png",
+              "west": "characters/Idle/Idle/rotations/west.png",
+              "south-west": "characters/Idle/Idle/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "a2eb4689-ce44-44f6-98f7-46b929d02c8a",
+      "folder": "characters/Idle_2",
+      "states": [
+        {
+          "character": {
+            "id": "156e3d5e-b1a1-49f2-971e-32051079a84c",
+            "name": "Idle",
+            "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: An experienced mountaineer. Red beanie with a white pompom, snow goggles pushed up on the forehead, red scarf with a trailing end, puffy blue jacket, orange backpack with a rope coil, red gloves, brown boots, steel ice axe in hand. Leans forward to balance the pack.",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "side",
+            "created_at": "2026-11-13T15:45:03.721888+00:00"
+          },
+          "folder": "characters/Idle_2/Idle",
+          "frames": {
+            "rotations": {
+              "south": "characters/Idle_2/Idle/rotations/south.png",
+              "south-east": "characters/Idle_2/Idle/rotations/south-east.png",
+              "east": "characters/Idle_2/Idle/rotations/east.png",
+              "north-east": "characters/Idle_2/Idle/rotations/north-east.png",
+              "north": "characters/Idle_2/Idle/rotations/north.png",
+              "north-west": "characters/Idle_2/Idle/rotations/north-west.png",
+              "west": "characters/Idle_2/Idle/rotations/west.png",
+              "south-west": "characters/Idle_2/Idle/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "4213450f-13f1-487a-a8b7-b0cd780d546d",
+      "folder": "characters/Idle_3",
+      "states": [
+        {
+          "character": {
+            "id": "0adb2b9f-732a-4bbe-bf28-8567bb61d8b1",
+            "name": "Idle",
+            "prompt": "Brave volunteer firefighter with semi-chibi proportions, wearing a prominent red helmet with a gold badge, bushy mustache, tan turnout coat with reflective chest and hem bands, black gloves, and tall black boots. Holding a brass hose nozzle, braced in a wide-legged stance. Crisp navy-black 1-pixel outlines, clear facial features, distinct cloth folds, sharp 3-tone shading, Endesga 64 palette.",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "side",
+            "created_at": "2026-11-13T15:42:02.374375+00:00"
+          },
+          "folder": "characters/Idle_3/Idle",
+          "frames": {
+            "rotations": {
+              "south": "characters/Idle_3/Idle/rotations/south.png",
+              "south-east": "characters/Idle_3/Idle/rotations/south-east.png",
+              "east": "characters/Idle_3/Idle/rotations/east.png",
+              "north-east": "characters/Idle_3/Idle/rotations/north-east.png",
+              "north": "characters/Idle_3/Idle/rotations/north.png",
+              "north-west": "characters/Idle_3/Idle/rotations/north-west.png",
+              "west": "characters/Idle_3/Idle/rotations/west.png",
+              "south-west": "characters/Idle_3/Idle/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "2c8f6d2e-e51a-4545-99c6-b253cd2b3726",
+      "folder": "characters/Idle_4",
+      "states": [
+        {
+          "character": {
+            "id": "453a906d-fb15-495e-89c4-e606c9c7326d",
+            "name": "Idle",
+            "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A lake-rescue scuba diver. Black wetsuit with hood, two-lens dive mask, short yellow snorkel, grey air tank on the back, yellow weight belt, long yellow flippers. Stands with arms out for balance and high knees, a bit clumsy on land.\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "side",
+            "created_at": "2026-11-13T15:38:35.207208+00:00"
+          },
+          "folder": "characters/Idle_4/Idle",
+          "frames": {
+            "rotations": {
+              "south": "characters/Idle_4/Idle/rotations/south.png",
+              "south-east": "characters/Idle_4/Idle/rotations/south-east.png",
+              "east": "characters/Idle_4/Idle/rotations/east.png",
+              "north-east": "characters/Idle_4/Idle/rotations/north-east.png",
+              "north": "characters/Idle_4/Idle/rotations/north.png",
+              "north-west": "characters/Idle_4/Idle/rotations/north-west.png",
+              "west": "characters/Idle_4/Idle/rotations/west.png",
+              "south-west": "characters/Idle_4/Idle/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "2520e656-c76a-415f-b2af-db26a7997193",
+      "folder": "characters/Idle_5",
+      "states": [
+        {
+          "character": {
+            "id": "c4f640d0-17c8-4faf-8885-03d145cc627c",
+            "name": "Idle",
+            "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A street parkour teen. Backwards blue cap, dark fringe, green tank top with one white stripe, red wristband, grey shorts, white socks, red sneakers. Slim limbs, always leaning forward on his toes, ready to sprint. Confident grin.\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "side",
+            "created_at": "2026-11-13T15:35:44.294767+00:00"
+          },
+          "folder": "characters/Idle_5/Idle",
+          "frames": {
+            "rotations": {
+              "south": "characters/Idle_5/Idle/rotations/south.png",
+              "south-east": "characters/Idle_5/Idle/rotations/south-east.png",
+              "east": "characters/Idle_5/Idle/rotations/east.png",
+              "north-east": "characters/Idle_5/Idle/rotations/north-east.png",
+              "north": "characters/Idle_5/Idle/rotations/north.png",
+              "north-west": "characters/Idle_5/Idle/rotations/north-west.png",
+              "west": "characters/Idle_5/Idle/rotations/west.png",
+              "south-west": "characters/Idle_5/Idle/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "ae43259e-5339-4d64-b5b5-e6c7105fa712",
+      "folder": "characters/Idle_6",
+      "states": [
+        {
+          "character": {
+            "id": "732e518e-28d0-439c-87ff-1007ab0bb566",
+            "name": "Idle",
+            "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A stealthy ninja. Indigo cloth mask showing only the eyes, red headband with a small steel plate and two long tails flowing behind, plain dark gi with a red sash, pale forearm and shin wraps, short sword strapped on the back. Low, coiled crouching stance. Sharp, focused eyes.\n\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow\n\n1. idle breathing, standing in place\n2. running\n3. jump up and land\n4. block, raise both forearms in front of face\n5. quick dash forward\n6. get hit on the head from above, squashed, then recover\n7. climb up a ladder\n8. cling to a wall with both hands, knees tucked\n9. cross arms and nod\n10. hang from a bar with both hands, legs swinging",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "low top-down",
+            "created_at": "2026-11-13T15:31:05.786396+00:00"
+          },
+          "folder": "characters/Idle_6/Idle",
+          "frames": {
+            "rotations": {
+              "south": "characters/Idle_6/Idle/rotations/south.png",
+              "south-east": "characters/Idle_6/Idle/rotations/south-east.png",
+              "east": "characters/Idle_6/Idle/rotations/east.png",
+              "north-east": "characters/Idle_6/Idle/rotations/north-east.png",
+              "north": "characters/Idle_6/Idle/rotations/north.png",
+              "north-west": "characters/Idle_6/Idle/rotations/north-west.png",
+              "west": "characters/Idle_6/Idle/rotations/west.png",
+              "south-west": "characters/Idle_6/Idle/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "3cf48aad-d7b3-4c60-85a6-4a932714f257",
+      "folder": "characters/Idle_7",
+      "states": [
+        {
+          "character": {
+            "id": "bb056deb-7f89-4360-9a81-902017e828df",
+            "name": "Idle",
+            "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A calm Shaolin monk. Shaved head, thick dark brows, wooden prayer beads around the neck, saffron robe with one red sash and a wide skirt, cloth belt, white leg wraps, simple cloth shoes. Wide grounded stance, one hand always raised in prayer in front of the chest. Serene face.\n\nNegative \n\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "low top-down",
+            "created_at": "2026-11-13T09:26:30.073784+00:00"
+          },
+          "folder": "characters/Idle_7/Idle",
+          "frames": {
+            "rotations": {
+              "south": "characters/Idle_7/Idle/rotations/south.png",
+              "south-east": "characters/Idle_7/Idle/rotations/south-east.png",
+              "east": "characters/Idle_7/Idle/rotations/east.png",
+              "north-east": "characters/Idle_7/Idle/rotations/north-east.png",
+              "north": "characters/Idle_7/Idle/rotations/north.png",
+              "north-west": "characters/Idle_7/Idle/rotations/north-west.png",
+              "west": "characters/Idle_7/Idle/rotations/west.png",
+              "south-west": "characters/Idle_7/Idle/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "a99c8d44-718a-4f66-9af1-ae2b51b9d527",
+      "folder": "characters/Create_a_6-frame_idl",
+      "states": [
+        {
+          "character": {
+            "id": "92014d13-7d0b-4a0d-b3d5-3d5477cd11fa",
+            "name": "Create a 6-frame idl",
+            "prompt": "Create a 6-frame idle breathing animation for a 2D side-view pixel-art game character.  Character: a casual young guy with messy brown hair and a prominent tuft, orange pullover hoodie, blue jeans, and white sneakers with a small red stripe. Relax",
+            "size": {
+              "width": 48,
+              "height": 48
+            },
+            "template_id": "mannequin",
+            "directions": 8,
+            "view": "side",
+            "created_at": "2026-11-13T08:24:07.261618+00:00"
+          },
+          "folder": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl",
+          "frames": {
+            "rotations": {
+              "south": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/south.png",
+              "south-east": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/south-east.png",
+              "east": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/east.png",
+              "north-east": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/north-east.png",
+              "north": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/north.png",
+              "north-west": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/north-west.png",
+              "west": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/west.png",
+              "south-west": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/south-west.png"
+            },
+            "animations": {}
+          }
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "character": {
+        "id": "2d971fe7-9243-4652-b726-cd944d293ca1",
+        "name": "Idle",
+        "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: An anthropomorphic shiba inu standing upright on two legs, the same height as a person. Orange fur, pointed ears with cream insides, cream eyebrow dots, cream muzzle and black nose, red bandana around the neck, cream belly and paws, curled fluffy tail. Leans forward eagerly, about to bolt. Cheeky happy expression.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "side",
+        "created_at": "2026-11-13T15:54:02.000491+00:00"
+      },
+      "folder": "characters/Idle/Idle",
+      "frames": {
+        "rotations": {
+          "south": "characters/Idle/Idle/rotations/south.png",
+          "south-east": "characters/Idle/Idle/rotations/south-east.png",
+          "east": "characters/Idle/Idle/rotations/east.png",
+          "north-east": "characters/Idle/Idle/rotations/north-east.png",
+          "north": "characters/Idle/Idle/rotations/north.png",
+          "north-west": "characters/Idle/Idle/rotations/north-west.png",
+          "west": "characters/Idle/Idle/rotations/west.png",
+          "south-west": "characters/Idle/Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "156e3d5e-b1a1-49f2-971e-32051079a84c",
+        "name": "Idle",
+        "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: An experienced mountaineer. Red beanie with a white pompom, snow goggles pushed up on the forehead, red scarf with a trailing end, puffy blue jacket, orange backpack with a rope coil, red gloves, brown boots, steel ice axe in hand. Leans forward to balance the pack.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "side",
+        "created_at": "2026-11-13T15:45:03.721888+00:00"
+      },
+      "folder": "characters/Idle_2/Idle",
+      "frames": {
+        "rotations": {
+          "south": "characters/Idle_2/Idle/rotations/south.png",
+          "south-east": "characters/Idle_2/Idle/rotations/south-east.png",
+          "east": "characters/Idle_2/Idle/rotations/east.png",
+          "north-east": "characters/Idle_2/Idle/rotations/north-east.png",
+          "north": "characters/Idle_2/Idle/rotations/north.png",
+          "north-west": "characters/Idle_2/Idle/rotations/north-west.png",
+          "west": "characters/Idle_2/Idle/rotations/west.png",
+          "south-west": "characters/Idle_2/Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "0adb2b9f-732a-4bbe-bf28-8567bb61d8b1",
+        "name": "Idle",
+        "prompt": "Brave volunteer firefighter with semi-chibi proportions, wearing a prominent red helmet with a gold badge, bushy mustache, tan turnout coat with reflective chest and hem bands, black gloves, and tall black boots. Holding a brass hose nozzle, braced in a wide-legged stance. Crisp navy-black 1-pixel outlines, clear facial features, distinct cloth folds, sharp 3-tone shading, Endesga 64 palette.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "side",
+        "created_at": "2026-11-13T15:42:02.374375+00:00"
+      },
+      "folder": "characters/Idle_3/Idle",
+      "frames": {
+        "rotations": {
+          "south": "characters/Idle_3/Idle/rotations/south.png",
+          "south-east": "characters/Idle_3/Idle/rotations/south-east.png",
+          "east": "characters/Idle_3/Idle/rotations/east.png",
+          "north-east": "characters/Idle_3/Idle/rotations/north-east.png",
+          "north": "characters/Idle_3/Idle/rotations/north.png",
+          "north-west": "characters/Idle_3/Idle/rotations/north-west.png",
+          "west": "characters/Idle_3/Idle/rotations/west.png",
+          "south-west": "characters/Idle_3/Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "453a906d-fb15-495e-89c4-e606c9c7326d",
+        "name": "Idle",
+        "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A lake-rescue scuba diver. Black wetsuit with hood, two-lens dive mask, short yellow snorkel, grey air tank on the back, yellow weight belt, long yellow flippers. Stands with arms out for balance and high knees, a bit clumsy on land.\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "side",
+        "created_at": "2026-11-13T15:38:35.207208+00:00"
+      },
+      "folder": "characters/Idle_4/Idle",
+      "frames": {
+        "rotations": {
+          "south": "characters/Idle_4/Idle/rotations/south.png",
+          "south-east": "characters/Idle_4/Idle/rotations/south-east.png",
+          "east": "characters/Idle_4/Idle/rotations/east.png",
+          "north-east": "characters/Idle_4/Idle/rotations/north-east.png",
+          "north": "characters/Idle_4/Idle/rotations/north.png",
+          "north-west": "characters/Idle_4/Idle/rotations/north-west.png",
+          "west": "characters/Idle_4/Idle/rotations/west.png",
+          "south-west": "characters/Idle_4/Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "c4f640d0-17c8-4faf-8885-03d145cc627c",
+        "name": "Idle",
+        "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A street parkour teen. Backwards blue cap, dark fringe, green tank top with one white stripe, red wristband, grey shorts, white socks, red sneakers. Slim limbs, always leaning forward on his toes, ready to sprint. Confident grin.\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "side",
+        "created_at": "2026-11-13T15:35:44.294767+00:00"
+      },
+      "folder": "characters/Idle_5/Idle",
+      "frames": {
+        "rotations": {
+          "south": "characters/Idle_5/Idle/rotations/south.png",
+          "south-east": "characters/Idle_5/Idle/rotations/south-east.png",
+          "east": "characters/Idle_5/Idle/rotations/east.png",
+          "north-east": "characters/Idle_5/Idle/rotations/north-east.png",
+          "north": "characters/Idle_5/Idle/rotations/north.png",
+          "north-west": "characters/Idle_5/Idle/rotations/north-west.png",
+          "west": "characters/Idle_5/Idle/rotations/west.png",
+          "south-west": "characters/Idle_5/Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "732e518e-28d0-439c-87ff-1007ab0bb566",
+        "name": "Idle",
+        "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A stealthy ninja. Indigo cloth mask showing only the eyes, red headband with a small steel plate and two long tails flowing behind, plain dark gi with a red sash, pale forearm and shin wraps, short sword strapped on the back. Low, coiled crouching stance. Sharp, focused eyes.\n\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow\n\n1. idle breathing, standing in place\n2. running\n3. jump up and land\n4. block, raise both forearms in front of face\n5. quick dash forward\n6. get hit on the head from above, squashed, then recover\n7. climb up a ladder\n8. cling to a wall with both hands, knees tucked\n9. cross arms and nod\n10. hang from a bar with both hands, legs swinging",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-11-13T15:31:05.786396+00:00"
+      },
+      "folder": "characters/Idle_6/Idle",
+      "frames": {
+        "rotations": {
+          "south": "characters/Idle_6/Idle/rotations/south.png",
+          "south-east": "characters/Idle_6/Idle/rotations/south-east.png",
+          "east": "characters/Idle_6/Idle/rotations/east.png",
+          "north-east": "characters/Idle_6/Idle/rotations/north-east.png",
+          "north": "characters/Idle_6/Idle/rotations/north.png",
+          "north-west": "characters/Idle_6/Idle/rotations/north-west.png",
+          "west": "characters/Idle_6/Idle/rotations/west.png",
+          "south-west": "characters/Idle_6/Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "bb056deb-7f89-4360-9a81-902017e828df",
+        "name": "Idle",
+        "prompt": "Pixel art game character sprite, side view profile facing right, full body, standing on the ground. Semi-chibi proportions: big head about a third of the height, short athletic body, about 46 pixels tall on a 48x48 canvas. Detailed modern pixel art like a premium indie action game: crisp 1-pixel near-black navy outline around the whole character, light from the top-left, 3 to 4 tone shading per material, warm highlights, cool purple-blue shadows, clear readable face, visible cloth folds. Hard pixels only: no anti-aliasing, no blur, no gradients, no glow. Colors only from the Endesga 64 palette. Transparent background, no ground, no shadow, no text. Character: A calm Shaolin monk. Shaved head, thick dark brows, wooden prayer beads around the neck, saffron robe with one red sash and a wide skirt, cloth belt, white leg wraps, simple cloth shoes. Wide grounded stance, one hand always raised in prayer in front of the chest. Serene face.\n\nNegative \n\ntext, letters, watermark, logo, background, scenery, ground, shadow, extra limbs, extra fingers, blurry, anti-aliasing, gradient, glow",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-11-13T09:26:30.073784+00:00"
+      },
+      "folder": "characters/Idle_7/Idle",
+      "frames": {
+        "rotations": {
+          "south": "characters/Idle_7/Idle/rotations/south.png",
+          "south-east": "characters/Idle_7/Idle/rotations/south-east.png",
+          "east": "characters/Idle_7/Idle/rotations/east.png",
+          "north-east": "characters/Idle_7/Idle/rotations/north-east.png",
+          "north": "characters/Idle_7/Idle/rotations/north.png",
+          "north-west": "characters/Idle_7/Idle/rotations/north-west.png",
+          "west": "characters/Idle_7/Idle/rotations/west.png",
+          "south-west": "characters/Idle_7/Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    },
+    {
+      "character": {
+        "id": "92014d13-7d0b-4a0d-b3d5-3d5477cd11fa",
+        "name": "Create a 6-frame idl",
+        "prompt": "Create a 6-frame idle breathing animation for a 2D side-view pixel-art game character.  Character: a casual young guy with messy brown hair and a prominent tuft, orange pullover hoodie, blue jeans, and white sneakers with a small red stripe. Relax",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "side",
+        "created_at": "2026-11-13T08:24:07.261618+00:00"
+      },
+      "folder": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl",
+      "frames": {
+        "rotations": {
+          "south": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/south.png",
+          "south-east": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/south-east.png",
+          "east": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/east.png",
+          "north-east": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/north-east.png",
+          "north": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/north.png",
+          "north-west": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/north-west.png",
+          "west": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/west.png",
+          "south-west": "characters/Create_a_6-frame_idl/Create_a_6-frame_idl/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-11-13T16:03:21.058118"
+}
