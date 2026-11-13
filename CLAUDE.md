@@ -124,8 +124,8 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   through, no block on it; a fist breaks only the plank under it). `propCode` 7 = open, 6 = spinning. The crooked-scroll
   secret is not built. Each stage is meant to get one unique stage punch (designed in the punch thread): leave room.
 - Rough sections after the dojo (first pass, all rules are Claude's placeholders for Daniel to revise). Room order:
-  house, garden, dojo x3, bamboo x2, ROOFTOP CLIMB, roof jumps x2, lake dive, lake, volcano x2, snow x2, tower lift,
-  SPACE STATION. A room's `sec` is also its music id; `secOf` gives `climb` / `space` for the two towers; `SEC_INFO`
+  house, garden, dojo x3, bamboo x2, ROOFTOP CLIMB, rooftop run x5, lake dive, lake, volcano x2, snow x2, tower lift,
+  space elevator, space arena x2. A room's `sec` is also its music id; `secOf` gives `climb` / `space` for the two towers; `SEC_INFO`
   holds each section's banner. Rooms with `scene` are drawn by `drawScene(rm)` (flat backdrops) instead of the house shell.
   - Terrain: `hill` (polyline of `[x, height]`, read by `rampAt`), `void: 1` (no floor, only props such as `roof`),
     `ghost: 1` props (not solid: `stalk`, `shroom`), `raw: 1` props (drawn without `litSprite`), `drift` props (move
@@ -138,9 +138,24 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   - Volcano: `lava` zones burn (one heart, and always a bounce); `slab` stepping stones have 2 hp, `rock` ones are safe.
   - Snow: `slide: 1`, on a slope anything but pushing uphill slides 我 back (`slopeAt`); flat ledges are rests.
     Punches at a right angle to the slope are not built.
-  - Tower lift: `ride` seconds (`rideLeft()`, `R.t0`); the exit only opens when the ride is over.
-  - Space: `buildClimb(8, { space: 1, seed: 23 })`, gravity x0.35 in `moveClimb`, stars instead of the city. Finishing it
-    ends the journey (`houseDone`, "JOURNEY DONE!").
+  - Space (Daniel, 2026-11-13: "elevators and primarily the space stage", using the original space stage): section
+    `space` = TOWER LIFT and SPACE ELEVATOR (`scene: 'lift'`, `ride` seconds, `rideLeft()`, `R.t0`, `music: 'elevator'`;
+    the exit only opens when the ride is over) then SPACE ARENA x2 (`scene: 'space'` draws the old `stSpace()`,
+    `grav: 0.5`, `pod` cover, `panel` plats). The last arena's door ends the journey (`houseDone`, "JOURNEY DONE!").
+    The earlier space-station climb room is gone (`buildClimb`'s `space` option is unused).
+- Focus (Daniel, 2026-11-13): the design centres on high-speed rooftop combat (高速屋顶战斗). The rooftop run is five
+  generated screens (`roofRun(n)`, `fast: 1.35` scales `moveMax` and acceleration, fists 1.2x in `dropV`). What "combat"
+  means for 我 is still an open question in the stage design doc.
+- Follow camera (Daniel: 我 fixed on screen, one spatial map): `VIEW.x` (`viewFollow`, `viewX()`) keeps 我 centred and the
+  world is drawn under `translate(-viewX(), camY())`. `drawWorld` draws the previous / next room beside the current one
+  (`drawNb`, props of left rooms kept in `NBP`), offset by `exitX/entryX` and by `pairD(i)` (height difference at the seam;
+  two water rooms align by surface). On a room change `roomShift` keeps the picture still and `VIEW.oy` eases the height
+  offset away; 我 keeps their height across the seam. `camY()` includes `VIEW.oy` and, while a neighbour is drawn,
+  `VIEW.dy`. Room title plates are screen-fixed and skipped for neighbours (`VIEW.nb`). Pointer x adds `viewX()`; the
+  portrait `CAM` follows 我's screen position. Side punches in the climb come from the side of 我 that was tapped.
+  我 cannot walk back into the room on the left. Scene rooms have no door boxes; only the last room has an exit door.
+- Stage design document for Daniel: https://claude.ai/artifact/YUAeoRmNTQtoG3Hc4erU4G (labels every rule Daniel / Agreed /
+  Proposal; keep it in step with the prototype).
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
 - The hoodie no longer has 我 printed on the chest.
 

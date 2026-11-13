@@ -1123,6 +1123,19 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     return { props, climb: { top, stairs, ladders, hooks, out, pipes, ropes, plats, ledges, els, space: opt.space ? 1 : 0 } };
   }
+  // One stretch of the high-speed rooftop run: building tops with gaps, from a fixed seed. 我 runs 1.35x faster here.
+  function roofRun(n) {
+    let seed = 31 * n + 5; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647, props = [];
+    let x = -30, h = 60 + Math.floor(r() * 3) * 30;
+    while (x < W_) {
+      let w = 220 + Math.floor(r() * 4) * 40; if (x + w > W_ - 240) w = W_ + 40 - x; // the last roof runs to the edge
+      props.push({ k: 'roof', raw: 1, x: x + w / 2, w, h });
+      const gap = 120 + Math.floor(r() * 4) * 30;
+      if (x + w < W_ && gap >= 180 && r() < 0.6) props.push({ k: 'sign', plat: 1, x: x + w + gap / 2, w: 90, h: h + 60 });
+      x += w + gap; h = Math.max(40, Math.min(210, h + (Math.floor(r() * 5) - 2) * 30));
+    }
+    return { name: 'ROOFTOP RUN ' + n, sec: 'rooftop-jumps', scene: 'roofs', void: 1, fast: 1.35, props };
+  }
   const ROOMS = [
     { name: 'LIVING ROOM', style: 'plank', wall: ['#733e39', '#b86f50', '#3e2731'], floor: ['#b86f50', '#733e39'], decor: [['pic', 230], ['lamp', 470], ['win', 660], ['clock', 880], ['books', 1290], ['rug', 520]], props: [
       { k: 'table', x: 520, w: 150, h: 64 }, { k: 'side', x: 955, w: 90, h: 92 }, { k: 'tv', x: 1085, w: 170, h: 196, hp: 2, elec: 1 }] },
@@ -1151,12 +1164,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'shroom', ghost: 1, x: 390, w: 56, h: 36 }, { k: 'thick', x: 550, w: 160, h: 200 }, { k: 'stalk', ghost: 1, x: 780, w: 24, h: 330 },
       ...[0, 1, 2].map(i => ({ k: 'leaf', plat: 1, x: 880 + i * 100, w: 100, h: 230, hp: 2 })), { k: 'shroom', ghost: 1, x: 1190, w: 56, h: 36 }, { k: 'thick', x: 1340, w: 150, h: 200 }] },
     { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(16) },
-    { name: 'ROOF JUMPS', sec: 'rooftop-jumps', scene: 'roofs', void: 1, props: [
-      { k: 'roof', raw: 1, x: 170, w: 340, h: 60 }, { k: 'roof', raw: 1, x: 560, w: 260, h: 120 }, { k: 'roof', raw: 1, x: 900, w: 220, h: 60 },
-      { k: 'roof', raw: 1, x: 1200, w: 240, h: 150 }, { k: 'roof', raw: 1, x: 1500, w: 220, h: 90 }] },
-    { name: 'ROOF LEAP', sec: 'rooftop-jumps', scene: 'roofs', void: 1, props: [
-      { k: 'roof', raw: 1, x: 150, w: 300, h: 90 }, { k: 'sign', plat: 1, x: 420, w: 110, h: 150 }, { k: 'roof', raw: 1, x: 700, w: 260, h: 60 },
-      { k: 'roof', raw: 1, x: 1060, w: 200, h: 150 }, { k: 'roof', raw: 1, x: 1450, w: 300, h: 100 }] },
+    ...[1, 2, 3, 4, 5].map(n => roofRun(n)),
     { name: 'LAKE DIVE', sec: 'lake-dive', scene: 'dive', hill: [[0, 420], [330, 420], [334, 0], [1600, 0]], water: { x0: 334, top: 260 }, props: [
       { k: 'rock', x: 760, w: 150, h: 120 }, { k: 'rock', x: 1220, w: 170, h: 170 }] },
     { name: 'LAKE', sec: 'lake', scene: 'lake', enterY: 330, water: { x0: -1, top: 470 }, props: [
@@ -1171,15 +1179,44 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'rock', snow: 1, x: 560, w: 90, h: 300, hh: 100 }, { k: 'rock', snow: 1, x: 1150, w: 110, h: 500, hh: 120 }] },
     { name: 'SNOW PEAK', sec: 'snow', scene: 'snow', slide: 1, hill: [[0, 0], [160, 0], [320, 160], [430, 160], [560, 290], [680, 290], [770, 380], [1600, 380]], props: [
       { k: 'rock', snow: 1, x: 620, w: 80, h: 390, hh: 100 }, { k: 'rock', snow: 1, x: 1200, w: 110, h: 500, hh: 120 }] },
-    { name: 'TOWER LIFT', sec: 'elevator', scene: 'lift', ride: 16, props: [
+    { name: 'TOWER LIFT', sec: 'space', music: 'elevator', scene: 'lift', ride: 14, props: [
       { k: 'crate', x: 380, w: 110, h: 120, hp: 2 }, { k: 'crate', x: 800, w: 130, h: 150, hp: 3 }, { k: 'crate', x: 1220, w: 110, h: 120, hp: 2 }] },
-    { name: 'SPACE STATION', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(8, { space: 1, seed: 23 }) }
+    { name: 'SPACE ELEVATOR', sec: 'space', music: 'elevator', scene: 'lift', stars: 1, ride: 14, props: [
+      { k: 'crate', x: 560, w: 130, h: 150, hp: 3 }, { k: 'crate', x: 1040, w: 130, h: 150, hp: 3 }] },
+    { name: 'SPACE ARENA', sec: 'space', scene: 'space', grav: 0.5, props: [
+      { k: 'pod', x: 520, w: 120, h: 130, hp: 3 }, { k: 'panel', plat: 1, x: 860, w: 220, h: 230 }, { k: 'pod', x: 1240, w: 120, h: 130, hp: 3 }] },
+    { name: 'SPACE ARENA 2', sec: 'space', scene: 'space', grav: 0.5, props: [
+      { k: 'panel', plat: 1, x: 420, w: 200, h: 200 }, { k: 'pod', x: 800, w: 140, h: 150, hp: 3 }, { k: 'panel', plat: 1, x: 1180, w: 200, h: 260 }] }
   ];
   const CLIMB_I = ROOMS.findIndex(r => r.name === 'ROOFTOP CLIMB');
-  const R = { i: 0, props: [], gl: [0, 0], t: 0, t0: 0, el: [] }; // gl: broken glass panels per side (bit = row), t: 我's clock
-  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom }; // test hook
+  const R = { i: 0, props: [], gl: [0, 0], t: 0, t0: 0, el: [] };
+  // The camera keeps 我 in the middle of the screen and the rooms are drawn side by side, so the journey reads as one
+  // long map. VIEW.x is the left edge of the screen in the current room's coordinates; VIEW.oy is a vertical offset
+  // that keeps the picture still when 我 crosses into a room whose floor is at another height, then eases to 0.
+  const VIEW = { x: 0, oy: 0, dy: 0, nb: 0, rm: -1 };
+  let NBP = {}; // props of rooms 我 has left, so they are still drawn the way they were left
+  const viewX = () => Math.round(VIEW.x / PX) * PX;
+  const exitX = i => ROOMS[i].climb ? W_ - 40 - P.w / 2 : W_ - P.w / 2, entryX = i => ROOMS[i].climb ? 40 + P.w / 2 : P.w / 2 + 1;
+  function edgeH(i, right) { // floor height at a room's left or right edge
+    const rm = ROOMS[i]; if (rm.climb) return right ? rm.climb.top * 200 : 0;
+    const x = right ? W_ - 14 : 14; let g = rm.void ? -999 : rampAt(x, rm);
+    for (const p of rm.props) if (!p.ghost && !p.plat && Math.abs(x - p.x) < p.w / 2 + 18) g = Math.max(g, p.h);
+    return Math.max(0, g);
+  }
+  // How much higher room i's exit is than room i+1's entry. Two water rooms line up by their surfaces.
+  const pairD = i => { const a = ROOMS[i], b = ROOMS[i + 1]; return a.water && b.water && b.water.x0 < 14 ? a.water.top - b.water.top : edgeH(i, 1) - edgeH(i + 1, 0); };
+  function viewFollow(px, dt) {
+    let t = px - W_ / 2; if (R.i === 0) t = Math.max(0, t); if (R.i === ROOMS.length - 1) t = Math.min(0, t);
+    if (VIEW.rm !== R.i) { VIEW.rm = R.i; VIEW.x = t; VIEW.oy = 0; } else VIEW.x += (t - VIEW.x) * Math.min(1, dt * 14);
+  }
+  function roomShift(px0, px1, py0, py1) { // after stepping into the next room: keep the picture where it was
+    const T = CAMV.y + VIEW.oy; VIEW.x -= px0 - px1; VIEW.rm = R.i; camFollow(py1, 0); VIEW.oy = T - (py0 - py1) - CAMV.y;
+  } // gl: broken glass panels per side (bit = row), t: 我's clock
+  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom, VIEW, surfAt: (x, h, y) => surfAt(x, h, y) }; // test hook
   function loadRoom(i) {
-    R.i = clamp(i | 0, 0, ROOMS.length - 1);
+    i = clamp(i | 0, 0, ROOMS.length - 1);
+    if (i === R.i + 1 && R.props.length) NBP[R.i] = R.props; else if (i !== R.i) NBP = {};
+    R.i = i;
     R.props = ROOMS[R.i].props.map(p => ({ ...p, x0: p.x, hp0: p.hp, sparkT: 0, spinT: 0, open: false, dead: false }));
     R.t0 = role === 'me' ? S.t : R.t; driftProps();
     R.gl = [0, 0];
@@ -1187,14 +1224,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     P.grip = null; P.el = null; P.kt = 0;
     FX.holes = [];
   }
-  function rampAt(x) {
-    const hl = ROOMS[R.i].hill;
+  function rampAt(x, rm) {
+    rm = rm || ROOMS[R.i];
+    const hl = rm.hill;
     if (hl) { // a polyline of [x, height] points
       if (x <= hl[0][0]) return hl[0][1];
       for (let k = 1; k < hl.length; k++) if (x <= hl[k][0]) { const a = hl[k - 1], b = hl[k]; return Math.round(a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0])); }
       return hl[hl.length - 1][1];
     }
-    const r = ROOMS[R.i].ramp; if (!r) return 0;
+    const r = rm.ramp; if (!r) return 0;
     const k = clamp((x - r.x0) / (r.x1 - r.x0), 0, 1);
     return Math.round((r.up ? k : 1 - k) * r.h);
   }
@@ -1246,7 +1284,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const ei = cl.els.findIndex((e, k) => Math.abs(P.x - e.x) < 50 && R.el[k].st === 'idle' && Math.abs(P.y - R.el[k].y) < 3);
       if (ei >= 0) { P.el = ei + 1; R.el[ei].st = 'up'; P.vx = 0; S.blockT = 0; sfx.warn(); return; }
     }
-    { const stk = !cl && R.props.find(p => p.k === 'stalk' && Math.abs(P.x - p.x) < 46); // ↑ at a bamboo stalk: it bends and flings 我 high
+    { const stk = !cl && R.props.find(p => p.k === 'stalk' && Math.abs(P.x - p.x) < 64); // ↑ at a bamboo stalk: it bends and flings 我 high
       if (stk) { stk.spinT = 0.5; P.vy = 1280; P.air = true; S.blockT = 0; sfx.dash(); if (!reduce) burst(P.x, FLOOR - P.y - 3, 8, ['#63c74d', '#ffffff'], 200, 0.8, 400, 4); return; } }
     P.vy = JUMP_V * (cl && cl.space ? 0.8 : 1); P.air = true; S.blockT = 0; P.kicks = 0;
     if (!reduce) burst(P.x, FLOOR - P.y - 3, 6, ['#c9b6de', '#fff4e0'], 120, 0.5, 300, 4);
@@ -1272,7 +1310,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (P.vy > 0 && P.y > rm.water.top - 70) { P.y = rm.water.top - 70; P.vy = 0; }
       if (P.y <= g) { P.y = g; P.vy = 0; P.air = false; } else P.air = true;
     } else {
-      P.vy -= GRAV * dt; P.y += P.vy * dt;
+      P.vy -= GRAV * (rm.grav || 1) * dt; P.y += P.vy * dt;
       if (P.y <= g) { P.y = g; P.vy = 0; P.air = false; } else P.air = true;
     }
     if (S.st === 'play') {
@@ -1285,23 +1323,26 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     if (S.st === 'play' && P.x >= W - P.w / 2 - 1 && (!P.air || inW) && !(rideLeft() > 0)) nextRoom();
   }
-  const secOf = i => ROOMS[i].climb ? (ROOMS[i].climb.space ? 'space' : 'climb') : ROOMS[i].sec || 'house';
+  const secOf = i => ROOMS[i].climb ? 'climb' : ROOMS[i].sec || 'house';
   const SEC_INFO = { // banner title, hint, colour for each section's first room
     dojo: ['DOJO!', 'fists fall faster here', '#feae34'], bamboo: ['BAMBOO!', '↑ at a stalk flings you high · ↓ on a mushroom bounces', '#63c74d'],
-    climb: ['天台!', 'climb to the roof', '#2ce8f5'], 'rooftop-jumps': ['ROOFTOPS!', 'jump the gaps · a fall costs a heart', '#f6757a'],
+    climb: ['天台!', 'climb to the roof', '#2ce8f5'], 'rooftop-jumps': ['ROOFTOP RUN!', 'you run faster here · jump the gaps · a fall costs a heart', '#f6757a'],
     'lake-dive': ['DIVE!', 'jump off the edge into the lake', '#2ce8f5'], lake: ['LAKE!', '↑ swims up · fists slow down under water', '#0099db'],
     volcano: ['VOLCANO!', 'lava burns · fists break the stepping stones', '#f77622'], snow: ['SNOW!', 'keep pushing uphill or you slide back', '#ffffff'],
-    elevator: ['LIFT!', 'hold out until the lift reaches the top', '#feae34'], space: ['SPACE!', 'low gravity · fists come from the side', '#b55088'] };
-  const secMusic = () => { const s = secOf(R.i); return s === 'climb' ? 'rooftop-climb' : s; };
+    space: ['SPACE!', 'ride the two elevators up · then low gravity', '#b55088'] };
+  const secMusic = () => { const s = secOf(R.i); return ROOMS[R.i].music || (s === 'climb' ? 'rooftop-climb' : s); };
   function nextRoom() {
     if (R.i >= ROOMS.length - 1) { houseDone(); return; }
+    const px0 = P.x, py0 = P.y;
     loadRoom(R.i + 1);
     if (secOf(R.i) !== secOf(R.i - 1)) { // a new section: hearts refill, and a lost turn restarts from here
       S.lives = 3; S.startRm = R.i; hud(S.score, 3);
       const inf = SEC_INFO[secOf(R.i)] || ['NEXT!', '', '#feae34'];
       banner(inf[0], 'Hearts refilled · ' + inf[1], inf[2]);
     }
-    spawnAt(70); P.lad = null; P.grip = null; P.el = null; P.kt = 0;
+    spawnAt(entryX(R.i)); P.lad = null;
+    { const y1 = py0 - pairD(R.i - 1); if (y1 > P.y + 2 && !climbOf()) { P.y = y1; P.air = true; P.wet = inWater(); } } // keep 我's height across the seam
+    roomShift(px0, P.x, py0, P.y); P.grip = null; P.el = null; P.kt = 0;
     S.chops = []; S.queue = []; S.rainT = 0; S.spawnIn = 1.4; S.blockT = 0;
     FX.ghosts = []; sfx.levelup();
     pushTarget(true);
@@ -1310,7 +1351,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     S.won = true; S.lives = 3; S.st = 'over'; S.cd = null; S.chops = []; S.startRm = 0;
     sfx.levelup(); hud(S.score, 3);
     if (S.score > best) { best = S.score; try { localStorage.setItem('chopBest', best); } catch (e) {} }
-    setOverlay(true, 'JOURNEY DONE!', 'From the living room all the way to the space station. That is every section of the prototype. The next game starts back in the living room.', 'Again', null);
+    setOverlay(true, 'JOURNEY DONE!', 'From the living room all the way to the space arena. That is every section of the prototype. The next game starts back in the living room.', 'Again', null);
     pushTarget(true);
     $('ovBtn').focus();
   }
@@ -1339,7 +1380,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // 兄弟 side: follow 我's room and prop state.
   function syncRoom(tp, dt) {
     const i = clamp(+tp.rm || 0, 0, ROOMS.length - 1);
-    if (i !== R.i || !R.props.length && ROOMS[i].props.length) { loadRoom(i); if (typeof tp.gt === 'number') R.t = R.t0 = tp.gt; B.lastTx = null; if (typeof tp.x === 'number') B.tx = tp.x; B.ty = +tp.y || 0; }
+    if (i !== R.i || !R.props.length && ROOMS[i].props.length) { const step = i === R.i + 1, px0 = B.tx, py0 = B.ty || 0; loadRoom(i); if (typeof tp.gt === 'number') R.t = R.t0 = tp.gt; B.lastTx = null; if (typeof tp.x === 'number') B.tx = tp.x; B.ty = +tp.y || 0; if (step) roomShift(px0, B.tx, py0, B.ty); }
     const pp = Array.isArray(tp.pp) ? tp.pp : [];
     R.props.forEach((p, k) => {
       const v = +pp[k], was = propCode(p);
@@ -1763,15 +1804,16 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       ctx.fillRect(h.x - 16, hy, 32, 8); ctx.fillRect(h.x - 16, hy, 8, 24); ctx.fillRect(h.x + 8, hy, 8, 24); ctx.fillRect(h.x - 16, hy + 16, 32, 8);
     }
     drawDoor(W - 110, top * FH, true, true);
-    box(248, 16 - cam, 412, 28, '#181425');
+    if (!VIEW.nb) { box(248 + viewX(), 16 - cam, 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260, 36 - cam);
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260 + viewX(), 36 - cam); }
   }
-  const camY = () => Math.round(CAMV.y / PX) * PX;
+  const camY = () => Math.round((CAMV.y + VIEW.oy + VIEW.dy) / PX) * PX;
   function camFollow(h, dt) {
     const cl = climbOf(), target = cl ? clamp(h - 170, 0, cl.top * FH - 170) : 0;
     if (!cl || CAMV.rm !== R.i) { CAMV.y = target; CAMV.rm = R.i; }
     else CAMV.y += (target - CAMV.y) * Math.min(1, dt * 8);
+    VIEW.oy *= Math.pow(0.006, dt); if (Math.abs(VIEW.oy) < 2) VIEW.oy = 0;
   }
   function sideWarn(c) {
     const y = FLOOR - c.row * FH, p = c.phase === 'warn' ? c.p : 1;
@@ -1921,6 +1963,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       R_('#5a6988', l - 4, t, w + 8, 8); R_('#8b9bb4', l - 4, t, w + 8, 4); R_('#2ce8f5', l + 8, t + 20, w - 16, 4); R_('#0099db', l + 8, t + 24, w - 16, 4);
       for (let y = t + 44, r = 0; y < H; y += 28, r++) for (let x = l + 20, q = 0; x < l + w - 24; x += 24, q++) R_(rnd(q * 7 + r * 13 + p.x) < 0.14 ? '#fee761' : rnd(q + r * 5 + p.x) < 0.4 ? '#3a4466' : '#181425', x, y, 12, 16);
       R_('#5a6988', l + w - 70, t - 28, 44, 28); R_('#8b9bb4', l + w - 70, t - 28, 44, 4); R_('#181425', l + w - 62, t - 20, 28, 12); R_('#f6757a', l + 16, t - 36, 4, 36); R_('#e43b44', l + 14, t - 44, 8, 8);
+      return;
+    }
+    if (p.k === 'pod') { // cargo pod: cover in the space arena
+      R_('#5a6988', l, t + 8, w, h - 8); R_('#8b9bb4', l + 8, t, w - 16, 8); R_('#c0cbdc', l + 8, t, w - 16, 4); R_('#3a4466', l + w - 12, t + 8, 12, h - 8); R_('#262b44', l + 12, t + 28, w - 24, 8);
+      R_(fried || hurt ? '#e43b44' : '#2ce8f5', l + 16, t + 48, w - 40, 12); R_('#262b44', l + 12, t + h - 28, w - 24, 8); R_('#f77622', l, t + h - 12, w, 4);
+    }
+    if (p.k === 'panel') { // a floating solar panel to stand on
+      R_('#124e89', l, t, w, 16); R_('#2ce8f5', l, t, w, 4); R_('#0099db', l, t + 12, w, 4); for (let x = l + 20; x < l + w; x += 28) R_('#262b44', x, t, 4, 16);
+      R_('#8b9bb4', p.x - 4, t + 16, 8, 16); R_(Math.floor(performance.now() / 400) % 2 ? '#feae34' : '#f77622', p.x - 8, t + 32, 16, 8);
       return;
     }
     if (p.k === 'sign') { // a neon sign sticking out between two buildings
@@ -2083,10 +2134,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       col(0, W, '#c0cbdc');
       for (let q = 0; q < W; q += 8) { const g = rampAt(q + 4); bx(q, FLOOR - g, 8, 12, '#ffffff'); bx(q, FLOOR - g + 60 + (q % 16), 8, H, '#8b9bb4'); if (slopeAt(q + 4) && (q / 8) % 6 === 0) bx(q, FLOOR - g + 20, 8, 4, '#8b9bb4'); }
       for (let k = 0; k < 50; k++) bx((rnd(k + 3) * W + Math.sin(now / 900 + k) * 20) | 0, (now / (16 + (k % 4) * 4) + rnd(k + 7) * H) % H, 4, 4, '#ffffff');
+    } else if (sc === 'space') { // the original space arena: planets, the mothership, fighters, a glowing grid floor
+      stSpace();
     } else if (sc === 'lift') { // an open platform riding up a shaft: the walls scroll down past it
       const left = rideLeft(), run = left > 0 ? ((R.t - R.t0) * 260) % 120 : 0;
       bx(0, 0, W, FLOOR, '#262b44');
-      for (let y = -120 + run; y < FLOOR; y += 120) { bx(0, y, W, 8, '#181425'); bx(0, y + 8, W, 4, '#3a4466'); for (let x = 140; x < W - 100; x += 330) { bx(x, y + 36, 120, 56, '#c0cbdc'); bx(x, y + 36, 120, 16, '#8b9bb4'); bx(x + 56, y + 36, 8, 56, '#181425'); } }
+      for (let y = -120 + run; y < FLOOR; y += 120) { bx(0, y, W, 8, '#181425'); bx(0, y + 8, W, 4, '#3a4466'); for (let x = 140; x < W - 100; x += 330) { bx(x, y + 36, 120, 56, rm.stars ? '#181425' : '#c0cbdc'); bx(x, y + 36, 120, 16, rm.stars ? '#124e89' : '#8b9bb4'); if (rm.stars) { bx(x + 20, y + 60, 4, 4, '#ffffff'); bx(x + 84, y + 72, 4, 4, '#c0cbdc'); bx(x + 96, y + 56, 4, 4, '#ffffff'); } bx(x + 56, y + 36, 8, 56, '#3a4466'); } }
       for (const x of [60, W - 76]) { bx(x, 0, 16, FLOOR, '#181425'); bx(x + 4, 0, 4, FLOOR, '#f77622'); }
       for (const x of [400, 800, 1200]) bx(x - 2, 0, 4, FLOOR, '#5a6988'); // cables
       bx(0, FLOOR, W, H - FLOOR, '#3a4466'); bx(0, FLOOR, W, 12, '#5a6988'); bx(0, FLOOR, W, 4, '#8b9bb4');
@@ -2096,11 +2149,26 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       ctx.fillStyle = '#ffffff'; ctx.font = '16px ' + PF; ctx.textAlign = 'center'; ctx.fillText(left > 0 ? `GOING UP · ${Math.ceil(left)}s` : 'TOP FLOOR · GO', W / 2, 110);
     }
     if (rm.hill && sc !== 'snow' && sc !== 'dive') col(0, W, '#3a4466');
-    if (!(rideLeft() > 0)) drawDoor(W - 60, Math.max(0, surfAt(W - 60)), true, false);
+    if (R.i === ROOMS.length - 1) drawDoor(W - 110, Math.max(0, surfAt(W - 110)), true, true);
     R.props.forEach(p => { if (p.dead) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
-    bx(248, 16, 412, 28, '#181425');
+    if (!VIEW.nb) { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260, 36);
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
+  }
+  function drawNb(j, dx, dy) { // a neighbouring room, drawn beside the current one
+    const sv = { i: R.i, props: R.props, gl: R.gl, el: R.el };
+    R.i = j; R.props = NBP[j] || (NBP[j] = ROOMS[j].props.map(p => ({ ...p, x0: p.x, hp0: p.hp, sparkT: 0, spinT: 0, open: false, dead: false })));
+    R.gl = [0, 0]; R.el = ((ROOMS[j].climb || {}).els || []).map(e => ({ y: e.lv * 200, st: 'idle', t: 0, stall: 0 }));
+    dx = Math.round(dx / PX) * PX; dy = Math.round(dy / PX) * PX;
+    VIEW.nb = 1; VIEW.dy = dy; ctx.save(); ctx.translate(dx, dy); drawRoom(); ctx.restore(); VIEW.nb = 0; VIEW.dy = 0;
+    Object.assign(R, sv);
+  }
+  function drawWorld() {
+    const i = R.i, vx = viewX(), rm = ROOMS[i], up = rm.ride ? Math.min(rm.ride, Math.max(0, R.t - R.t0)) * 220 : 0; // a lift leaves the room behind and rises to the next
+    ctx.fillStyle = { bamboo: '#8b9bb4', roofs: '#8b9bb4', dive: '#8b9bb4', snow: '#8b9bb4', lake: '#c0cbdc', volcano: '#3e2731' }[rm.scene] || '#181425'; ctx.fillRect(vx, -camY(), W, H);
+    if (i > 0 && vx < 40) drawNb(i - 1, entryX(i) - exitX(i - 1), pairD(i - 1) + up);
+    if (i < ROOMS.length - 1 && vx > -40) drawNb(i + 1, exitX(i) - entryX(i + 1), -pairD(i) - rideLeft() * 220);
+    drawRoom();
   }
   function drawRoom() {
     const rm = ROOMS[R.i], [w0, w1, w2] = rm.wall || [], [f0, f1] = rm.floor || [], rp = rm.ramp, last = !!rm.gate;
@@ -2153,9 +2221,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawDoor(W - (last ? 96 : 60), rp && rp.up ? rp.h : 0, true, last);
     // furniture gets the same lit edges and dark outline as 我
     R.props.forEach(p => { if (!p.dead) litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 32, p.h + 64, () => drawProp(p)); });
-    bx(248, 16, 412, 28, '#181425');
+    if (!VIEW.nb) { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260, 36);
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
   }
 
   // ---------- UI ----------
@@ -2265,9 +2333,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     me: [
       '<b>The climb</b>: after the house comes a building. Fists come from the <b>side</b> there and run along one floor. Change floors to dodge: stairs, a ladder (↑ at its foot climbs it, ← → lets go), a jump into a blinking hook, or ↓ to drop a floor. A pillar between you and the fist stops it. Inside, a fist has to smash the glass wall first: watch for the cracks. In the middle stretch you are outside on the facade, where the only way up is a window while its lamp is green.',
       '<b>More ways up</b> (orange marks where to climb): a <b>drain pipe</b> outside skips two or three floors (↑ at its foot; ↓ slides back down, ← → lets go). Jump to catch a <b>rope</b> and it carries you up two floors; ← → leaps off it. Jump onto a glowing <b>ledge</b>, then up through the floor above. Between two <b>shaft walls</b> with pink arrows, jump and press ↑ again in the air to kick off the wall. The <b>window-cleaning lift</b> outside rides up and down by itself. Press ↑ inside the <b>elevator</b> to ride two floors: fists can\'t reach you in it, but every knock stalls the car.',
-      '<b>After the dojo</b> (rough first pass): <b>bamboo</b>, ↑ at an orange-banded stalk flings you high and ↓ on a mushroom bounces you; <b>rooftops</b>, jump the gaps, a fall costs a heart; <b>lake</b>, ↑ swims up, fists slow down under water and turtles are cover; <b>volcano</b>, lava burns and fists break the stepping stones; <b>snow</b>, keep pushing uphill or you slide back; <b>lift</b>, hold out until it reaches the top; <b>space</b>, a low-gravity climb with fists from the side.',
+      '<b>After the dojo</b> (rough first pass): <b>bamboo</b>, ↑ at an orange-banded stalk flings you high and ↓ on a mushroom bounces you; <b>rooftop run</b>, you run faster, jump the gaps, a fall costs a heart; <b>lake</b>, ↑ swims up, fists slow down under water and turtles are cover; <b>volcano</b>, lava burns and fists break the stepping stones; <b>snow</b>, keep pushing uphill or you slide back; <b>space</b>, hold out on two elevators until they reach the top, then cross the low-gravity space arena.',
       '<b>The dojo</b> comes after the garden, and fists fall faster there. A fist that lands on a <b>training dummy</b> spins it and its arms shove you a step. On the <b>raised beam</b> you can\'t block: ↓ drops you through it, and under it the beam is your roof until the 兄弟 break its planks.',
-      '<b>Goal</b>: walk through the house, room by room, and out of the garage. The door on the right leads on. Run out of hearts and the turn passes to the 兄弟 who hit you most.',
+      '<b>Goal</b>: keep moving right. The view follows you through one long map, from the house to space. Run out of hearts and the turn passes to the 兄弟 who hit you most.',
       '<b>Move</b> with ← → (or A D), or drag on the arena. <b>Jump</b> with ↑ / W, the ▲ button, or a swipe up. Red shadows show where hands will land.',
       '<b>Furniture</b> blocks the way. Jump low pieces, climb tall ones from a smaller piece beside them, or stand next to the TV, fridge or wardrobe and let the 兄弟 smash it for you. A broken TV or fridge sparks for a second before the path is clear.',
       '<b>格挡 Block</b> with ↓ / S / Space or the 挡 button. You can\'t move while blocking, and it has a 1.2s cooldown.',
@@ -2464,8 +2532,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     $('ovBtn').focus();
   }
 
-  function moveMax() { return 340 + S.speed * 35; }
-  function dropV() { return Math.min(2300, 1400 + S.speed * 220) * (secOf(R.i) === 'dojo' ? 1.25 : 1); }
+  function moveMax() { return (340 + S.speed * 35) * (ROOMS[R.i].fast || 1); }
+  function dropV() { return Math.min(2300, 1400 + S.speed * 220) * (secOf(R.i) === 'dojo' ? 1.25 : ROOMS[R.i].fast ? 1.2 : 1); }
   const DROP_DIST = FLOOR - 60 + 260;
   function landIn(c) {
     if (c.phase === 'warn') return (c.warn - c.t) + DROP_DIST / dropV();
@@ -2528,7 +2596,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const lvl = levelOf(S.score);
     const into = (S.score - levelStart(lvl)) / Math.max(1, levelStart(lvl + 1) - levelStart(lvl));
     S.speed = 1 + 3.2 * (1 - Math.exp(-((lvl - 1) + into) / 3.5));
-    const bk = [1, 1.1, 1.2, 1.3][S.fireTier || 0], acc = (2600 + S.speed * 200) * bk, max = moveMax() * bk;
+    const bk = [1, 1.1, 1.2, 1.3][S.fireTier || 0], acc = (2600 + S.speed * 200) * bk * (ROOMS[R.i].fast || 1), max = moveMax() * bk;
     const dir = S.blockT > 0 ? 0 : (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
     if (dir) P.face = dir;
     if (dir) P.vx += dir * acc * dt; else P.vx *= Math.pow(0.0005, dt);
@@ -2735,7 +2803,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (tp.pz && tp.pzm && st === 'play') pauseMenu();
     else if (tp.pz) setOverlay(true, '暂停', '我 switched away from the game, so everything is paused. It picks up again as soon as they come back.', null, null);
     else if (st === 'play') { setOverlay(false); fitView(); }
-    else if (st === 'over' && tp.won) setOverlay(true, 'JOURNEY DONE!', '我 made it from the living room to the space station. That is every section of the prototype.', null, null);
+    else if (st === 'over' && tp.won) setOverlay(true, 'JOURNEY DONE!', '我 made it from the living room to the space arena. That is every section of the prototype.', null, null);
     else if (st === 'over') setOverlay(true, '打趴了!', '我 is down. The top hitter who has not been 我 this round takes the next turn.', null, null);
     else if (cd) setOverlay(true, String(cd), 'Get ready to chop. Tap where 我 is heading.', null, null);
     else setOverlay(true, '我在线!', '我 is here. The round is about to start.', null, null);
@@ -2808,7 +2876,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         lastFrom[p.peer] = now;
         const key = p.by || p.peer;
         if (((S.stunUntil || {})[key] || 0) > S.t) continue;
-        if (climbOf()) addSide(typeof c.h === 'number' ? Math.floor(c.h / FH) : P.y / FH, c.x < W / 2 ? 1 : -1, key);
+        if (climbOf()) addSide(typeof c.h === 'number' ? Math.floor(c.h / FH) : P.y / FH, c.x < P.x ? 1 : -1, key);
         else if (c.rain) scheduleRain(key);
         else if (c.yq) addChop(c.x, key, false, false, { yq: true });
         else if (c.homing) addChop(c.x, key, false, false, { homing: true });
@@ -3144,14 +3212,14 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     FX.st = (FX.st || 0) + dt;
     const idx = Math.min(STAGES.length - 1, Math.max(0, (level | 0) - 1));
     if (FX.stageIdx !== idx) { if (FX.stageIdx != null && idx > FX.stageIdx) FX.wipe = 1.3; FX.stageIdx = idx; }
-    if (JOURNEY) { if (FX.roomIdx !== R.i) { if (FX.roomIdx != null && R.i > FX.roomIdx) FX.wipe = 1; FX.roomIdx = R.i; } drawRoom(); } else STAGES[idx].draw();
+    if (JOURNEY) { if (FX.roomIdx !== R.i) { if (FX.roomIdx != null && R.i > FX.roomIdx) FX.wipe = 1; FX.roomIdx = R.i; } drawWorld(); } else STAGES[idx].draw();
     if (idx <= 1) for (const h of FX.holes || []) wallHole(h.x, h.y, h.r, h.seed, idx);
     if (FX.wipe > 0) {
       FX.wipe -= dt;
       const k = Math.max(0, FX.wipe / 1.3);
-      ctx.fillStyle = `rgba(27,20,48,${Math.min(1, k * 1.4)})`; ctx.fillRect(0, -camY(), W, H);
+      if (!JOURNEY) { ctx.fillStyle = `rgba(27,20,48,${Math.min(1, k * 1.4)})`; ctx.fillRect(0, -camY(), W, H); }
       ctx.globalAlpha = Math.min(1, k * 2.5); ctx.fillStyle = '#7fe3ff'; ctx.font = '24px ' + HF; ctx.textAlign = 'center';
-      ctx.fillText(JOURNEY ? ROOMS[R.i].name : `STAGE ${idx + 1} · ${STAGES[idx].name}`, W / 2, 72 - camY());
+      ctx.fillText(JOURNEY ? ROOMS[R.i].name : `STAGE ${idx + 1} · ${STAGES[idx].name}`, W / 2 + (JOURNEY ? viewX() : 0), 72 - camY());
       ctx.globalAlpha = 1;
     }
   }
@@ -3988,7 +4056,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.save();
     if (S.shake > 0.3) ctx.translate((Math.random() - .5) * S.shake, (Math.random() - .5) * S.shake);
     S.shake *= Math.pow(0.001, dt);
-    camFollow(P.y, dt); ctx.translate(0, camY());
+    camFollow(P.y, dt); viewFollow(P.x, dt); ctx.translate(-viewX(), camY());
     for (const q of S.pops) if (!q.adj) { q.adj = 1; q.y -= P.y; }
     aimN = handsFor(levelOf(S.score));
     drawStage(dt, levelOf(S.score));
@@ -4011,7 +4079,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawRings(dt);
     drawParts(dt);
     S.pops = pops(S.pops, dt);
-    ctx.translate(0, -camY()); drawOverlayFx(dt, S.st === 'play' && S.lives === 1); ctx.translate(0, camY());
+    ctx.translate(viewX(), -camY()); drawOverlayFx(dt, S.st === 'play' && S.lives === 1); ctx.translate(-viewX(), camY());
     tauntBubble(S, P.x, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -4137,7 +4205,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.save();
     if (shakeB > 0.3) ctx.translate((Math.random() - .5) * shakeB, (Math.random() - .5) * shakeB);
     shakeB *= Math.pow(0.001, dt);
-    camFollow(B.ty || 0, dt); ctx.translate(0, camY());
+    camFollow(B.ty || 0, dt); viewFollow(B.tx, dt); ctx.translate(-viewX(), camY());
     for (const q of B.pops) if (!q.adj) { q.adj = 1; if (q.y > 200) q.y -= B.ty || 0; else q.y -= camY(); }
     drawStage(dt, levelOf(tp && tp.score));
     sky(dt, !!tp && tp.rn === 1);
@@ -4160,7 +4228,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawRings(dt);
     drawParts(dt);
     B.pops = pops(B.pops, dt);
-    ctx.translate(0, -camY()); drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1); ctx.translate(0, camY());
+    ctx.translate(viewX(), -camY()); drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1); ctx.translate(-viewX(), camY());
     if (tp) tauntBubble(B, B.tx, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -4173,7 +4241,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const t = performance.now() / 120;
     for (const c of S.chops) {
       if (c.fake || (c.phase !== 'warn' && c.phase !== 'drop')) continue;
-      const left = c.x + c.w / 2 < CAM.x, right = c.x - c.w / 2 > CAM.x + CAM.w;
+      const sx = c.x - viewX(), left = sx + c.w / 2 < CAM.x, right = sx - c.w / 2 > CAM.x + CAM.w;
       if (!left && !right) continue;
       const ex = left ? CAM.x + 22 : CAM.x + CAM.w - 22, d = left ? -1 : 1;
       ctx.save(); ctx.globalAlpha = 0.65 + 0.35 * Math.sin(t);
@@ -4223,7 +4291,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (S.paused) { /* round frozen */ }
       else if (FX.hitstop > 0) FX.hitstop -= dt;
       else if (S.st === 'play') { FX.slow = Math.max(0, FX.slow - dt); update(FX.slow > 0 ? dt * 0.4 : dt); }
-      followCam(P.x, dt);
+      followCam(P.x - viewX(), dt);
       drawTargetView(dt);
       offscreenArrows();
       pushAcc += dt;
@@ -4237,7 +4305,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       B.cool -= dt; B.fakeCool -= dt; B.homeCool -= dt; B.stunT -= dt; B.yqCool = (B.yqCool || 0) - dt;
       const tpm = remoteTarget();
       sfx.setSection(secMusic()); sfx.setLevel(levelOf(tpm && tpm.presence.score)); sfx.scene(!tpm ? 'menu' : tpm.presence.pz ? null : tpm.presence.st === 'play' ? 'stage' : tpm.presence.st === 'over' ? 'over' : 'menu');
-      followCam(B.tx, dt);
+      followCam(B.tx - viewX(), dt);
       drawBroView(dt);
     }
     // the Stop button shows while a round is being played
@@ -4356,7 +4424,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setForm(+b.dataset.f)));
   $('chopBtn').addEventListener('click', () => doChop(B.aim));
 
-  const toX = e => { const r = cv.getBoundingClientRect(); return CAM.x + (e.clientX - r.left) / r.width * CAM.w; };
+  const toX = e => { const r = cv.getBoundingClientRect(); return CAM.x + (e.clientX - r.left) / r.width * CAM.w + viewX(); };
   const toH = e => { const r = cv.getBoundingClientRect(); return FLOOR + camY() - (e.clientY - r.top) / r.height * H; };
   let steer = false, steerY = 0;
   cv.addEventListener('pointerdown', e => {
