@@ -118,7 +118,7 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   (↑ in the air near a shaft wall, max 2, `P.kicks`), and an elevator (`R.el[]`, `tickElevators`, `P.el`; a side fist
   stops at the car and stalls it; car heights go out in presence `ey`). Orange always marks "climb here".
 - Dojo test section (rooms with `sec: 'dojo'`, between the garden and the climb; `secOf(i)` names a room's section and a
-  section change refills hearts and sets `S.startRm`). Fists fall 1.25x faster there (`dropV`). Props: `shoji` paper doors
+  section change refills hearts and sets `S.startRm`). Fists fall 1.25x faster there (`dropV`). Daniel had the `shoji` paper doors removed from the rooms as unclear (2026-11-13; the code is still there, do not bring them back without a clearer design), and had the wall scrolls redrawn as mounted scrolls with ink paintings (`drawDecor('scroll', x, v)`: circle, mountain, bamboo). Props: `shoji` paper doors
   (block the way; ↑ slides one open = `p.open`, a dash tears it, a fist tears it and is absorbed), `dummy` (a fist spins
   it, `spinT`, and shoves 我 a step, no heart lost), `beam` planks (`plat: 1`, one-way via `surfAt(x, half, y)`; ↓ drops
   through, no block on it; a fist breaks only the plank under it). `propCode` 7 = open, 6 = spinning. The crooked-scroll
