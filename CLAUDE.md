@@ -24,9 +24,14 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - Look: simple flat pixel art (Stardew-like techniques, no assets from any game). The world is drawn straight onto
   a 400x160 canvas, i.e. a 4x art-pixel grid (`PX = 4`), then blown up with hard pixels. 我 is about 16x32 art
   pixels; the face is drawn in whole art pixels. Every line is at least one art pixel wide (`lineWidth` floor).
-- Palette: `palettize()` snaps every art pixel to Endesga 32 (`PAL`) through a 15-bit lookup table each frame,
-  which also removes soft anti-aliasing. Canvas text colours go through `palCol()`. `glow()` is a no-op (soft
+- Palette: `palettize()` snaps every art pixel to Endesga 64 (`PAL`) through a 15-bit lookup table each frame,
+  which also removes soft anti-aliasing. `nearest()` matches in OKLab with hue and colourfulness weighted 3x, so muted
+  greens and browns keep their hue instead of turning into the palette's neutral greys. Canvas text colours go through `palCol()`. `glow()` is a no-op (soft
   glows only band into rings on a palette).
+- Hoodie Guy (`COS` id `hoodie`) is a hand-made pixel sprite from PixelLab (`HOODIE`, east and west, 20x47 art pixels,
+  embedded as base64 PNGs). It is drawn 1 sprite pixel = 1 art pixel by `hoodieSprite()` and skips `litSprite()` because
+  it is already shaded with its own near-black navy outline. It has one pose per side; run tilt, squash and the block
+  arms are added in code until animation frames exist. The other costumes are still drawn in code.
 - Sprites: `litSprite()` draws 我 (and fists) on a small art-pixel canvas (`ctx` is temporarily swapped to it),
   then adds flat shading from the top-left (`SHADE`: warm highlight on up-left edges, purple shadow on
   down-right edges) and an outline that is a darker shade of the neighbouring colour. Lit fists are cached in
