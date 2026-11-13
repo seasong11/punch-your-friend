@@ -95,7 +95,7 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - Relay: at zero hearts `gameOver` sets `S.handT`; `relayHand` then hands the role to the top hitter who has not
   been 我 this round (`S.was`, passed along in presence `was`). The new 我 starts the house from room 1.
 - A garden (`outdoor`, `gate`) follows the garage and ends the house section.
-- Rooftop climb (the last entry of `ROOMS`, built by `buildClimb(16)` from a fixed seed into `climb: { top, stairs, ladders, hooks }` plus pillar props): floors are one-way platforms
+- Rooftop climb (the last entry of `ROOMS`, built by `buildClimb(28)` from a fixed seed into `climb: { top, stairs, ladders, hooks }` plus pillar props): floors are one-way platforms
   `FH` apart (`climbGround`, `moveClimb`). ↑ at a ladder's foot climbs it in one go (← → lets go), a jump into a
   hook pulls 我 up a floor, ↓ drops through a floor (`tryDrop`). The view scrolls with 我 (`CAMV`, `camFollow`,
   `camY`); everything in the world is drawn under `translate(0, camY())`.
@@ -129,8 +129,8 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   through, no block on it; a fist breaks only the plank under it). `propCode` 7 = open, 6 = spinning. The crooked-scroll
   secret is not built. Each stage is meant to get one unique stage punch (designed in the punch thread): leave room.
 - Rough sections after the dojo (first pass, all rules are Claude's placeholders for Daniel to revise). Room order:
-  house, garden, dojo x3, bamboo x2, ROOFTOP CLIMB, rooftop run x5, lake dive, lake, volcano x2, snow x2, tower lift,
-  space elevator, space arena x2. A room's `sec` is also its music id; `secOf` gives `climb` / `space` for the two towers; `SEC_INFO`
+  house x15, garden, dojo x18, bamboo x18, ROOFTOP CLIMB, rooftop run x36, lake dive, lake x9, volcano x24, snow x20, tower lift,
+  space elevator, space x28. A room's `sec` is also its music id; `secOf` gives `climb` / `space` for the two towers; `SEC_INFO`
   holds each section's banner. Rooms with `scene` are drawn by `drawScene(rm)` (flat backdrops) instead of the house shell.
   - Terrain: `hill` (polyline of `[x, height]`, read by `rampAt`), `void: 1` (no floor, only props such as `roof`),
     `ghost: 1` props (not solid: `stalk`, `shroom`), `raw: 1` props (drawn without `litSprite`), `drift` props (move
@@ -145,12 +145,27 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
     Punches at a right angle to the slope are not built.
   - Space (Daniel, 2026-11-13: "elevators and primarily the space stage", using the original space stage): section
     `space` = TOWER LIFT and SPACE ELEVATOR (`scene: 'lift'`, `ride` seconds, `rideLeft()`, `R.t0`, `music: 'elevator'`;
-    the exit only opens when the ride is over) then SPACE ARENA x2 (`scene: 'space'` draws the old `stSpace()`,
-    `grav: 0.5`, `pod` cover, `panel` plats). The last arena's door ends the journey (`houseDone`, "JOURNEY DONE!").
+    the exit only opens when the ride is over) then the space screens (`scene: 'space'` draws the old `stSpace()`,
+    `grav: 0.5`; see "Space finale" below). The last screen's door ends the journey (`houseDone`, "JOURNEY DONE!").
     The earlier space-station climb room is gone (`buildClimb`'s `space` option is unused).
-- Focus (Daniel, 2026-11-13): the design centres on high-speed rooftop combat (高速屋顶战斗). The rooftop run is five
-  generated screens (`roofRun(n)`, `fast: 1.35` scales `moveMax` and acceleration, fists 1.2x in `dropV`). What "combat"
-  means for 我 is still an open question in the stage design doc.
+- Focus (Daniel, 2026-11-13): the design centres on high-speed rooftop combat (高速屋顶战斗). Daniel then found plain roof
+  jumping redundant and asked for more features, for every stage to last at least a few minutes, and for more design in
+  the space finale. What "combat" means for 我 is still an open question in the stage design doc.
+- Generated screens (all layouts are Claude's proposals): the hand-made rooms sit in `BASE` (looked up by `B_(name)`); the rest
+  come from seeded generators (`rngOf`, `pk`, `seq(n, fn)`): `genHouse`, `genDojo` (15), `genBamboo` (18), `roofRun` (36),
+  `genLake` (9), `genVolcano` (24), `genSnow` (20), `genSpace(n, kind)`. `ROOMS` has 173 screens. `cp: 1` marks every
+  fourth screen of a section as a checkpoint (`nextRoom` sets `S.startRm`, banner CHECKPOINT). A scripted 我 with no punches
+  needs roughly 1.5 to 3.5 minutes per stage; change the `seq` counts to retune length.
+- Rooftop run features (`fast: 1.2`): momentum (`P.mom`, builds over 1.2 s of running, up to +45% speed, lost on a hit, stop or
+  turn), `vent` (launches 我 when stepped on, up to the vent roof's edge), `cable` zip lines (`P.zip`, grabbed in the air at hand
+  height, ↑ hops off, ↓ lets go), `board` billboards (a fist or a dash drops one as a bridge, `fallBoard`, `propCode` 5), `sign`
+  platforms. Four screen modules rotate by `(n - 1) % 4`.
+- Space finale: TOWER LIFT, SPACE ELEVATOR, then LANDING DECK x6 (`pod` cover, `panel` plats), ASTEROID FIELD x6 (`void`,
+  `aster` platforms, half gravity), SPACEWALK x6 (`vac: 1` uses the water physics as a jetpack, drifting `ufo` plats), LASER
+  DECK x8 (`laser` gates, `laserOn`: on 1.6 s of every 3 s, a touch costs a heart), MOTHERSHIP GATE and CORE (the core's
+  door ends the journey). No boss or unique finale mechanic yet.
+- Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
+  characters, animation frames and the pixelfx effects are not in. Daniel chose no new screen effects on hits.
 - Follow camera (Daniel: 我 fixed on screen, one spatial map): `VIEW.x` (`viewFollow`, `viewX()`) keeps 我 centred and the
   world is drawn under `translate(-viewX(), camY())`. `drawWorld` draws the previous / next room beside the current one
   (`drawNb`, props of left rooms kept in `NBP`), offset by `exitX/entryX` and by `pairD(i)` (height difference at the seam;
