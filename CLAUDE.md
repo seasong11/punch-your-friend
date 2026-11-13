@@ -112,5 +112,6 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
 - Edit `index.html` directly; there is no build step.
 - To test multiplayer locally, serve the folder (`python3 -m http.server`) and open two browser windows:
   one at `/` (host) and one at the invite link it shows.
+- `art/` holds source art (PixelLab results per character, palette); it is not loaded by the page. Embed cleaned sprites in `index.html`.
 - Keep the game working inside a single file so it can be dropped onto any static host. The only extra files are
   the optional music loops in `music/`; without them the game still runs with its synthesized fallback music.
