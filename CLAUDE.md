@@ -118,5 +118,8 @@ was not saved, so the URL returned 404. Once the source is saved, every push to 
 - To test multiplayer locally, serve the folder (`python3 -m http.server`) and open two browser windows:
   one at `/` (host) and one at the invite link it shows.
 - `art/` holds source art (PixelLab results per character, palette); it is not loaded by the page. Embed cleaned sprites in `index.html`.
+  All nine characters have action sheets (`art/characters/<n>-<name>/<n>-<name>-<action>.png`, 64x64 frames) built from
+  their south-east sprite by `art/characters/tools/build_moves.py`; see `art/README.md` for the frame layout and limits.
+  They are not embedded in the game yet.
 - Keep the game working inside a single file so it can be dropped onto any static host. The only extra files are
   the optional music loops in `music/`; without them the game still runs with its synthesized fallback music.
