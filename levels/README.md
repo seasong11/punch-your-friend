@@ -28,8 +28,13 @@ A run is put together from **chunks**. The game follows each section's **beat li
   - `ItemSpawn`: a spot where an item may appear. `chance` runs from 0 to 1. `pool` lists which of the 17 items can show up, with their icons; leave it empty to allow any item for the section. Spawns that share a `group` give at most one item between them.
   - `HazardSpawn`: a spot where a hazard or prop may appear. `kind` is the entity name, e.g. `LaserGate`.
   - `VariantZone`: a pick-one area. Draw two or more zones with the same `group` and different `variant` numbers. Each run keeps one variant, and the other zones disappear with everything inside them.
-- **Entities**: fixed props and climbing pieces, with their prototype pictures. Mapping rules as before: props anchor at top-centre, the standing height is the top edge, and climb pieces sit on their floor.
+- **Entities** (don't rename these, the game maps them by name): fixed props and climbing pieces, with their prototype pictures. Mapping rules as before: props anchor at top-centre, the standing height is the top edge, and climb pieces sit on their floor.
+- **Slope** (Entities layer): a walkable slope along the diagonal of its box, `dir` UpRight or UpLeft. 我 can only step up 3 px, so a 16 px ground step is a wall: use a Slope for ramps, stairs and hills, and leave the Terrain cells inside its box empty (the game fills the ground under the slope line).
 - **Terrain** (IntGrid, 16 px): `ground`, `platform` (one-way), `water`, `lava`, `wall`. Tile auto-layers will read this layer once the art bundles are in, so painting Terrain will paint the art too.
+  Rules the game relies on:
+  - **Seam columns:** the first and last tile column must be one ground run from the bottom (or empty, for a gap 我 must jump). That's how chunks find partners.
+  - **Water:** at most one rectangle per chunk.
+  - **Lava:** only in the floor row.
 
 The level backgrounds in `reference/` are the prototype's drawings, kept only as a guide. They still show the old doors and room edges, and they were drawn for the old 160 px height, so the top 64 px are just filler. Tiles will replace them.
 
@@ -37,7 +42,7 @@ The level backgrounds in `reference/` are the prototype's drawings, kept only as
 
 There are 49 chunks, made from the prototype's screens: House 8, Dojo 4, Bamboo 4, Climb 1 (set piece), Rooftop 8, Lake 4, Volcano 4, Snow 4, Space 12. Each has a couple of `ItemSpawn` examples on top of props. Their beats, difficulty and weights are placeholders for you to set.
 
-The climb keeps the prototype's 50 px floors, which don't sit on the 16 px grid; it needs its own pass. Slopes and hills are stepped to 16 px.
+The climb keeps the prototype's 50 px floors, which don't sit on the 16 px grid; it needs its own pass. Slopes and hills are Slope entities.
 
 ## Beat lists (proposal, yours to change)
 

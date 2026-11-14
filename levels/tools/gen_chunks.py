@@ -158,7 +158,12 @@ D_HAZ = ent_def('HazardSpawn', '#E43B44', 16, 16, (0.5, 1), [
     fdef('chance', 'Float', null=False, show='ValueOnly', mn=0, mx=1, default=0.5),
     fdef('kind', 'String', show='NameAndValue', doc='Which hazard or prop entity to place (its name), e.g. LaserGate, SteppingSlab.')],
     'A spot where a hazard or prop may appear.', 'Spawns')
-spawn_defs = [D_ITEM, D_VAR, D_HAZ]
+E_DIR = enum('SlopeDir', [('UpRight', 0xe8b796), ('UpLeft', 0xc28569)])
+D_SLOPE = ent_def('Slope', '#E8B796', 64, 32, (0, 0), [
+    fdef('dir', None, null=False, enum_def=E_DIR, show='ValueOnly', doc='UpRight: rises from the bottom-left corner to the top-right corner. UpLeft: the other way.')],
+    'A walkable slope along the diagonal of this box (x0,y0 to x1,y1 = its corners). Leave the Terrain cells inside the box empty; the game fills ground under the slope line.',
+    'Terrain', hollow=True, resizable=True)
+spawn_defs = [D_ITEM, D_VAR, D_HAZ, D_SLOPE]
 
 # ---------------- level fields ----------------
 LF = [fdef('section', None, null=False, enum_def=E_SECTION, show='ValueOnly', doc='Which section this chunk can appear in.'),
@@ -241,6 +246,50 @@ for n, L in picked:
     vals = {'section': S, 'beats': beats, 'difficulty': 2, 'weight': 1.0, 'setPiece': beats[0] in ('SetPiece', 'Finale'),
             'void': lf(L, 'void'), 'slide': lf(L, 'slide'), 'vacuum': lf(L, 'vacuum'), 'gravityScale': lf(L, 'gravityScale'),
             'speedScale': lf(L, 'speedScale'), 'fromScreen': L['identifier']}
+    if not climb:
+        snap = lambda hw: floorN - int(round(hw / 4 / G)) * G          # height in world units -> snapped y of the ground top
+        segs = []
+        if r['hill']:
+            pts = r['hill']
+            for a, b in zip(pts, pts[1:]):
+                if a[1] != b[1] and b[0] - a[0] > 16: segs.append((a[0] / 4, snap(a[1]), b[0] / 4, snap(b[1])))
+        elif r['ramp']:
+            rp = r['ramp']; lo, hi = (0, rp['h']) if rp['up'] else (rp['h'], 0)
+            segs.append((rp['x0'] / 4, snap(lo), rp['x1'] / 4, snap(hi)))
+        for (xa, ya, xb, yb) in segs:
+            xa, xb = int(round(xa / G)) * G, int(round(xb / G)) * G
+            if xb <= xa or ya == yb: continue
+            top, bot = min(ya, yb), max(ya, yb)
+            c0, c1 = xa // G, xb // G
+            g[:bot // G, c0:c1] = np.where(g[:bot // G, c0:c1] == 1, 0, g[:bot // G, c0:c1])   # no stepped ground inside the slope box
+            g[bot // G:, c0:c1] = np.where(g[bot // G:, c0:c1] == 0, 1, g[bot // G:, c0:c1])
+            fd = D_SLOPE['fieldDefs'][0]
+            einst.append(dict(d=D_SLOPE, px=[xa, top], w=xb - xa, h=bot - top, fis=[finst(fd, 'UpRight' if yb < ya else 'UpLeft')]))
+        # lava only in the floor row
+        lav = g == 4
+        if lav.any():
+            cols = lav.any(0); g[lav] = 1; g[ch - 1, cols] = 4
+        # water: one rectangle (left edge to its right end, surface down to the ground)
+        wat = g == 3
+        if wat.any():
+            rows, cols = np.nonzero(wat); r0, c0_, c1_ = rows.min(), cols.min(), cols.max() + 1
+            g[wat] = 0
+            for c in range(c0_, c1_):
+                for y in range(r0, ch):
+                    if g[y, c] in (1, 4): break
+                    g[y, c] = 3
+        # seam columns: one ground run from the bottom (or nothing)
+        for c in (0, cw - 1):
+            col = g[:, c]; solid = np.nonzero(col == 1)[0]
+            keep_water = col == 3
+            if solid.size:
+                top = solid.min()
+                if (col[top:] != 1).any() and not lf(L, 'void'):
+                    top = np.nonzero(col == 1)[0].min()
+                col[:] = np.where(keep_water, 3, 0); col[top:] = 1
+            else:
+                col[:] = np.where(keep_water, 3, 0)
+            g[:, c] = col
     levels.append(dict(_sec=S, name=name, H=Hn, g=g, ents=einst, spawns=spawns, ref=refp, vals=vals))
 
 # world: one row per section, chunks left to right with a small gap (they join seamlessly in the game)
@@ -291,7 +340,7 @@ proj.update(iid=iid(), nextUid=uid() + 1, identifierStyle='Free', toc=[], worldL
             imageExportMode='None', exportLevelBg=True, pngFilePattern=None, backupOnSave=True, backupLimit=10, backupRelPath=None,
             levelNamePattern='Chunk%idx', tutorialDesc='Punch Your Friend chunk library: 16 px tiles, art pixels. See README.md.',
             customCommands=[], flags=['UseMultilinesType'], dummyWorldIid=iid())
-proj['defs'] = {'layers': [lay_s, lay_e, lay_i], 'entities': spawn_defs + [clean(d) for d in new_defs], 'tilesets': [ts], 'enums': [E_SECTION, E_BEAT, E_ITEM],
+proj['defs'] = {'layers': [lay_s, lay_e, lay_i], 'entities': spawn_defs + [clean(d) for d in new_defs], 'tilesets': [ts], 'enums': [E_SECTION, E_BEAT, E_ITEM, E_DIR],
                 'externalEnums': [], 'levelFields': [clean({'fieldDefs': LF})['fieldDefs'][i] for i in range(len(LF))]}
 for e in spawn_defs:
     for f in e['fieldDefs']: f.pop('_typ', None); f.pop('_enum', None)
