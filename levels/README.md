@@ -32,6 +32,7 @@ A run is put together from **chunks**. The game follows each section's **beat li
 - **Slope** (Entities layer): a walkable slope along the diagonal of its box, `dir` UpRight or UpLeft. 我 can only step up 3 px, so a 16 px ground step is a wall: use a Slope for ramps, stairs and hills, and leave the Terrain cells inside its box empty (the game fills the ground under the slope line).
 - **Terrain** (IntGrid, 16 px): `ground`, `platform` (one-way), `water`, `lava`, `wall`. Tile auto-layers will read this layer once the art bundles are in, so painting Terrain will paint the art too.
   Rules the game relies on:
+  - **Platforms:** the game doesn't read `platform` cells yet. For one-way platforms use the Sign, Panel, LeafCanopy or BeamPlank entities.
   - **Seam columns:** the first and last tile column must be one ground run from the bottom (or empty, for a gap 我 must jump). That's how chunks find partners.
   - **Water:** at most one rectangle per chunk.
   - **Lava:** only in the floor row.
@@ -44,7 +45,11 @@ There are 49 chunks, made from the prototype's screens: House 8, Dojo 4, Bamboo 
 
 The climb keeps the prototype's 50 px floors, which don't sit on the 16 px grid; it needs its own pass. Slopes and hills are Slope entities.
 
-## Beat lists (proposal, yours to change)
+## Beat lists (what the game does now)
+
+Each section opens with a Warmup chunk, then loops Challenge, Challenge, Rest, Challenge, Challenge, Checkpoint, Challenge until the section's length is reached. If no chunk has the beat, any non-set-piece chunk of the section is used. Stage lengths are still set in the game: House 15, Dojo 18, Bamboo 18, Rooftop 36, Lake 10, Volcano 24, Snow 20, Space 26, plus the set pieces. A chunk tagged only Warmup is used only at the start of its section.
+
+## Beat lists (first proposal, kept for reference)
 
 Each section is a list of beats, and the game fills each beat with a random chunk that has that beat:
 
