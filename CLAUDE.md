@@ -191,8 +191,9 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   one-way platforms, `tileBlock` for solid blocks) and returns false for kinds it does not cover, which then use the old `drawProp`.
   `FIT` + `fitProps` (run in `buildRooms`, before the rooms are used) resize props to their sprite so what is drawn is what blocks.
   The lake shows the rooftop night sky above the surface; the dive room is a brick roof over the lake set. `drawClimb` uses the climb
-  sprites (`CA`): wall bays and openings, floor slabs, pillars, stair steps. Local edits to the art: the painted dummy is erased from
-  `art/dojo/bg_near.png` (asked the art thread to drop it; also asked for the house furniture to leave `bg_far`, and for b-variants).
+  sprites (`CA`): wall bays and openings, floor slabs, pillars, stair steps. The house draws only `bg_sky` + `bg_far` (its painted furniture sits in `bg_mid`, which the game skips, because anything that
+  looks like an object must be one).
+  A set's `V` lists layers with a second look (`<name>_b.png`: house `bg_far_b` kitchen wall, dojo `bg_mid_b`), used on odd screens.
   Old code backdrops remain only as the fallback when a file is missing or with `?art=0`.
 - Art sets (Daniel, 2026-11-14: revise the prototype from his references in the private repo `seasong11/punch-your-friend-art-refs`;
   the "Set up Claude art generator" thread draws each section with claude-pxl into project files `pxl-art/<section>/`, this

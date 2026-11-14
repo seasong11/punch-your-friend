@@ -1374,9 +1374,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const SEC_ART = { house: 'house', dojo: 'dojo', bamboo: 'bamboo', 'rooftop-jumps': 'rooftop', 'lake-dive': 'lake', lake: 'lake', volcano: 'volcano', snow: 'snow', space: 'space' };
   const FIT = { // props take the size of their drawn sprite (world px), so what you see is what blocks you
     house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [128, 128, 'shelf'], wardrobe: [128, 128, 'shelf'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
-    dojo: { box: [64, 64, 'crate'], dummy: [56, 136, 'dummy'] }, bamboo: { shroom: [64, 48, 'shroom'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
+    dojo: { box: [64, 64, 'crate'], dummy: [56, 136, 'dummy'] }, bamboo: { shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
-  function fitProps(list) { for (const rm of list) { const F = !rm.climb && !rm.outdoor && rm.scene !== 'lift' && FIT[SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
+  function fitProps(list) { for (const rm of list) { const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
     SEED = (seed >>> 0) % 1000000; MODE = mode ? 1 : 0;
     let list = [
@@ -2227,12 +2227,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
     rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign'] },
-    bamboo: { L: OUT_L, S: ['stalk', 'shroom', 'thick', 'rock'] },
+    bamboo: { L: OUT_L, S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot'] },
     lake: { L: OUT_L, S: ['turtle', 'weed', 'rock'] },
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock'] },
-    dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate'] },
-    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate'] },
+    dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate'], V: ['bg_mid'] },
+    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
     climb: { L: [], S: ['wall_bay', 'wall_opening', 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
@@ -2242,7 +2242,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const A = ART[sec] = { img: {}, frames: null, ok: n => { const im = A.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } };
     if (location.protocol === 'file:' || /[?&]art=0/.test(location.search)) return;
     const get = (n, f) => { const im = new Image(); im.src = 'art/' + sec + '/' + f; A.img[n] = im; };
-    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of sprites) get(n, 'sprites/' + n + '.png');
+    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of (SETS[sec] || {}).V || []) get(n + '_b', n + '_b.png'); // _b = a second look, used on every other screen for (const n of sprites) get(n, 'sprites/' + n + '.png');
     fetch('art/' + sec + '/tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { A.frames = {}; for (const k in d.frames) A.frames[k] = d.frames[k].frame; } }).catch(() => {});
   }
   for (const n in SETS) loadArt(n, SETS[n].S);
@@ -2346,7 +2346,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const sp = A.win && !reduce ? sfx.spectrum(24) : null;
     LS.forEach(([n, f]) => { if (n === skip) return; const off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % AW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
       const bx0 = off + k * AW; if (bx0 >= AW || bx0 <= -AW) continue;
-      g.drawImage(A.img[n], bx0, oy, AW, AH);
+      g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, AW, AH);
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
         const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
         for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; g.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) g.fillRect(bx0 + b.x + c * b.pitch[0], b.y + row * b.pitch[1], b.cell[0], b.cell[1]); }
