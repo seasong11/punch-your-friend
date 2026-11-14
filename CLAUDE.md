@@ -182,7 +182,9 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   `billboard_plank_m` (`spr()`). Do not wire the house, dojo and bamboo drafts until Daniel approves them. The skyline windows
   are a music spectrum: an AnalyserNode on the music bus (`sfx.spectrum(n)`), window grids from `bg_mid_windows.json`
   (`ART.rooftop.win`), drawn in `artBack` (Daniel's rules: buildings never move, one aligned window grid per building, bass left
-  to treble right). The layers must tile at 400 art px.
+  to treble right). The layers must tile at 400 art px. `artBack(sec, [h0, h1])` fades the set in by dither between two heights: `drawClimb`
+  uses it so night falls over the climb's last floors and the roof run starts under the same sky (Daniel, 2026-11-14: make the
+  transition smoother; the dusk fade itself is Claude's proposal). `VIEW.gi` is the current room, so neighbours share one backdrop.
 - Rooftop run features (`fast: 1.2`): momentum (`P.mom`, builds over 1.2 s of running, up to +45% speed, lost on a hit, stop or
   turn), `vent` (launches 我 when stepped on, up to the vent roof's edge), `cable` zip lines (`P.zip`, grabbed in the air at hand
   height, ↑ hops off, ↓ lets go), `board` billboards (a fist or a dash drops one as a bridge, `fallBoard`, `propCode` 5), `sign`

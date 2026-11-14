@@ -1800,7 +1800,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // The city behind the tower: four silhouette layers, drawn once at art-pixel size. Farther layers are paler
   // and move less as the camera climbs (depth by haze and parallax). One blue ramp, a few warm lights up close.
   const CITY = { L: null, sky: null, haze: null };
-  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], DUSK_H = 250; // art rows of the dither between the climb's day sky and the rooftop night
   function ditherBand(w, h, col, from, to) { // ordered dither, density runs from `from` at the top to `to` at the bottom (0..1)
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.fillStyle = col;
     for (let y = 0; y < h; y++) { const dn = (from + (to - from) * y / (h - 1)) * 16; for (let x = 0; x < w; x++) if (BAYER[(y & 3) * 4 + (x & 3)] < dn) g.fillRect(x, y, 1, 1); }
@@ -1897,6 +1897,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const hz = CITY.haze[i]; if (hz) ctx.drawImage(hz, 0, -cam + H - hz.height * PX, W, hz.height * PX);
     });
     ctx.imageSmoothingEnabled = sm;
+    if (!cl.space && ROOMS[R.i + 1] && ROOMS[R.i + 1].scene === 'roofs') artBack('rooftop', [(top - 0.4) * FH - DUSK_H * PX, (top - 0.4) * FH]); /* night falls over the last floors, so the roof run starts under the same sky */
     // street
     if (!cl.space) { box(0, FLOOR, W, H - FLOOR + 200, '#181425'); box(0, FLOOR, W, 4, '#3a4466'); } else box(0, FLOOR, W, 12, '#3a4466');
     if (!cl.space) for (let i = 0; i < 70; i++) box(Math.floor(rnd(i + 5) * W / 8) * 8, FLOOR + 12 + Math.floor(rnd(i + 77) * 14) * 8, rnd(i + 9) < 0.3 ? 16 : 8, 4, rnd(i + 3) < 0.12 ? '#f77622' : rnd(i + 3) < 0.3 ? '#2ce8f5' : '#3a4466'); // lights broken up in the wet street
@@ -2218,18 +2219,29 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, Math.round((p.x - p.w / 2) / PX) * PX, Math.round(t / PX) * PX, aw * PX, ah * PX); ctx.imageSmoothingEnabled = sm;
   }
-  function artBack(sec) { // parallax layers behind a room: fixed to the screen, sliding slowly with the distance travelled
+  let NIGHT = null, DUSK = null;
+  function artBack(sec, dusk) { // parallax layers behind a room: fixed to the screen, sliding slowly with the distance travelled. `dusk` = [h0, h1]: fade in by dither between those heights (the climb's last floors)
     const A = ART[sec]; if (!A || !A.ok('bg_sky') || !A.ok('bg_far') || !A.ok('bg_mid')) return false;
-    const m = ctx.getTransform(), sl = -m.e / m.a, st = -m.f / m.d, gx = Math.max(0, ROOMS.indexOf(ROOMS[R.i])) * W_ + viewX(), sm = ctx.imageSmoothingEnabled;
-    ctx.save(); ctx.beginPath(); ctx.rect(0, st, W, H); ctx.clip(); ctx.imageSmoothingEnabled = false;
-    const sp = A.win && !reduce ? sfx.spectrum(24) : null, x0 = Math.round(sl / PX) * PX, y0 = Math.round(st / PX) * PX;
-    [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]].forEach(([n, f]) => { const off = -(Math.round(gx * f / PX) * PX % W); for (let k = 0; k < 2; k++) {
-      ctx.drawImage(A.img[n], x0 + off + k * W, y0, W, H);
+    const m = ctx.getTransform(), sl = -m.e / m.a, st = -m.f / m.d, gx = (VIEW.gi != null ? VIEW.gi : R.i) * W_ + viewX(), sm = ctx.imageSmoothingEnabled, AW = W / PX, AH = H / PX;
+    const x0 = Math.round(sl / PX) * PX, y0 = Math.round(st / PX) * PX;
+    let my = null; if (dusk) { my = Math.round((FLOOR - dusk[1] - y0) / PX); if (my + DUSK_H <= 0) return true; if (my >= AH) my = null; } // art row where the night is full
+    if (!NIGHT) { NIGHT = document.createElement('canvas'); NIGHT.width = AW; NIGHT.height = AH; }
+    const g = NIGHT.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, AW, AH); g.imageSmoothingEnabled = false;
+    const sp = A.win && !reduce ? sfx.spectrum(24) : null;
+    [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]].forEach(([n, f]) => { const off = -(Math.round(gx * f / PX) % AW); for (let k = -1; k < 2; k++) {
+      const bx0 = off + k * AW; if (bx0 >= AW || bx0 <= -AW) continue;
+      g.drawImage(A.img[n], bx0, 0, AW, AH);
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
         const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
-        for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; ctx.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) ctx.fillRect(x0 + off + k * W + (b.x + c * b.pitch[0]) * PX, y0 + (b.y + row * b.pitch[1]) * PX, b.cell[0] * PX, b.cell[1] * PX); }
+        for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; g.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) g.fillRect(bx0 + b.x + c * b.pitch[0], b.y + row * b.pitch[1], b.cell[0], b.cell[1]); }
       }
     } });
+    if (my != null) { // keep the night above `my`, dither it away below
+      if (!DUSK) { DUSK = document.createElement('canvas'); DUSK.width = AW; DUSK.height = AH + DUSK_H; const d = DUSK.getContext('2d'); d.fillStyle = '#000'; d.fillRect(0, 0, AW, AH); d.drawImage(ditherBand(AW, DUSK_H, '#000', 1, 0), 0, AH); }
+      g.globalCompositeOperation = 'destination-in'; g.drawImage(DUSK, 0, my - AH); g.globalCompositeOperation = 'source-over';
+    }
+    ctx.save(); ctx.beginPath(); ctx.rect(0, st, W, H); ctx.clip(); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(NIGHT, x0, y0, W, H);
     ctx.restore(); ctx.imageSmoothingEnabled = sm; return true;
   }
   function drawProp(p) {
@@ -2488,6 +2500,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     Object.assign(R, sv);
   }
   function drawWorld() {
+    VIEW.gi = R.i;
     const i = R.i, vx = viewX(), rm = ROOMS[i], up = rm.ride ? Math.min(rm.ride, Math.max(0, R.t - R.t0)) * 220 : 0; // a lift leaves the room behind and rises to the next
     ctx.fillStyle = { bamboo: '#8b9bb4', roofs: '#8b9bb4', dive: '#8b9bb4', snow: '#8b9bb4', lake: '#c0cbdc', volcano: '#3e2731' }[rm.scene] || '#181425'; ctx.fillRect(vx, -camY(), W, H);
     if (i > 0 && vx < 40) drawNb(i - 1, entryX(i) - exitX(i - 1), pairD(i - 1) + up);
