@@ -734,7 +734,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       return master;
     }
     function sfxOut() { if (!sg) { sg = ac.createGain(); sg.gain.value = 0.42; sg.connect(bus()); } return sg; }
-    function musicOut() { if (!duck) { duck = ac.createGain(); duck.connect(bus()); } return duck; }
+    let an = null, anBuf = null; // the rooftop skyline reads the music's spectrum from this
+    function musicOut() { if (!duck) { duck = ac.createGain(); duck.connect(bus()); try { an = ac.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.78; duck.connect(an); anBuf = new Uint8Array(an.frequencyBinCount); } catch (e) { an = null; } } return duck; }
     let cur = { g: 1, pan: 0 }, nextPan = 0, scale = null;
     const recent = {};
     function voice() {
@@ -979,6 +980,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       scene,
       setLevel,
       setSection(id) { sectionTrack = SECTION_TRACKS[id] || null; },
+      spectrum(n) { // n band levels 0..1, bass to treble (log-spaced bins); null while no music has played
+        if (!an || muted) return null; an.getByteFrequencyData(anBuf);
+        const out = [], lo = 2, hi = anBuf.length * 0.7; let any = 0;
+        for (let b = 0; b < n; b++) { const a = Math.floor(lo * Math.pow(hi / lo, b / n)), z = Math.max(a + 1, Math.floor(lo * Math.pow(hi / lo, (b + 1) / n))); let m = 0; for (let k = a; k < z; k++) m = Math.max(m, anBuf[k]); const v = Math.min(1, Math.pow(m / 255, 1.6) * (1 + b / n)); out.push(v); any += v; }
+        return any > 0.01 ? out : null;
+      },
       // where the next effect happens, as a world x position (pans it left or right)
       at(x) { nextPan = clamp((x / W) * 2 - 1, -1, 1) * 0.5; return api; },
       setTempo(x) { tempo = clamp(x, 1, 1.5); },
@@ -2181,10 +2188,55 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       ctx.fillText(last ? 'EXIT' : 'GO', x, b - h - 76);
     }
   }
+  // ---- art sets (drawn by the art thread with claude-pxl, Endesga 64, 16 px tiles) ----
+  // art/<section>/: tiles.png + tiles.json (frame names), bg_sky / bg_far / bg_mid.png (400x224 parallax layers),
+  // sprites/<name>.png. All optional: while a file is missing the game draws that thing itself.
+  const ART = {};
+  function loadArt(sec, sprites) {
+    const A = ART[sec] = { img: {}, frames: null, ok: n => { const im = A.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } };
+    if (location.protocol === 'file:' || /[?&]art=0/.test(location.search)) return;
+    const get = (n, f) => { const im = new Image(); im.src = 'art/' + sec + '/' + f; A.img[n] = im; };
+    get('tiles', 'tiles.png'); for (const n of ['bg_sky', 'bg_far', 'bg_mid']) get(n, n + '.png'); for (const n of sprites) get(n, 'sprites/' + n + '.png');
+    fetch('art/' + sec + '/tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { A.frames = {}; for (const k in d.frames) A.frames[k] = d.frames[k].frame; } }).catch(() => {});
+  }
+  loadArt('rooftop', ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign']);
+  if (location.protocol !== 'file:') fetch('art/rooftop/bg_mid_windows.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.buildings) ART.rooftop.win = d.buildings; }).catch(() => {});
+  const spr = (im, cx, top) => { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(im, Math.round((cx - im.naturalWidth * PX / 2) / PX) * PX, Math.round(top / PX) * PX, im.naturalWidth * PX, im.naturalHeight * PX); ctx.imageSmoothingEnabled = sm; }; // a sprite at art-pixel scale, by its top-centre
+  const artTiles = sec => { const A = ART[sec]; return A && A.frames && A.ok('tiles') ? A : null; };
+  function tile(A, g, name, ax, ay) { const f = A.frames[name]; if (f) g.drawImage(A.img.tiles, f.x, f.y, f.w, f.h, ax, ay, f.w, f.h); } // on an art-pixel canvas
+  const ROOF_CACHE = new Map();
+  function roofArt(A, p, t) { // a brick building from the tile set: cap row, walls, one window grid per building, a belt course under each floor
+    const aw = Math.round(p.w / PX), ah = Math.ceil((H - t) / PX) + 4, key = aw + '|' + ah + '|' + Math.round(p.x0 == null ? p.x : p.x0);
+    let cv = ROOF_CACHE.get(key);
+    if (!cv) {
+      if (ROOF_CACHE.size > 60) ROOF_CACHE.clear();
+      cv = document.createElement('canvas'); cv.width = aw; cv.height = ah; const g = cv.getContext('2d'), cols = Math.ceil(aw / 16), WIN = ['curtain', 'dark', 'blinds', 'tv', 'ac', 'dark'];
+      for (let r = 0; r * 16 < ah; r++) for (let c = 0; c < cols; c++) tile(A, g, r === 0 ? 'roof_m' : r % 3 === 0 ? 'belt_m' : rnd(c * 7 + r * 13 + key.length) < 0.12 ? 'wall_b' : 'wall_m', c * 16, r * 16);
+      for (let r = 0; r * 16 < ah; r++) { tile(A, g, r === 0 ? 'roof_l' : 'wall_l', 0, r * 16); tile(A, g, r === 0 ? 'roof_r' : r % 3 === 0 ? 'belt_r' : 'wall_r', aw - 16, r * 16); }
+      for (let r = 1; r * 16 + 32 <= ah; r += 3) for (let c = 1, q = 0; c * 16 + 32 <= aw; c += 3, q++) { const wn = WIN[Math.floor(rnd(q * 5 + r * 3 + aw) * WIN.length)]; tile(A, g, 'win_' + wn + '_top', c * 16, r * 16); tile(A, g, 'win_' + wn + '_bot', c * 16, r * 16 + 16); }
+      ROOF_CACHE.set(key, cv);
+    }
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, Math.round((p.x - p.w / 2) / PX) * PX, Math.round(t / PX) * PX, aw * PX, ah * PX); ctx.imageSmoothingEnabled = sm;
+  }
+  function artBack(sec) { // parallax layers behind a room: fixed to the screen, sliding slowly with the distance travelled
+    const A = ART[sec]; if (!A || !A.ok('bg_sky') || !A.ok('bg_far') || !A.ok('bg_mid')) return false;
+    const m = ctx.getTransform(), sl = -m.e / m.a, st = -m.f / m.d, gx = Math.max(0, ROOMS.indexOf(ROOMS[R.i])) * W_ + viewX(), sm = ctx.imageSmoothingEnabled;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, st, W, H); ctx.clip(); ctx.imageSmoothingEnabled = false;
+    const sp = A.win && !reduce ? sfx.spectrum(24) : null, x0 = Math.round(sl / PX) * PX, y0 = Math.round(st / PX) * PX;
+    [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]].forEach(([n, f]) => { const off = -(Math.round(gx * f / PX) * PX % W); for (let k = 0; k < 2; k++) {
+      ctx.drawImage(A.img[n], x0 + off + k * W, y0, W, H);
+      if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
+        const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
+        for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; ctx.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) ctx.fillRect(x0 + off + k * W + (b.x + c * b.pitch[0]) * PX, y0 + (b.y + row * b.pitch[1]) * PX, b.cell[0] * PX, b.cell[1] * PX); }
+      }
+    } });
+    ctx.restore(); ctx.imageSmoothingEnabled = sm; return true;
+  }
   function drawProp(p) {
     const l = p.x - p.w / 2, t = FLOOR - p.h, w = p.w, h = p.h, R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(ww), Math.round(hh)); };
     const hurt = p.hp != null && p.hp < p.hp0, fried = p.sparkT > 0;
     if (p.k === 'roof') { // a building top; the jump sections are made of these
+      const RA = artTiles('rooftop'); if (RA) { roofArt(RA, p, t); return; }
       R_('#262b44', l, t, w, H - t + 40); R_('#3a4466', l, t, 8, H - t + 40); R_('#181425', l + w - 8, t, 8, H - t + 40);
       R_('#5a6988', l - 4, t, w + 8, 8); R_('#8b9bb4', l - 4, t, w + 8, 4); R_('#2ce8f5', l + 8, t + 20, w - 16, 4); R_('#0099db', l + 8, t + 24, w - 16, 4);
       for (let y = t + 44, r = 0; y < H; y += 28, r++) for (let x = l + 20, q = 0; x < l + w - 24; x += 24, q++) R_(rnd(q * 7 + r * 13 + p.x) < 0.14 ? '#fee761' : rnd(q + r * 5 + p.x) < 0.4 ? '#3a4466' : '#181425', x, y, 12, 16);
@@ -2192,17 +2244,24 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       return;
     }
     if (p.k === 'vent') { // a roof vent with a fan: orange chevrons, it throws 我 up
-      const on = p.spinT > 0 || Math.floor(performance.now() / 120) % 2;
-      R_('#5a6988', l, t - 12, w, 12); R_('#8b9bb4', l, t - 12, w, 4); R_('#181425', l + 8, t - 8, w - 16, 4); R_(on ? '#c0cbdc' : '#3a4466', l + 12, t - 8, 16, 4); R_(on ? '#3a4466' : '#c0cbdc', l + 36, t - 8, 16, 4);
-      for (let q = 0; q < 3; q++) { const yy = t - 36 - q * 20 - (Math.floor(performance.now() / 150) % 3) * 4; R_('#f77622', p.x - 12, yy, 8, 4); R_('#f77622', p.x + 4, yy, 8, 4); R_('#f77622', p.x - 4, yy - 4, 8, 4); }
+      const on = p.spinT > 0 || Math.floor(performance.now() / 120) % 2, VA = ART.rooftop && ART.rooftop.ok('RoofVent');
+      if (VA) spr(VA, p.x, t - VA.naturalHeight * PX);
+      else {
+      R_('#5a6988', l, t - 12, w, 12); R_('#8b9bb4', l, t - 12, w, 4); R_('#181425', l + 8, t - 8, w - 16, 4); R_(on ? '#c0cbdc' : '#3a4466', l + 12, t - 8, 16, 4); R_(on ? '#3a4466' : '#c0cbdc', l + 36, t - 8, 16, 4); }
+      for (let q = 0; q < 3; q++) { const yy = t - (VA ? 64 : 36) - q * 20 - (Math.floor(performance.now() / 150) % 3) * 4; R_('#f77622', p.x - 12, yy, 8, 4); R_('#f77622', p.x + 4, yy, 8, 4); R_('#f77622', p.x - 4, yy - 4, 8, 4); }
       return;
     }
     if (p.k === 'cable') { // a zip cable between two roofs, with a post at each end
-      R_('#3a4466', p.cx0 - 4, FLOOR - p.cy0, 8, 150); R_('#f77622', p.cx0 - 8, FLOOR - p.cy0 - 8, 16, 12); R_('#3a4466', p.cx1 - 4, FLOOR - p.cy1, 8, 130); R_('#f77622', p.cx1 - 8, FLOOR - p.cy1 - 8, 16, 12);
+      const ZP = ART.rooftop && ART.rooftop.ok('ZipPost');
+      if (ZP) { for (const [cx, cy, len] of [[p.cx0, p.cy0, 150], [p.cx1, p.cy1, 130]]) { R_('#262b44', cx - 4, FLOOR - cy + 60, 8, len - 60); spr(ZP, cx, FLOOR - cy - 12); } }
+      else { R_('#3a4466', p.cx0 - 4, FLOOR - p.cy0, 8, 150); R_('#f77622', p.cx0 - 8, FLOOR - p.cy0 - 8, 16, 12); R_('#3a4466', p.cx1 - 4, FLOOR - p.cy1, 8, 130); R_('#f77622', p.cx1 - 8, FLOOR - p.cy1 - 8, 16, 12); }
       for (let x = p.cx0; x < p.cx1; x += 8) R_((x / 8) % 6 < 1 ? '#f77622' : '#c0cbdc', x, FLOOR - (p.cy0 + (p.cy1 - p.cy0) * (x - p.cx0) / (p.cx1 - p.cx0)), 8, 4);
       return;
     }
     if (p.k === 'board') { // a billboard on a pole; a fist or a dash knocks it flat across the gap
+      const BB = ART.rooftop && ART.rooftop.ok('Billboard'), BP = ART.rooftop && ART.rooftop.ok('billboard_plank_m');
+      if (p.fallen && BP) { for (let x = l; x < l + w; x += 64) spr(BP, Math.min(x, l + w - 64) + 32, t); return; }
+      if (!p.fallen && BB) { spr(BB, p.x, FLOOR - p.bh - BB.naturalHeight * PX); R_('#f77622', p.x - 8, FLOOR - p.bh - BB.naturalHeight * PX - 16, 16, 8); return; }
       if (p.fallen) { R_('#262b44', l, t, w, 20); R_('#f6757a', l, t, w, 4); R_('#68386c', l, t + 16, w, 4); for (let x = l + 16; x < l + w - 24; x += 48) R_('#2ce8f5', x, t + 8, 28, 4); return; }
       R_('#3a4466', p.x - 4, t + 90, 8, h - 90 - p.bh); R_('#262b44', p.x - 60, t, 120, 90); R_('#f6757a', p.x - 60, t, 120, 4); R_('#f6757a', p.x - 60, t + 86, 120, 4); R_('#f6757a', p.x - 60, t, 4, 90); R_('#f6757a', p.x + 56, t, 4, 90);
       R_('#2ce8f5', p.x - 44, t + 20, 64, 8); R_('#0099db', p.x - 44, t + 40, 88, 8); R_('#fee761', p.x - 44, t + 60, 40, 8);
@@ -2236,6 +2295,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       return;
     }
     if (p.k === 'sign') { // a neon sign sticking out between two buildings
+      const SG = ART.rooftop && ART.rooftop.ok('Sign'); if (SG) { spr(SG, p.x, t); R_('#181425', l + w / 2 - 4, t + SG.naturalHeight * PX, 8, H); return; }
+      const SA = artTiles('rooftop'); if (SA) { const f = SA.frames, sm = ctx.imageSmoothingEnabled, d = (n, x) => ctx.drawImage(SA.img.tiles, f[n].x, f[n].y, 16, 16, Math.round(x / PX) * PX, Math.round(t / PX) * PX, 64, 64); ctx.imageSmoothingEnabled = false; for (let x = l; x < l + w - 64; x += 64) d(x === l ? 'plat_l' : 'plat_m', x); d('plat_r', l + w - 64); ctx.imageSmoothingEnabled = sm; R_('#181425', l + w / 2 - 4, t + 24, 8, H); return; }
       R_('#181425', l, t, w, 28); R_('#f6757a', l, t, w, 4); R_('#68386c', l, t + 24, w, 4); R_('#2ce8f5', l + 12, t + 10, w - 24, 8); R_('#181425', l + w / 2 - 4, t + 28, 8, H);
       return;
     }
@@ -2352,10 +2413,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       bx(0, FLOOR, W, H - FLOOR, '#733e39'); bx(0, FLOOR, W, 20, '#3e8948'); bx(0, FLOOR, W, 4, '#63c74d');
       for (let k = 0; k < 60; k++) { const gx = Math.floor(rnd(k + 3) * W / 8) * 8; bx(gx, FLOOR - 8, 4, 8, k % 3 ? '#3e8948' : '#63c74d'); bx(Math.floor(rnd(k + 9) * W / 8) * 8, FLOOR + 36 + Math.floor(rnd(k + 5) * 5) * 8, 12, 8, k % 2 ? '#3e2731' : '#b86f50'); }
     } else if (sc === 'roofs' || sc === 'dive') { // the blue-haze city again, seen from high up (roofs) or lower down by the lake (dive)
+      if (!(sc === 'roofs' && artBack('rooftop'))) {
       const Ls = cityLayers(3200), cam = sc === 'roofs' ? 2200 : 500, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
       ctx.drawImage(CITY.sky, 0, 0, W, H);
       Ls.forEach((L, i) => { if (i === 3) return; const oy = Math.round(cam * L.f / PX) * PX - L.sh * PX; ctx.drawImage(L.cv, 0, oy, W, L.cv.height * PX); const hz = CITY.haze[i]; if (hz) ctx.drawImage(hz, 0, H - hz.height * PX, W, hz.height * PX); });
       ctx.imageSmoothingEnabled = sm;
+      }
       if (sc === 'dive') {
         const wt = rm.water, wy = FLOOR - wt.top;
         bx(wt.x0, wy, W - wt.x0, H - wy, '#124e89'); bx(wt.x0, wy + 150, W - wt.x0, H, '#262b44');

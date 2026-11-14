@@ -171,6 +171,18 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   kind come from the code-built rooms (`KF`, `learnKinds`); entity names map through `ENT_K`. Not read yet: Decor entities,
   Terrain platform cells, the Climb chunk and the lifts (still built by the game). Without the file, or with `?gen=1`, the
   code generators are used (`MODE` 0). The file is about 0.8 MB; a build step that slims it is a later option.
+- Art sets (Daniel, 2026-11-14: revise the prototype from his references in the private repo `seasong11/punch-your-friend-art-refs`;
+  the "Set up Claude art generator" thread draws each section with claude-pxl into project files `pxl-art/<section>/`, this
+  thread copies approved sets to `art/<section>/` and wires them in). Layout agreed with that thread: `tiles.png` +
+  `tiles.json` (frame names), `bg_sky/bg_far/bg_mid(/bg_near).png` (400x224, tileable, transparent), `sprites/<LDtk identifier>.png`
+  sized to the LDtk entity boxes, plus a window-rect JSON for music-reactive layers. `loadArt(sec, sprites)` loads a set;
+  `artBack(sec)` draws the layers screen-fixed with slow parallax; `roofArt` builds a brick building from tiles (cached in
+  `ROOF_CACHE`); every use falls back to the old code drawing while a file is missing (`?art=0` forces that). Only the rooftop
+  set is approved and wired: background layers, brick buildings, and sprites `RoofVent`, `Sign`, `ZipPost`, `Billboard`,
+  `billboard_plank_m` (`spr()`). Do not wire the house, dojo and bamboo drafts until Daniel approves them. The skyline windows
+  are a music spectrum: an AnalyserNode on the music bus (`sfx.spectrum(n)`), window grids from `bg_mid_windows.json`
+  (`ART.rooftop.win`), drawn in `artBack` (Daniel's rules: buildings never move, one aligned window grid per building, bass left
+  to treble right). The layers must tile at 400 art px.
 - Rooftop run features (`fast: 1.2`): momentum (`P.mom`, builds over 1.2 s of running, up to +45% speed, lost on a hit, stop or
   turn), `vent` (launches 我 when stepped on, up to the vent roof's edge), `cable` zip lines (`P.zip`, grabbed in the air at hand
   height, ↑ hops off, ↓ lets go), `board` billboards (a fist or a dash drops one as a bridge, `fallBoard`, `propCode` 5), `sign`

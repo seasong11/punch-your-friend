@@ -1,0 +1,341 @@
+{
+ "note": "Spectrum windows of bg_mid.png, in its pixel coordinates. Each building is one band (0 = bass .. 23 = treble). Windows are cell-sized, laid out on pitch from (x, y), cols across and rowsToBottom down. Light rows from the bottom of the first `rows` rows upward: unlit #1a1932, lit #ca52c9, lit rows in the top 40% #f68187, topmost lit row #fdd2ed. Rows past `rows` sit behind the roofs.",
+ "buildings": [
+  {
+   "band": 0,
+   "x": -3,
+   "y": 134,
+   "cols": 2,
+   "rows": 7,
+   "rowsToBottom": 15,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 1,
+   "x": 16,
+   "y": 107,
+   "cols": 2,
+   "rows": 11,
+   "rowsToBottom": 20,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 2,
+   "x": 35,
+   "y": 136,
+   "cols": 2,
+   "rows": 6,
+   "rowsToBottom": 15,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 3,
+   "x": 54,
+   "y": 125,
+   "cols": 1,
+   "rows": 8,
+   "rowsToBottom": 17,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 4,
+   "x": 70,
+   "y": 151,
+   "cols": 3,
+   "rows": 4,
+   "rowsToBottom": 13,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 5,
+   "x": 94,
+   "y": 163,
+   "cols": 1,
+   "rows": 2,
+   "rowsToBottom": 11,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 6,
+   "x": 108,
+   "y": 111,
+   "cols": 2,
+   "rows": 10,
+   "rowsToBottom": 19,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 8,
+   "x": 127,
+   "y": 115,
+   "cols": 3,
+   "rows": 10,
+   "rowsToBottom": 19,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 9,
+   "x": 151,
+   "y": 101,
+   "cols": 3,
+   "rows": 12,
+   "rowsToBottom": 21,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 11,
+   "x": 175,
+   "y": 103,
+   "cols": 3,
+   "rows": 12,
+   "rowsToBottom": 21,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 12,
+   "x": 199,
+   "y": 116,
+   "cols": 2,
+   "rows": 10,
+   "rowsToBottom": 18,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 13,
+   "x": 218,
+   "y": 171,
+   "cols": 2,
+   "rows": 1,
+   "rowsToBottom": 9,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 14,
+   "x": 239,
+   "y": 114,
+   "cols": 2,
+   "rows": 10,
+   "rowsToBottom": 19,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 15,
+   "x": 258,
+   "y": 141,
+   "cols": 1,
+   "rows": 5,
+   "rowsToBottom": 14,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 16,
+   "x": 272,
+   "y": 172,
+   "cols": 3,
+   "rows": 1,
+   "rowsToBottom": 9,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 18,
+   "x": 296,
+   "y": 119,
+   "cols": 2,
+   "rows": 9,
+   "rowsToBottom": 18,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 19,
+   "x": 315,
+   "y": 129,
+   "cols": 2,
+   "rows": 7,
+   "rowsToBottom": 16,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 20,
+   "x": 336,
+   "y": 166,
+   "cols": 1,
+   "rows": 1,
+   "rowsToBottom": 10,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 21,
+   "x": 350,
+   "y": 146,
+   "cols": 3,
+   "rows": 5,
+   "rowsToBottom": 13,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 22,
+   "x": 374,
+   "y": 107,
+   "cols": 3,
+   "rows": 11,
+   "rowsToBottom": 20,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  },
+  {
+   "band": 23,
+   "x": 398,
+   "y": 104,
+   "cols": 3,
+   "rows": 12,
+   "rowsToBottom": 20,
+   "cell": [
+    3,
+    4
+   ],
+   "pitch": [
+    5,
+    6
+   ]
+  }
+ ]
+}
