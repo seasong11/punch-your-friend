@@ -109,6 +109,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   Rows `climb.out` (6 to 10) are outside on the facade (`outsideRow`): no glass, AC units (`ac: 1` pillars, 2 hp) as
   cover, and the only way up is timed sliding windows (ladders with `timed`, `off`; `ladderOpen`: open 3s, shut 2s,
   lamp green/red). Presence carries `gl` and `gt` (`R.t`) so the 兄弟 side shows the same glass and windows.
+- Tower interior (Daniel, 2026-11-14: stairs and building looked invisible, remove the glazing art, focus on interior design with
+  spatial depth; references: industrial sci-fi corridors with lift doors and hazard stripes). Inside floors now have a solid back
+  wall in 190 px bays (windows onto the city, lift doors, a corridor recess, lockers, pipes, plates), a ceiling soffit, lamps, a
+  darker lower wall, pale stairs / pillars / ledges / slabs, and concrete side walls with open hazard-striped bays where side
+  fists come in. `GLASS = false` turns the glass mechanic off (`glassWhole`); the glass notes below describe the dormant code.
 - Climb look ("blue haze", Daniel's pick): one blue ramp (#181425 to #c0cbdc). `cityLayers()` pre-draws four skyline
   silhouette layers at art-pixel size; `drawClimb` blits them with parallax (farther = paler and slower), over a pale
   screen-fixed sky with one moon. The tower is dark navy with lit edges; things 我 can use are lighter than the city
