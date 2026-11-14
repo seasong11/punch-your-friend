@@ -22,7 +22,7 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 
 ## Game systems (all inside the main game script)
 - Look: simple flat pixel art (Stardew-like techniques, no assets from any game). The world is drawn straight onto
-  a 400x160 canvas, i.e. a 4x art-pixel grid (`PX = 4`), then blown up with hard pixels. 我 is about 16x32 art
+  a 400x224 canvas (Daniel's choice, 2026-11-14; the world is 1600x896), i.e. a 4x art-pixel grid (`PX = 4`), with the floor line at art y 208 (`FLOOR = H - 64`, the top of the bottom 16 px tile row), then blown up with hard pixels. 我 is about 16x32 art
   pixels; the face is drawn in whole art pixels. Every line is at least one art pixel wide (`lineWidth` floor).
 - Palette: `palettize()` snaps every art pixel to Endesga 64 (`PAL`) through a 15-bit lookup table each frame,
   which also removes soft anti-aliasing. `nearest()` matches in OKLab with hue and colourfulness weighted 3x, so muted
@@ -156,6 +156,21 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   `genLake` (9), `genVolcano` (24), `genSnow` (20), `genSpace(n, kind)`. `ROOMS` has 173 screens. `cp: 1` marks every
   fourth screen of a section as a checkpoint (`nextRoom` sets `S.startRm`, banner CHECKPOINT). A scripted 我 with no punches
   needs roughly 1.5 to 3.5 minutes per stage; change the `seq` counts to retune length.
+- Map seed (Daniel, 2026-11-14: randomize the terrain with a seed): `SEED` is picked by 我's page when a journey starts from
+  the first screen (`newSeed`, or `?seed=N`), sent in presence as `sd` with the map mode `sm`, and `buildRooms(seed, mode)`
+  rebuilds `ROOMS` the same way on every page. A relay turn keeps the seed (`S.keepSeed`). Seed 0 is the fixed test layout.
+  `rngOf(k)` mixes the seed in; `modOf` picks a generator's layout; rooftop roofs get seeded widths and gaps (`Jw`, `Jg`,
+  `Jp`: gaps only shrink, the gap after a vent is fixed, landing roofs stay 200+ wide and roofs after a vent only widen; each of
+  these rules comes from a seed that dead-ended the test bot).
+- LDtk chunks (Daniel authors building blocks in LDtk; the "Create LDtk files for prototype" thread owns
+  `levels/punch-your-friend.ldtk` and `levels/README.md`, branch `ldtk-levels`, PR #23): the game fetches that file when the
+  page opens (`readLdtk`, `chunkOf`). With it, `MODE` is 1 and `chunkList` swaps each section's code-built screens for chunks:
+  the first screen takes a `Warmup` chunk, then `BEAT_LOOP`; picks are weighted, never the same chunk twice in a row;
+  `chunkRoom` keeps the replaced screen's look (walls, scene, decor) and takes the layout from the chunk (props, `hill` from
+  Terrain and `Slope` entities, water, lava, flags), then rolls `VariantZone` groups and `HazardSpawn` chances. Prop flags per
+  kind come from the code-built rooms (`KF`, `learnKinds`); entity names map through `ENT_K`. Not read yet: Decor entities,
+  Terrain platform cells, the Climb chunk and the lifts (still built by the game). Without the file, or with `?gen=1`, the
+  code generators are used (`MODE` 0). The file is about 0.8 MB; a build step that slims it is a later option.
 - Rooftop run features (`fast: 1.2`): momentum (`P.mom`, builds over 1.2 s of running, up to +45% speed, lost on a hit, stop or
   turn), `vent` (launches 我 when stepped on, up to the vent roof's edge), `cable` zip lines (`P.zip`, grabbed in the air at hand
   height, ↑ hops off, ↓ lets go), `board` billboards (a fist or a dash drops one as a bridge, `fallBoard`, `propCode` 5), `sign`
@@ -176,7 +191,7 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   我 cannot walk back into the room on the left. Scene rooms have no door boxes; only the last room has an exit door.
 - Stage design document for Daniel: https://claude.ai/artifact/YUAeoRmNTQtoG3Hc4erU4G (labels every rule Daniel / Agreed /
   Proposal; keep it in step with the prototype).
-- Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom }`.
+- Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom, VIEW, surfAt, seed, mode, chunks }`.
 - The hoodie no longer has 我 printed on the chest.
 
 ## Publishing (GitHub Pages)

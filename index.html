@@ -407,7 +407,7 @@ h1 { font-family: var(--display); font-weight: 400; font-size: clamp(18px, 5.6vw
 .hud .label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: block; font-weight: 600; }
 .hud .val { font-family: var(--display); font-size: 22px; }
 .hearts { color: var(--danger); font-size: 22px; letter-spacing: 2px; }
-.stage { position: relative; width: min(100%, calc((100svh - 220px) * 2.5)); min-width: min(100%, 360px); align-self: center; aspect-ratio: 5 / 2; max-width: 100%; border-radius: 14px; overflow: hidden; background: var(--panel); }
+.stage { position: relative; width: min(100%, calc((100svh - 220px) * 1.7857)); min-width: min(100%, 360px); align-self: center; aspect-ratio: 25 / 14; max-width: 100%; border-radius: 14px; overflow: hidden; background: var(--panel); }
 canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 .overlay { z-index: 2;
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -527,7 +527,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     <div><span class="label">我's lives</span><span class="hearts" id="lives">♥♥♥</span></div>
   </div>
   <div class="stage">
-    <canvas id="c" width="1600" height="640" aria-label="Game arena"></canvas>
+    <canvas id="c" width="1600" height="896" aria-label="Game arena"></canvas>
     <button type="button" class="fsBtn" id="fsBtn" hidden>⛶ Full screen</button>
     <button type="button" class="pauseBtn" id="pauseBtn" hidden aria-label="Pause the round">❚❚ Stop</button>
     <div class="overlay" id="overlay">
@@ -696,7 +696,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     out.setTransform(1, 0, 0, 1, 0, 0); out.globalAlpha = 1;
     TXT.length = 0;
   }
-  const W = WORLD_W, H = WORLD_H, FLOOR = H - 90;
+  const W = WORLD_W, H = WORLD_H, FLOOR = H - 64; // the floor line is art y 208, the top of the bottom 16 px tile row
   const ARENA_K = Math.pow(480 / W, 0.7); // a wider arena gets more bot punches
   const $ = id => document.getElementById(id);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1169,7 +1169,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   ];
   // ----- stage generators: every stage is a run of screens built from its own pieces, from fixed seeds, so each
   // stage lasts a few minutes. All layouts are placeholders to be revised. -----
-  const rngOf = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // SEED is the round's map seed: 我's page picks it and sends it in presence (`sd`), and every page builds the same
+  // rooms from it (`buildRooms`). 0 gives the fixed test layout.
+  let SEED = 0;
+  const rngOf = k => { let seed = SEED ? (k * 48271 + SEED * 69621) % 2147483646 + 1 : k; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647; if (SEED) { r(); r(); r(); } return r; };
+  const modOf = (r, n, m) => SEED ? Math.floor(r() * m) : n % m; // which layout a generated screen uses
   const pk = (r, a, b, st) => a + Math.floor(r() * (Math.floor((b - a) / st) + 1)) * st;
   function genHouse(name, n) {
     const r = rngOf(101 + n * 17), sty = [['plank', ['#733e39', '#b86f50', '#3e2731']], [0, ['#265c42', '#3e8948', '#193c3e']], [0, ['#e4a672', '#ead4aa', '#b86f50']], [0, ['#5a6988', '#8b9bb4', '#3a4466']], ['block', ['#5a6988', '#8b9bb4', '#3a4466']]][n % 5];
@@ -1185,7 +1189,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props };
   }
   function genDojo(n) {
-    const r = rngOf(211 + n * 13), props = [], t = n % 3;
+    const r = rngOf(211 + n * 13), props = [], t = modOf(r, n, 3);
     const decor = [['scroll', 230, n % 3], ['lamp', 560], ['rack', 760], ['lamp', 1080], ['scroll', 1320, (n + 1) % 3]];
     const dm = x => props.push({ k: 'dummy', x, w: 60, h: 110 });
     if (t === 0) { for (let x = 380 + pk(r, 0, 60, 20); x < 1350; x += pk(r, 240, 320, 40)) dm(x); props.push({ k: 'box', x: 250, w: 90, h: 80 }); }
@@ -1204,14 +1208,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // The high-speed rooftop run. Four kinds of screen take turns: plain jumps with a neon sign; a vent up to a tall roof
   // and a zip cable down; a wide gap with a billboard that falls into a bridge; and a mix.
   function roofRun(n) {
-    const r = rngOf(31 * n + 5), props = [], m = (n - 1) % 4, h0 = pk(r, 60, 120, 30); let x = -30, h = h0;
+    const r = rngOf(31 * n + 5), props = [], m = modOf(r, n - 1, 4), h0 = pk(r, 60, 120, 30); let x = -30, h = h0;
     const roof = (w, hh) => { h = hh; props.push({ k: 'roof', raw: 1, x: x + w / 2, w, h }); x += w; }, end = hh => roof(W_ + 40 - x, hh);
     const vent = () => props.push({ k: 'vent', ghost: 1, raw: 1, x: x - 56, w: 64, h });
     const cable = (g, hb, wb) => { const cx0 = x - 30, cy0 = h + 150; x += g; const cx1 = x + 50; if (wb) roof(wb, hb); else end(hb); props.push({ k: 'cable', ghost: 1, raw: 1, x: (cx0 + cx1) / 2, w: cx1 - cx0, h: 0, cx0, cy0, cx1, cy1: hb + 130 }); };
-    if (m === 0) { roof(280, h0); x += 150; roof(240, h0 + 60); props.push({ k: 'sign', plat: 1, x: x + 100, w: 90, h: h0 + 110 }); x += 200; roof(260, h0 + 30); x += 160; end(h0 + 60); }
-    else if (m === 1) { roof(300, h0); vent(); x += 120; roof(260, h0 + 180); cable(340, h0, 240); x += 150; end(h0 + 30); }
-    else if (m === 2) { roof(420, h0); props.push({ k: 'board', ghost: 1, x: x - 24, w: 28, h: h0 + 170, hp: 1, bx: x + 170, bw: 370, bh: h0 }); x += 340; roof(300, h0); x += 170; end(Math.max(40, h0 - 30)); }
-    else { roof(220, h0); x += 140; roof(200, Math.max(40, h0 - 30)); vent(); x += 110; roof(200, h + 190); cable(320, h0 + 30, 0); }
+    const Jw = v => SEED ? Math.max(Math.min(v, 220), v + pk(r, -30, 30, 10)) : v, Jg = v => SEED ? v - pk(r, 0, 40, 10) : v, Jp = v => SEED ? v + pk(r, 0, 40, 10) : v; // seeded maps vary roof widths and shrink gaps, never past the tested sizes
+    if (m === 0) { roof(Jw(280), h0); x += Jg(150); roof(Jw(240), h0 + 60); props.push({ k: 'sign', plat: 1, x: x + 100, w: 90, h: h0 + 110 }); x += Jg(200); roof(Jw(260), h0 + 30); x += Jg(160); end(h0 + 60); }
+    else if (m === 1) { roof(Jw(300), h0); vent(); x += 120; roof(Jp(260), h0 + 180); cable(340, h0, 240); x += Jg(150); end(h0 + 30); }
+    else if (m === 2) { roof(Jw(420), h0); props.push({ k: 'board', ghost: 1, x: x - 24, w: 28, h: h0 + 170, hp: 1, bx: x + 170, bw: 370, bh: h0 }); x += 340; roof(Jw(300), h0); x += Jg(170); end(Math.max(40, h0 - 30)); }
+    else { roof(SEED ? Jw(560) : 220, h0); if (!SEED) { x += 140; roof(200, Math.max(40, h0 - 30)); } vent(); /* seeded: one long roof, because a full-speed jump over the gap overshot the short vent roof into the wall */ x += 110; roof(Jp(200), h + 190); cable(320, h0 + 30, 0); }
     return { name: 'ROOFTOP RUN ' + n, sec: 'rooftop-jumps', scene: 'roofs', void: 1, fast: 1.2, props };
   }
   function genLake(n) {
@@ -1221,13 +1226,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function genVolcano(n) {
     const r = rngOf(503 + n * 19), props = [], lava = [];
-    if (n % 2) { let a = pk(r, 340, 420, 40); for (let z = 0; z < 2; z++) { const w = pk(r, 300, 380, 40); lava.push([a, a + w]); if (r() < 0.6) props.push({ k: 'slab', x: a + w * 0.28, w: 80, h: 60, hp: 2 }, { k: 'slab', x: a + w * 0.72, w: 80, h: 60, hp: 2 }); else props.push({ k: 'rock', x: a + w / 2, w: 90, h: pk(r, 80, 100, 10) }); a += w + pk(r, 200, 260, 30); } }
+    if (modOf(r, n, 2)) { let a = pk(r, 340, 420, 40); for (let z = 0; z < 2; z++) { const w = pk(r, 300, 380, 40); lava.push([a, a + w]); if (r() < 0.6) props.push({ k: 'slab', x: a + w * 0.28, w: 80, h: 60, hp: 2 }, { k: 'slab', x: a + w * 0.72, w: 80, h: 60, hp: 2 }); else props.push({ k: 'rock', x: a + w / 2, w: 90, h: pk(r, 80, 100, 10) }); a += w + pk(r, 200, 260, 30); } }
     else { const a = pk(r, 280, 340, 30), b = pk(r, 1300, 1380, 40); lava.push([a, b]); for (let x = a + 100, k = 0; x < b - 60; x += 170, k++) props.push(k % 3 === 2 ? { k: 'rock', x, w: 90, h: 100 } : { k: 'slab', x, w: 80, h: pk(r, 60, 70, 10), hp: 2 }); }
     return { name: 'VOLCANO ' + n, sec: 'volcano', scene: 'volcano', lava, props };
   }
   function genSnow(n) {
     const r = rngOf(601 + n * 23), a = pk(r, 160, 280, 40), props = []; let hill;
-    if (n % 2) { const l = pk(r, 160, 220, 30); hill = [[0, 0], [a, 0], [a + 200, 200], [a + 200 + l, 200], [a + 380 + l, 380], [1600, 380]]; props.push({ k: 'rock', snow: 1, x: a + 200 + l / 2 + 20, w: 70, h: 300, hh: 100 }); }
+    if (modOf(r, n, 2)) { const l = pk(r, 160, 220, 30); hill = [[0, 0], [a, 0], [a + 200, 200], [a + 200 + l, 200], [a + 380 + l, 380], [1600, 380]]; props.push({ k: 'rock', snow: 1, x: a + 200 + l / 2 + 20, w: 70, h: 300, hh: 100 }); }
     else hill = [[0, 0], [a, 0], [a + 150, 150], [a + 260, 150], [a + 390, 280], [a + 500, 280], [a + 600, 380], [1600, 380]];
     props.push({ k: 'rock', snow: 1, x: pk(r, 1100, 1300, 50), w: 110, h: 500, hh: 120 });
     return { name: 'SNOW SLOPE ' + n, sec: 'snow', scene: 'snow', slide: 1, hill, props };
@@ -1247,20 +1252,145 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return { name: name || { deck: 'LANDING DECK', aster: 'ASTEROID FIELD', walk: 'SPACEWALK', laser: 'LASER DECK' }[kind] + ' ' + n, sec: 'space', scene: 'space', grav: 0.5, props, ...extra };
   }
   const B_ = n => BASE.find(r => r.name === n), seq = (n, f) => Array.from({ length: n }, (_, i) => f(i + 1));
-  const ROOMS = [
-    B_('LIVING ROOM'), B_('KITCHEN'), genHouse('DINING ROOM', 1), genHouse('PANTRY', 2), B_('STAIRS UP'), B_('HALLWAY'), genHouse('STUDY', 3), B_('BEDROOM'),
-    genHouse('GUEST ROOM', 4), genHouse('PLAYROOM', 5), B_('STAIRS DOWN'), genHouse('LAUNDRY', 6), genHouse('WORKSHOP', 7), B_('GARAGE'), genHouse('STOREROOM', 8), B_('GARDEN'),
-    B_('DOJO HALL'), B_('DOJO DUMMIES'), B_('DOJO BEAM'), ...seq(15, genDojo),
-    ...seq(18, genBamboo),
-    B_('ROOFTOP CLIMB'),
-    ...seq(36, roofRun),
-    B_('LAKE DIVE'), ...seq(9, genLake),
-    ...seq(24, genVolcano),
-    ...seq(20, genSnow),
-    B_('TOWER LIFT'), B_('SPACE ELEVATOR'), ...seq(6, n => genSpace(n, 'deck')), ...seq(6, n => genSpace(n, 'aster')), ...seq(6, n => genSpace(n, 'walk')), ...seq(8, n => genSpace(n, 'laser')),
-    genSpace(9, 'laser', 'MOTHERSHIP GATE'), genSpace(10, 'deck', 'MOTHERSHIP CORE')
-  ];
-  { const sk = r => r.climb ? 'climb' : r.sec || 'house'; let k = 0; ROOMS.forEach((rm, i) => { k = i && sk(rm) === sk(ROOMS[i - 1]) ? k + 1 : 0; if (k && k % 4 === 0) rm.cp = 1; }); } // a checkpoint every fourth screen of a stage
+  const ROOMS = [];
+  // ---- LDtk chunk library ----
+  // levels/punch-your-friend.ldtk (authored in LDtk, see levels/README.md) is fetched when the page opens. When it is there,
+  // a journey is put together from its chunks (MODE 1): for each screen the seed picks a chunk of that section that fits
+  // the beat, then rolls the chunk's variant zones and hazard spawns. Without the file the code generators below are used
+  // (MODE 0). 我's page sends the seed and the mode, so every page builds the same map.
+  let CHUNKS = null, MODE = 0, CHUNK_N = 0;
+  const NO_CHUNKS = /[?&]gen=1/.test(location.search);
+  const KF = {}; // flags of each prop kind (ghost, plat, raw, default hp), learned from the code-built rooms
+  function learnKinds(list) { for (const rm of list) if (!rm.climb) for (const p of rm.props) if (!KF[p.k]) { const f = {}; for (const key of ['ghost', 'plat', 'raw', 'elec', 'hp']) if (p[key]) f[key] = p[key]; KF[p.k] = f; } }
+  const ENT_K = { SideTable: 'side', Tv: 'tv', BambooStalk: 'stalk', BambooThicket: 'thick', LeafCanopy: 'leaf', BounceShroom: 'shroom', Roof: 'roof', Sign: 'sign', RoofVent: 'vent', ZipCable: 'cable',
+    Billboard: 'board', Asteroid: 'aster', Ufo: 'ufo', LaserGate: 'laser', SteppingSlab: 'slab', Pod: 'pod', Panel: 'panel', BeamPlank: 'beam', Dummy: 'dummy', SnowRock: 'rock' };
+  const SEC_SK = { House: 'house', Dojo: 'dojo', Bamboo: 'bamboo', Rooftop: 'rooftop-jumps', Lake: 'lake', Volcano: 'volcano', Snow: 'snow', Space: 'space' };
+  function chunkOf(lv) { // one LDtk level -> a chunk in the game's units (world px, heights above the floor line)
+    const f = {}; for (const x of lv.fieldInstances) f[x.__identifier] = x.__value;
+    const FY = lv.pxHei - 16, A = PX, c = { id: lv.identifier, sec: f.section, beats: f.beats || [], d: f.difficulty || 1, wt: f.weight == null ? 1 : +f.weight, sp: !!f.setPiece,
+      lvH: lv.pxHei, void: f.void ? 1 : 0, slide: f.slide ? 1 : 0, vac: f.vacuum ? 1 : 0, grav: f.gravityScale || 0, fast: f.speedScale || 0, props: [], zones: [], haz: [], skipped: [] };
+    const slopes = [];
+    const mk = (name, px, py, wd, ht, pv, fv) => { // an entity -> a prop, or null when the game has no such thing
+      const k = ENT_K[name] || name[0].toLowerCase() + name.slice(1); if (!KF[k]) return null;
+      const left = px - pv[0] * wd, top = py - pv[1] * ht, p = { k, x: Math.round((left + wd / 2) * A), w: Math.round(wd * A), h: Math.round((FY - (pv[1] ? py : top)) * A), ax: px, ay: py };
+      for (const key of ['ghost', 'plat', 'raw', 'elec']) if (KF[k][key]) p[key] = 1;
+      if ('hp' in fv) { if (fv.hp != null) p.hp = fv.hp; } else if (KF[k].hp) p.hp = KF[k].hp;
+      if (fv.elec === false) delete p.elec;
+      if (name === 'SnowRock') { p.snow = 1; p.hh = Math.round(ht * A); }
+      if (fv.off != null) p.off = +fv.off;
+      for (const key of ['cx0', 'cy0', 'cx1', 'cy1', 'bx', 'bw', 'bh']) if (fv[key] != null) p[key] = Math.round(fv[key] * A);
+      if (fv.driftRange != null) p.drift = [Math.round(fv.driftRange * A), +fv.driftSpeed || 0.7, +fv.driftPhase || 0];
+      return p;
+    };
+    for (const L of lv.layerInstances || []) {
+      if (L.__type === 'Entities') for (const e of L.entityInstances) {
+        const fv = {}; for (const x of e.fieldInstances) fv[x.__identifier] = x.__value;
+        const name = e.__identifier, px = e.px[0], py = e.px[1], pv = e.__pivot, left = px - pv[0] * e.width, top = py - pv[1] * e.height;
+        if (name === 'VariantZone') c.zones.push({ g: String(fv.group), v: +fv.variant || 0, wt: fv.weight == null ? 1 : +fv.weight, x0: left, y0: top, x1: left + e.width, y1: top + e.height });
+        else if (name === 'HazardSpawn') c.haz.push({ kind: fv.kind, ch: fv.chance == null ? 0.5 : +fv.chance, px, py });
+        else if (name === 'ItemSpawn') { if ((fv.pool || []).includes('Mushroom')) c.haz.push({ kind: 'BounceShroom', ch: fv.chance == null ? 0.5 : +fv.chance, px, py, g: fv.group }); }
+        else if (name === 'Slope') slopes.push({ x0: left * A, x1: (left + e.width) * A, lo: (FY - top - e.height) * A, hi: (FY - top) * A, up: fv.dir !== 'UpLeft' });
+        else if (name === 'PlayerStart') { const y = (FY - top - e.height) * A; if (y > 8) c.enterY = Math.round(y); }
+        else if (name.startsWith('Decor')) continue;
+        else { const p = mk(name, px, py, e.width, e.height, pv, fv); if (p) c.props.push(p); else c.skipped.push(name); }
+      }
+      if (L.__type === 'IntGrid') {
+        const cw = L.__cWid, ch = L.__cHei, g = L.intGridCsv, G = L.__gridSize * A, at = (cx, cy) => g[cy * cw + cx];
+        const col = []; let wx0 = -1, wtop = -1; const lava = [];
+        for (let cx = 0; cx < cw; cx++) {
+          let n = 0; while (n < ch && (at(cx, ch - 1 - n) === 1 || at(cx, ch - 1 - n) === 5)) n++;
+          col.push(Math.max(0, n - 1) * G);
+          for (let cy = 0; cy < ch; cy++) {
+            const v = at(cx, cy);
+            if (v === 3) { if (wx0 < 0) wx0 = cx; const t = (ch - 1 - cy) * G; if (t > wtop) wtop = t; }
+            if (v === 4) { const last = lava[lava.length - 1]; if (last && last[1] === cx * G) last[1] = (cx + 1) * G; else if (!last || last[1] < cx * G) lava.push([cx * G, (cx + 1) * G]); }
+          }
+        }
+        if (wx0 >= 0) c.water = { x0: wx0 ? wx0 * G : -1, top: wtop };
+        if (lava.length) c.lava = lava;
+        const segs = []; // ground as [x0, h0, x1, h1] pieces, left to right
+        for (let cx = 0; cx < cw; cx++) { const mid = (cx + 0.5) * G; if (!slopes.some(sl => mid > sl.x0 && mid < sl.x1)) segs.push([cx * G, col[cx], (cx + 1) * G, col[cx]]); }
+        for (const sl of slopes) segs.push(sl.up ? [sl.x0, sl.lo, sl.x1, sl.hi] : [sl.x0, sl.hi, sl.x1, sl.lo]);
+        segs.sort((a, b) => a[0] - b[0]);
+        const pts = []; for (const sg of segs) { pts.push([sg[0], sg[1]], [sg[2], sg[3]]); }
+        const hill = []; for (const p of pts) { const n = hill.length; if (n && hill[n - 1][0] === p[0] && hill[n - 1][1] === p[1]) continue; if (n > 1 && hill[n - 1][1] === p[1] && hill[n - 2][1] === p[1]) hill[n - 1] = p; else hill.push(p); }
+        if (hill.some(p => p[1] > 0)) c.hill = hill;
+      }
+    }
+    return c;
+  }
+  function readLdtk(d) { const by = {}; let n = 0; for (const lv of d.levels || []) { const c = chunkOf(lv); if (!SEC_SK[c.sec]) continue; (by[c.sec] = by[c.sec] || []).push(c); n++; } CHUNKS = by; CHUNK_N = n; }
+  function chunkRoom(c, base, name, r) { // a room from a chunk: the look comes from `base`, the layout from the chunk
+    const rm = Object.assign({}, base, { name, chunk: c.id });
+    for (const key of ['ramp', 'hill', 'water', 'lava', 'void', 'slide', 'vac', 'enterY', 'cp', 'grav', 'fast']) delete rm[key];
+    const keep = {}; // variant zones: one variant per group survives
+    for (const z of c.zones) (keep[z.g] = keep[z.g] || []).push(z);
+    for (const g in keep) { const vs = [...new Set(keep[g].map(z => z.v))], wts = vs.map(v => keep[g].find(z => z.v === v).wt); let t = r() * wts.reduce((a, b) => a + b, 0), k = 0; while (k < vs.length - 1 && (t -= wts[k]) > 0) k++; keep[g] = vs[k]; }
+    const gone = (ax, ay) => c.zones.some(z => z.v !== keep[z.g] && ax >= z.x0 && ax <= z.x1 && ay >= z.y0 && ay <= z.y1);
+    rm.props = c.props.filter(p => !gone(p.ax, p.ay)).map(p => ({ ...p }));
+    const used = {};
+    for (const hz of c.haz) { // hazard and item spawns roll their chance
+      const roll = r(); if (roll >= hz.ch || gone(hz.px, hz.py) || hz.g != null && used[hz.g]) continue;
+      const k = ENT_K[hz.kind] || (hz.kind ? hz.kind[0].toLowerCase() + hz.kind.slice(1) : ''), T = HAZ_SIZE[k]; if (!KF[k] || !T) continue;
+      if (hz.g != null) used[hz.g] = 1;
+      const p = { k, x: hz.px * PX, w: T[0], h: k === 'laser' ? 0 : T[1] + ((c.lvH || 224) - 16 - hz.py) * PX, off: +(r() * 3).toFixed(1) };
+      for (const key of ['ghost', 'plat', 'raw', 'hp']) if (KF[k][key]) p[key] = KF[k][key];
+      rm.props.push(p);
+    }
+    if (c.hill) rm.hill = c.hill; if (c.water) rm.water = c.water; if (c.lava || base.lava) rm.lava = c.lava || []; if (c.enterY) rm.enterY = c.enterY;
+    if (c.void) rm.void = 1; if (c.slide) rm.slide = 1; if (c.vac) rm.vac = 1; if (c.grav) rm.grav = c.grav; if (c.fast) rm.fast = c.fast;
+    return rm;
+  }
+  const HAZ_SIZE = { laser: [36, 0], shroom: [56, 36], crate: [90, 90], box: [90, 60], pod: [120, 150], rock: [90, 100], slab: [80, 60], dummy: [60, 110], vent: [64, 0] }; // world size of things a spawn can add
+  const BEAT_LOOP = ['Challenge', 'Challenge', 'Rest', 'Challenge', 'Challenge', 'Checkpoint', 'Challenge']; // after the opening Warmup
+  function chunkList(gl) { // swap the code-built screens of each section for chunks picked by the seed
+    const sk = r => r.climb ? 'climb' : r.scene === 'lift' ? 'lift' : r.sec === 'lake-dive' ? 'lake' : r.outdoor ? 'garden' : r.sec || 'house', out = [];
+    const secOfSk = {}; for (const s in SEC_SK) secOfSk[SEC_SK[s]] = s;
+    for (let i = 0; i < gl.length;) {
+      let j = i; while (j < gl.length && sk(gl[j]) === sk(gl[i])) j++;
+      const sec = secOfSk[sk(gl[i])], all = sec && CHUNKS[sec] || [], pool = all.filter(c => !c.sp), fin = sec === 'Space' ? all.filter(c => c.sp && c.beats.includes('Finale')) : [];
+      if (!pool.length) { for (let k = i; k < j; k++) out.push(gl[k]); i = j; continue; }
+      const r = rngOf(9001 + i * 37), label = sec.toUpperCase(); let last = null;
+      for (let k = i; k < j; k++) {
+        const n = k - i, f = fin[fin.length - (j - k)];
+        if (f) { out.push(chunkRoom(f, gl[k], gl[k].name, r)); continue; }
+        const beat = n ? BEAT_LOOP[(n - 1) % BEAT_LOOP.length] : 'Warmup';
+        let cand = pool.filter(c => c.beats.includes(beat)); if (!cand.length) cand = pool.filter(c => !c.beats.includes('Warmup') || !n); if (!cand.length) cand = pool;
+        if (cand.length > 1) cand = cand.filter(c => c !== last);
+        let t = r() * cand.reduce((a, c) => a + c.wt, 0), q = 0; while (q < cand.length - 1 && (t -= cand[q].wt) > 0) q++;
+        last = cand[q]; out.push(chunkRoom(last, gl[k], label + ' ' + (n + 1), r));
+      }
+      i = j;
+    }
+    return out;
+  }
+  function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
+    SEED = (seed >>> 0) % 1000000; MODE = mode ? 1 : 0;
+    let list = [
+      B_('LIVING ROOM'), B_('KITCHEN'), genHouse('DINING ROOM', 1), genHouse('PANTRY', 2), B_('STAIRS UP'), B_('HALLWAY'), genHouse('STUDY', 3), B_('BEDROOM'),
+      genHouse('GUEST ROOM', 4), genHouse('PLAYROOM', 5), B_('STAIRS DOWN'), genHouse('LAUNDRY', 6), genHouse('WORKSHOP', 7), B_('GARAGE'), genHouse('STOREROOM', 8), B_('GARDEN'),
+      B_('DOJO HALL'), B_('DOJO DUMMIES'), B_('DOJO BEAM'), ...seq(15, genDojo),
+      ...seq(18, genBamboo),
+      B_('ROOFTOP CLIMB'),
+      ...seq(36, roofRun),
+      B_('LAKE DIVE'), ...seq(9, genLake),
+      ...seq(24, genVolcano),
+      ...seq(20, genSnow),
+      B_('TOWER LIFT'), B_('SPACE ELEVATOR'), ...seq(6, n => genSpace(n, 'deck')), ...seq(6, n => genSpace(n, 'aster')), ...seq(6, n => genSpace(n, 'walk')), ...seq(8, n => genSpace(n, 'laser')),
+      genSpace(9, 'laser', 'MOTHERSHIP GATE'), genSpace(10, 'deck', 'MOTHERSHIP CORE')
+    ];
+    learnKinds(list);
+    if (MODE && CHUNKS) list = chunkList(list);
+    ROOMS.length = 0; ROOMS.push(...list); ROOMS.forEach(rm => { delete rm.cp; });
+    { const sk = r => r.climb ? 'climb' : r.sec || 'house'; let k = 0; ROOMS.forEach((rm, i) => { k = i && sk(rm) === sk(ROOMS[i - 1]) ? k + 1 : 0; if (k && k % 4 === 0) rm.cp = 1; }); } // a checkpoint every fourth screen of a stage
+  }
+  const URL_SEED = +(/[?&]seed=(\d+)/.exec(location.search) || [])[1] || 0, newSeed = () => URL_SEED || 1 + Math.floor(Math.random() * 999999);
+  buildRooms(URL_SEED, 0);
+  if (!NO_CHUNKS && location.protocol !== 'file:') fetch('levels/punch-your-friend.ldtk').then(r => r.ok ? r.json() : null).then(d => {
+    if (!d) return; readLdtk(d);
+    if (S.st !== 'play' && role !== 'bro') { buildRooms(SEED, 1); R.props = []; NBP = {}; VIEW.rm = -1; R.i = -1; loadRoom(0); } else if (role === 'bro') WANT.sd = -1; // a 兄弟 rebuilds on the next state from 我
+  }).catch(() => {});
+  const WANT = { sd: 0 };
   const R = { i: 0, props: [], gl: [0, 0], t: 0, t0: 0, el: [] };
   // The camera keeps 我 in the middle of the screen and the rooms are drawn side by side, so the journey reads as one
   // long map. VIEW.x is the left edge of the screen in the current room's coordinates; VIEW.oy is a vertical offset
@@ -1284,7 +1414,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function roomShift(px0, px1, py0, py1) { // after stepping into the next room: keep the picture where it was
     const T = CAMV.y + VIEW.oy; VIEW.x -= px0 - px1; VIEW.rm = R.i; camFollow(py1, 0); VIEW.oy = T - (py0 - py1) - CAMV.y;
   } // gl: broken glass panels per side (bit = row), t: 我's clock
-  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom, VIEW, surfAt: (x, h, y) => surfAt(x, h, y) }; // test hook
+  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom, VIEW, seed: () => SEED, mode: () => MODE, chunks: () => CHUNKS, surfAt: (x, h, y) => surfAt(x, h, y) }; // test hook
   function loadRoom(i) {
     i = clamp(i | 0, 0, ROOMS.length - 1);
     if (i === R.i + 1 && R.props.length) NBP[R.i] = R.props; else if (i !== R.i) NBP = {};
@@ -1472,6 +1602,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const propCode = p => p.dead ? 0 : p.fallen ? 5 : p.sparkT > 0 ? -1 : p.open ? 7 : p.spinT > 0 ? 6 : p.hp == null ? 9 : p.hp;
   // 兄弟 side: follow 我's room and prop state.
   function syncRoom(tp, dt) {
+    if (typeof tp.sd === 'number' && (tp.sd !== SEED || WANT.sd < 0 || (tp.sm ? 1 : 0) !== MODE && (!tp.sm || CHUNKS))) { WANT.sd = 0; buildRooms(tp.sd, tp.sm); R.props = []; NBP = {}; R.i = -1; }
     const i = clamp(+tp.rm || 0, 0, ROOMS.length - 1);
     if (i !== R.i || !R.props.length && ROOMS[i].props.length) { const step = i === R.i + 1, px0 = B.tx, py0 = B.ty || 0; loadRoom(i); if (typeof tp.gt === 'number') R.t = R.t0 = tp.gt; B.lastTx = null; if (typeof tp.x === 'number') B.tx = tp.x; B.ty = +tp.y || 0; if (step) roomShift(px0, B.tx, py0, B.ty); }
     const pp = Array.isArray(tp.pp) ? tp.pp : [];
@@ -2439,7 +2570,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const pr = p.presence || {};
       if (p.sameTab) continue;
       if (role === 'bro' && pr.role === 'bro' && typeof pr.hand === 'string' && pr.hand !== handSeen && pr.hand.split(':')[0] === myPeer) {
-        handSeen = pr.hand; claimed = true; S.st = 'idle'; S.cd = null; swapAsked = 0; S.was = Array.isArray(pr.was) ? pr.was.slice(0, 16) : []; S.startRm = clamp(+pr.sec || 0, 0, ROOMS.length - 1);
+        handSeen = pr.hand; claimed = true; S.st = 'idle'; S.cd = null; swapAsked = 0; S.was = Array.isArray(pr.was) ? pr.was.slice(0, 16) : []; S.keepSeed = 1; S.startRm = clamp(+pr.sec || 0, 0, ROOMS.length - 1);
         room.presence({ sw: null }).catch(() => {});
         resolveRole();
         banner('换边!', 'You are 我 now. Dodge!', '#ffb703');
@@ -2642,6 +2773,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     Object.assign(S, { st: 'play', score: 0, lives: 3, t: 0, speed: 1, chops: [], spawnIn: 1, shake: 0, hurt: 0, pops: [], hits: {} });
     S.combo = 0; S.fireTier = 0; S.taunt = null; S.blockT = 0; S.blockCd = 0;
     S.dashCd = 0; S.iframe = 0; S.rage = 0; S.bell = 0; S.rainT = 0; S.queue = []; S.stunUntil = {}; S.sn = S.sn || {}; FX.ghosts = []; FX.holes = []; FX.parts = []; FX.cracks = []; FX.slow = 0; FX.hitstop = 0; banner('开打!', TOUCH ? 'Reach the door on the right · swipe up to jump' : 'Reach the door on the right · ↑ jumps', '#ffb703');
+    if (S.keepSeed) S.keepSeed = 0; else if (!S.startRm) { buildRooms(newSeed(), CHUNKS ? 1 : 0); R.props = []; NBP = {}; VIEW.rm = -1; R.i = -1; } // a new journey gets a new map; a relay turn keeps it
     loadRoom(S.startRm || 0); S.won = false; S.handT = null;
     spawnAt(110); P.lad = null; P.grip = null; P.el = null; P.kt = 0;
     setOverlay(false); hud(0, 3); pushTarget(true); maybeBoard(S.hits); fitView();
@@ -2922,7 +3054,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const ch = S.chops.map(c => [Math.round(c.x), Math.round(c.w), PH[c.phase], c.phase === 'warn' ? +(c.t / c.warn).toFixed(2) : Math.round(c.y), c.hit ? 1 : 0, c.sup ? 1 : 0, c.homing ? 1 : 0, c.yq ? 1 : 0, c.side | 0, c.row | 0]);
     room.presence({
       role: 'me', own: isOwner ? 1 : 0, st: S.st, pz: document.hidden || S.paused ? 1 : 0, pzm: S.paused ? 1 : 0, cd: S.cd != null ? Math.max(1, Math.ceil(S.cd)) : 0, cb: S.combo || 0, fire: S.fireTier || 0, cos: curCos, rn: S.rainT > 0 ? 1 : 0, bel: S.bell > 0 ? 1 : 0, sn: S.sn || {}, bl: S.blockT > 0 ? 1 : 0, pr: S.pr || 0, tt: S.taunt ? [S.taunt.id, S.taunt.i] : 0, x: Math.round(P.x), vx: Math.round(P.vx), lives: S.lives, score: S.score,
-      rm: R.i, y: Math.round(P.y), pp: R.props.map(propCode), won: S.won ? 1 : 0, gl: R.gl, gt: +S.t.toFixed(1), ey: R.el.map(e => Math.round(e.y)),
+      rm: R.i, sd: SEED, sm: MODE, y: Math.round(P.y), pp: R.props.map(propCode), won: S.won ? 1 : 0, gl: R.gl, gt: +S.t.toFixed(1), ey: R.el.map(e => Math.round(e.y)),
       hurt: S.hurt > 0 ? 1 : 0, ch, hits: S.hits, aim: null, chop: null
     }).catch(() => {});
   }
@@ -4739,7 +4871,7 @@ body.is-bro #left, body.is-bro #right { display: none; }
   .caption b { font-size: 18px; }
   .caption span { font-size: 11px; }
   .stage { grid-column: 1; grid-row: 2 / 6; min-width: 0; align-self: start;
-    width: min(calc(100vw - var(--side) - 8px - max(6px, env(safe-area-inset-left, 0px)) - max(6px, env(safe-area-inset-right, 0px))), calc((100svh - var(--chrome)) * 2.5)); }
+    width: min(calc(100vw - var(--side) - 8px - max(6px, env(safe-area-inset-left, 0px)) - max(6px, env(safe-area-inset-right, 0px))), calc((100svh - var(--chrome)) * 1.7857)); }
   .stage { box-shadow: 0 0 0 2px var(--panel) !important; }
   .dock, .dock .pads, .dock #meSkills, .dock #broMoves { display: contents; }
   .dock #broTools { display: grid; }
