@@ -1371,6 +1371,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     return out;
   }
+  const SEC_ART = { house: 'house', dojo: 'dojo', bamboo: 'bamboo', 'rooftop-jumps': 'rooftop', 'lake-dive': 'lake', lake: 'lake', volcano: 'volcano', snow: 'snow', space: 'space' };
+  const FIT = { // props take the size of their drawn sprite (world px), so what you see is what blocks you
+    house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [128, 128, 'shelf'], wardrobe: [128, 128, 'shelf'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
+    dojo: { box: [64, 64, 'crate'], dummy: [56, 136, 'dummy'] }, bamboo: { shroom: [64, 48, 'shroom'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
+  };
+  function fitProps(list) { for (const rm of list) { const F = !rm.climb && !rm.outdoor && rm.scene !== 'lift' && FIT[SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
     SEED = (seed >>> 0) % 1000000; MODE = mode ? 1 : 0;
     let list = [
@@ -1388,7 +1394,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ];
     learnKinds(list);
     if (MODE && CHUNKS) list = chunkList(list);
-    ROOMS.length = 0; ROOMS.push(...list); ROOMS.forEach(rm => { delete rm.cp; });
+    fitProps(list); ROOMS.length = 0; ROOMS.push(...list); ROOMS.forEach(rm => { delete rm.cp; });
     { const sk = r => r.climb ? 'climb' : r.sec || 'house'; let k = 0; ROOMS.forEach((rm, i) => { k = i && sk(rm) === sk(ROOMS[i - 1]) ? k + 1 : 0; if (k && k % 4 === 0) rm.cp = 1; }); } // a checkpoint every fourth screen of a stage
   }
   const URL_SEED = +(/[?&]seed=(\d+)/.exec(location.search) || [])[1] || 0, newSeed = () => URL_SEED || 1 + Math.floor(Math.random() * 999999);
@@ -1882,6 +1888,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function drawClimb() {
     const cl = climbOf(), top = cl.top, yOf = h => FLOOR - h, cam = camY(), vis = (y, h) => y + h > -cam - 8 && y < H - cam + 8;
+    const CA = (() => { const A = ART.climb; return A && !cl.space && SETS.climb.S.every(n => A.ok(n)) ? A : null; })();
     const [o0, o1] = cl.out, now = performance.now(), box = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
     // sky, fixed to the screen; then the city layers with haze between them, and a few blinking windows
     const sm = ctx.imageSmoothingEnabled, Ls = cl.space ? [] : cityLayers(3200); ctx.imageSmoothingEnabled = false;
@@ -1912,6 +1919,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         for (let x = WALL + 40; x < W - WALL - 60; x += 190) { box(x + (k % 3) * 28, y + 28, 8, 60, '#3a4466'); box(x + 16 + (k % 3) * 28, y + 44, 4, 32, '#3a4466'); }
       } else { // inside: a solid back wall in bays, with windows, doors and recesses for depth; open bays in the side walls where fists come in
         const yb = y + FH, BW = 190;
+        if (CA) { ctx.save(); ctx.beginPath(); ctx.rect(WALL, y, W - WALL * 2, FH); ctx.clip(); for (let x = WALL - 16, q = 0; x < W - WALL; x += 192, q++) spr(CA.ok((q * 7 + k * 13 + (k >> 1)) % 8 < 2 ? 'wall_opening' : 'wall_bay'), x + 96, y); ctx.restore(); }
+        else {
         for (let x = WALL, q = 0; x < W - WALL; x += BW, q++) {
           const t = (q * 7 + k * 13 + (k >> 1)) % 8, w = Math.min(BW, W - WALL - x);
           if (t < 2 && w === BW) { // a window: the city behind the wall
@@ -1939,6 +1948,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         box(WALL, y + 12, W - WALL * 2, 16, '#181425'); box(WALL, y + 28, W - WALL * 2, 4, '#262b44'); // ceiling soffit
         box(WALL, yb - 60, W - WALL * 2, 4, '#5a6988'); ctx.fillStyle = 'rgba(24, 20, 37, 0.35)'; ctx.fillRect(WALL, yb - 56, W - WALL * 2, 56); // dado rail and the darker lower wall
         for (let x = WALL + 130; x < W - WALL; x += 380) { const lx = x + (k % 2) * 190; box(lx - 8, y + 28, 40, 8, '#8b9bb4'); box(lx, y + 36, 24, 4, '#ffffff'); ctx.fillStyle = 'rgba(192, 203, 220, 0.10)'; for (let j = 0; j < 5; j++) ctx.fillRect(lx - 12 - j * 16, y + 40 + j * 32, 48 + j * 32, 32); } // ceiling lamps and their light
+        }
         for (const sd of [1, -1]) { // side walls: a concrete column with an open, hazard-striped bay
           const gx = sd > 0 ? 0 : W - WALL;
           box(gx, y, WALL, FH, '#262b44'); box(gx + 4, y + 44, WALL - 8, FH - 56, '#181425'); box(sd > 0 ? gx : gx + WALL - 4, y, 4, FH, '#181425'); box(sd > 0 ? gx + WALL - 4 : gx, y, 4, FH, '#5a6988');
@@ -1952,6 +1962,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     for (let k = 1; k <= top; k++) { // floor slabs: dark navy with a lit top edge; pale ledges outside
       const y = yOf(k * FH), out = k >= o0 && k <= o1 && k < top, x0 = k === top ? 0 : out ? WALL - 12 : 0, w = k === top ? W : out ? W - WALL * 2 + 24 : W;
       if (!vis(y, 12)) continue;
+      if (CA && !out && k < top) { const im = CA.ok('floor_slab'), sm2 = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; for (let x = x0; x < x0 + w; x += 64) ctx.drawImage(im, 0, 0, 16, 10, x, y, 64, 40); ctx.imageSmoothingEnabled = sm2; continue; }
       box(x0, y, w, 12, out ? '#8b9bb4' : '#5a6988'); box(x0, y, w, 4, out || k < top ? '#c0cbdc' : '#8b9bb4'); if (!out && k < top) box(x0, y + 12, w, 4, '#181425');
     }
     // pillars inside, air-conditioning units outside (both are cover)
@@ -1972,6 +1983,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         for (let j = 0; j < 4; j++) { const cy = py + 20 + j * 44, lit = j < p.hp; for (let q = 0; q < 3; q++) { box(p.x - 12 + q * 4, cy + 8 - q * 4, 4, 4, lit ? '#f6757a' : '#262b44'); box(p.x + 8 - q * 4, cy + 8 - q * 4, 4, 4, lit ? '#f6757a' : '#262b44'); } }
         continue;
       }
+      if (CA) { spr(CA.ok('pillar'), p.x, py); for (let j = 0; j < 3; j++) box(p.x - 4, py + 32 + j * 44, 8, 28, j < p.hp ? '#feae34' : '#262b44'); continue; }
       box(p.x - 28, py, 56, ph, '#8b9bb4'); box(p.x - 28, py, 4, ph, '#c0cbdc'); box(p.x + 16, py, 12, ph, '#5a6988'); box(p.x - 12, py + 20, 16, 148, '#181425');
       box(p.x - 36, py, 72, 12, '#181425'); box(p.x - 36, py + ph - 16, 72, 16, '#181425'); box(p.x - 36, py + ph - 16, 72, 4, '#5a6988');
       // a neon strip up the pillar: one segment goes dark for every hit it has taken
@@ -1983,6 +1995,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const n = 10, d = (s.x1 - s.x0) / n, ad = Math.abs(d), rise = FH / n, base = yOf(s.lv * FH);
       for (let i = 0; i < n; i++) {
         const sx = Math.min(s.x0 + i * d, s.x0 + (i + 1) * d), sy = base - (i + 1) * rise;
+        if (CA) { box(sx, sy + 8, ad + 1, Math.min(40, base - sy - 8), '#262b44'); spr(CA.ok('stair_step'), sx + ad / 2, sy); continue; }
         const bh = Math.min(48, base - sy); box(sx, sy, ad + 1, bh, '#8b9bb4'); if (bh >= 48) box(sx, sy + bh - 4, ad + 1, 4, '#181425');
         box(d > 0 ? sx : sx + ad - 8, sy + 4, 8, rise - 4, '#5a6988');
         box(sx, sy, ad + 1, 4, '#ffffff'); box(sx + 8, sy + 4, ad - 12, 4, '#2ce8f5');
@@ -2210,18 +2223,104 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // art/<section>/: tiles.png + tiles.json (frame names), bg_sky / bg_far / bg_mid.png (400x224 parallax layers),
   // sprites/<name>.png. All optional: while a file is missing the game draws that thing itself.
   const ART = {};
+  // layers: [name, factor]. 0 = fixed to the screen, 1 = part of the room, between = parallax. S = sprites to load.
+  const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
+  const SETS = {
+    rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign'] },
+    bamboo: { L: OUT_L, S: ['stalk', 'shroom', 'thick', 'rock'] },
+    lake: { L: OUT_L, S: ['turtle', 'weed', 'rock'] },
+    volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
+    snow: { L: OUT_L, S: ['pine', 'rock'] },
+    dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate'] },
+    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate'] },
+    elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
+    space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
+    climb: { L: [], S: ['wall_bay', 'wall_opening', 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
+  };
+  const artOf = i => { const rm = ROOMS[i]; if (!rm) return null; const n = rm.climb ? 'climb' : rm.scene === 'lift' ? 'elevator' : rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']; return n && artTiles(n) ? n : null; };
   function loadArt(sec, sprites) {
     const A = ART[sec] = { img: {}, frames: null, ok: n => { const im = A.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } };
     if (location.protocol === 'file:' || /[?&]art=0/.test(location.search)) return;
     const get = (n, f) => { const im = new Image(); im.src = 'art/' + sec + '/' + f; A.img[n] = im; };
-    get('tiles', 'tiles.png'); for (const n of ['bg_sky', 'bg_far', 'bg_mid']) get(n, n + '.png'); for (const n of sprites) get(n, 'sprites/' + n + '.png');
+    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of sprites) get(n, 'sprites/' + n + '.png');
     fetch('art/' + sec + '/tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { A.frames = {}; for (const k in d.frames) A.frames[k] = d.frames[k].frame; } }).catch(() => {});
   }
-  loadArt('rooftop', ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign']);
+  for (const n in SETS) loadArt(n, SETS[n].S);
   if (location.protocol !== 'file:') fetch('art/rooftop/bg_mid_windows.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.buildings) ART.rooftop.win = d.buildings; }).catch(() => {});
   const spr = (im, cx, top) => { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(im, Math.round((cx - im.naturalWidth * PX / 2) / PX) * PX, Math.round(top / PX) * PX, im.naturalWidth * PX, im.naturalHeight * PX); ctx.imageSmoothingEnabled = sm; }; // a sprite at art-pixel scale, by its top-centre
   const artTiles = sec => { const A = ART[sec]; return A && A.frames && A.ok('tiles') ? A : null; };
   function tile(A, g, name, ax, ay) { const f = A.frames[name]; if (f) g.drawImage(A.img.tiles, f.x, f.y, f.w, f.h, ax, ay, f.w, f.h); } // on an art-pixel canvas
+  const wt = (A, n, x, y, sx, sw) => { const f = A.frames[n]; if (!f) return; sx = sx || 0; sw = sw || f.w; ctx.drawImage(A.img.tiles, f.x + sx, f.y, sw, f.h, Math.round(x / PX) * PX, Math.round(y / PX) * PX, sw * PX, f.h * PX); }; // a tile in the world, by its top-left
+  function tileRow(A, l, t, w) { // a one-way platform: left cap, middles, right cap
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    for (let x = l + 64; x < l + w - 64; x += 64) wt(A, 'plat_m', Math.min(x, l + w - 128), t);
+    wt(A, 'plat_l', l, t); wt(A, 'plat_r', l + w - 64, t); ctx.imageSmoothingEnabled = sm;
+  }
+  function tileBlock(A, l, t, w, h) { // a solid block of the level's ground: top row, then fill with side edges
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; l = Math.round(l / PX) * PX; t = Math.round(t / PX) * PX;
+    ctx.save(); ctx.beginPath(); ctx.rect(l, t, w, h); ctx.clip();
+    for (let y = t, r = 0; y < t + h; y += 64, r++) for (let x = l, c = 0; x < l + w; x += 64, c++) { const xx = Math.min(x, l + w - 64), last = x + 64 >= l + w; wt(A, r === 0 ? ((c + (l >> 6)) % 2 ? 'top_b' : 'top_a') : c === 0 ? 'edge_l' : last ? 'edge_r' : 'fill', xx, y); }
+    ctx.restore(); ctx.fillStyle = '#181425'; ctx.fillRect(l, t + 4, 4, h - 4); ctx.fillRect(l + w - 4, t + 4, 4, h - 4); ctx.imageSmoothingEnabled = sm;
+  }
+  const GROUND = new WeakMap();
+  function groundArt(A, rm) { // the room's floor and hills from the tile set, drawn once per room
+    let cv = GROUND.get(rm);
+    if (!cv) {
+      const AW = W / PX, hs = []; let mx = 0; for (let x = 0; x < AW; x += 4) { const gh = Math.round(rampAt(x * PX + 8, rm) / PX); hs.push(gh); mx = Math.max(mx, gh); }
+      cv = document.createElement('canvas'); cv.width = AW; cv.height = mx + 64; cv.top = mx; const g = cv.getContext('2d'), F = A.frames, im = A.img.tiles;
+      hs.forEach((gh, q) => { const x = q * 4, sx = x % 16, y = mx - gh, tp = F[(x >> 4) % 3 === 1 ? 'top_b' : 'top_a'];
+        g.drawImage(im, tp.x + sx, tp.y, 4, 16, x, y, 4, 16); for (let yy = y + 16; yy < cv.height; yy += 16) g.drawImage(im, F.fill.x + sx, F.fill.y, 4, 16, x, yy, 4, 16); });
+      GROUND.set(rm, cv);
+    }
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, 0, FLOOR - cv.top * PX, W, cv.height * PX); ctx.imageSmoothingEnabled = sm;
+  }
+  function artProp(p) { // draw a prop from its level's set; false = not covered, the code drawing takes over
+    const sec = artOf(R.i), A = sec && ART[sec]; if (!A || sec === 'rooftop' || sec === 'climb') return false;
+    const l = p.x - p.w / 2, t = FLOOR - p.h, w = p.w, h = p.h, k = p.k, hurt = p.hp != null && p.hp < p.hp0, now = performance.now();
+    const R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x / PX) * PX, Math.round(y / PX) * PX, Math.round(ww), Math.round(hh)); };
+    const S = (n, cx, bottom, flip) => { const im = A.ok(n); if (!im) return false; if (flip) { ctx.save(); ctx.translate(Math.round(cx / PX) * PX * 2, 0); ctx.scale(-1, 1); } spr(im, cx, bottom - im.naturalHeight * PX); if (flip) ctx.restore(); return true; };
+    const cracks = () => { if (hurt) { R_('#181425', p.x - 12, t + 4, 4, 12); R_('#181425', p.x + 16, t, 4, 16); R_('#181425', p.x - 4, t + 12, 4, 8); } };
+    const fit = (FIT[sec] || {})[k];
+    if (fit && !p.hh && sec !== 'elevator') {
+      if (k === 'slab') { tileBlock(A, l + 8, t + 28, w - 16, FLOOR - t + 36); S(hurt ? 'slab_cracked' : 'slab', p.x, t + 32); return true; }
+      const sq = k === 'shroom' && p.spinT > 0 ? 8 : 0, fl = k === 'dummy' && p.spinT > 0 && Math.floor(now / 70) % 2;
+      if (!S(fit[2], p.x, t + h + sq, fl)) return false;
+      if (p.sparkT > 0 && Math.floor(now / 80) % 2) { R_('#fee761', p.x - 20, t + 8, 8, 8); R_('#ffffff', p.x + 8, t + 20, 8, 8); R_('#fee761', p.x, t - 8, 4, 12); }
+      cracks(); return true;
+    }
+    if (k === 'stalk') { const im = A.ok('stalk'); if (!im) return false; const base = FLOOR - Math.max(0, rampAt(p.x)), bend = p.spinT > 0 ? 8 : 0; for (let y = base; y > t - 40; y -= im.naturalHeight * PX) S('stalk', p.x + (y === base ? 0 : bend), y); R_('#f77622', l - 4, base - 60, w + 8, 8); R_('#feae34', l - 4, base - 60, w + 8, 4); return true; }
+    if (k === 'thick') { const im = A.ok('thick'); if (!im) return false; const n = Math.max(1, Math.round(w / 80)); for (let q = 0; q < n; q++) for (let y = t + h; y > t - 60; y -= 120) S('thick', l + (q + 0.5) * w / n, y); return true; }
+    if (k === 'turtle') { if (!A.ok('turtle')) return false; S('turtle', p.x - w / 2 + 64, t + 44); S('turtle', p.x + w / 2 - 64, t + 44, true); return true; }
+    if (k === 'ufo') { tileRow(A, l, t, w); S('ufo', p.x, t + 52); return true; }
+    if (k === 'panel') { tileRow(A, l, t, w); R_('#3a4466', p.x - 4, t + 40, 8, 20); R_(Math.floor(now / 400) % 2 ? '#2ce8f5' : '#0099db', p.x - 8, t + 60, 16, 8); return true; }
+    if (k === 'leaf' || k === 'beam' || k === 'sign') { if (k === 'beam') { R_('#3e2731', l + 8, t + 24, 8, h - 24); R_('#3e2731', l + w - 16, t + 24, 8, h - 24); } tileRow(A, l, t, w); cracks(); return true; }
+    if (k === 'aster') { tileBlock(A, l, t, w, 64); if (w > 150) tileBlock(A, l + 32, t + 64, w - 64, 32); return true; }
+    if (k === 'laser') { const ph = (R.t + p.off) % 3, on = ph < 1.6, warn = ph > 2.5;
+      if (on) { R_('#f6757a', p.x - 12, 28, 24, FLOOR - 56); R_('#ffffff', p.x - 4, 28, 8, FLOOR - 56); } else if (warn) for (let y = 28 + (Math.floor(now / 60) % 2) * 12; y < FLOOR - 24; y += 24) R_('#f6757a', p.x - 2, y, 4, 12);
+      S('laser', p.x, 32); S('laser', p.x, FLOOR); return true; }
+    if (k === 'rock' || k === 'slab' || k === 'crate' || k === 'box' || k === 'pod' || k === 'hedge' || k === 'pot') { if ((k === 'rock') && !p.hh && Math.abs(w - 96) < 20 && Math.abs(h - 64) < 20 && S('rock', p.x, t + h)) return true; tileBlock(A, l, t, w, (p.hh || h) + (p.hh ? 0 : 0)); cracks(); return true; }
+    return false;
+  }
+  function plate(rm) { if (VIEW.nb) return; bx(248 + viewX(), 16 - camY(), 412, 28, '#181425'); ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left'; ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
+  const drawProps = () => R.props.forEach(p => { if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
+  function artScene(rm, sec) { // a whole room from its level set: backdrop, ground, the moving bits, props
+    const A = ART[sec], sc = rm.scene, now = performance.now(), open = rm.void || rm.vac;
+    if (sc === 'lake') { const wy = FLOOR - rm.water.top; if (!artBack('rooftop')) return false; ctx.save(); ctx.beginPath(); ctx.rect(0, wy, W, H + 600); ctx.clip(); const ok = artBack(sec); ctx.restore(); if (!ok) return false; }
+    else if (!artBack(sec, null, open ? 'bg_near' : null)) return false;
+    if (sc === 'lake') { const wy = FLOOR - rm.water.top; bx(0, wy, W, 4, '#ffffff'); for (let x = 8; x < W; x += 48) bx(x + Math.floor(now / 300 + x) % 3 * 8, wy + 8, 24, 4, '#2ce8f5');
+      for (let k = 0; k < 26; k++) { const by = FLOOR - ((now / 14 + rnd(k + 2) * 2000) % (rm.water.top - 10)); bx(Math.floor(rnd(k + 31) * W / 8) * 8 + Math.round(Math.sin(now / 500 + k)) * 4, by, k % 4 ? 4 : 8, k % 4 ? 4 : 8, '#c0cbdc'); } }
+    if (sc === 'volcano') for (let k = 0; k < 24; k++) bx(Math.floor(rnd(k + 5) * W / 8) * 8, FLOOR - ((now / 22 + rnd(k + 6) * 900) % 520), 4, 4, k % 3 ? '#f77622' : '#fee761'); // embers
+    if (!rm.void) groundArt(A, rm);
+    if (sc === 'lake') { const im = A.ok('weed'); if (im) for (let k = 0; k < 7; k++) { const x = 90 + Math.floor(rnd(k + 61 + R.i) * 180) * 8; spr(im, x, FLOOR - rampAt(x) - im.naturalHeight * PX + 4); } }
+    if (sc === 'volcano') { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; for (const [a, b] of rm.lava || []) { bx(a, FLOOR, b - a, H - FLOOR + 80, '#f77622'); bx(a, FLOOR + 36, b - a, H, '#e43b44'); for (let x = a; x < b; x += 64) wt(A, Math.floor(now / 400 + x / 64) % 2 ? 'lava_a' : 'lava_b', Math.min(x, b - 64), FLOOR - 8); } ctx.imageSmoothingEnabled = sm; }
+    if (sc === 'lift') { const left = rideLeft(); if (left > 0) for (let k = 0; k < 14; k++) { const x = 120 + k * 104, y = ((R.t - R.t0) * 900 + rnd(k + 4) * 900) % (FLOOR + 80) - 80; bx(x, y, 4, 56, '#8b9bb4'); }
+      bx(W / 2 - 200, 60, 400, 28, '#181425'); bx(W / 2 - 196, 64, Math.round(392 * (1 - left / rm.ride) / 8) * 8, 20, left > 0 ? '#feae34' : '#63c74d');
+      ctx.fillStyle = '#ffffff'; ctx.font = '16px ' + PF; ctx.textAlign = 'center'; ctx.fillText(left > 0 ? `GOING UP · ${Math.ceil(left)}s` : 'TOP FLOOR · GO', W / 2, 110); }
+    if (R.i === ROOMS.length - 1 || rm.gate) drawDoor(W - 110, Math.max(0, surfAt(W - 110)), true, true);
+    drawProps();
+    if (sc === 'snow') for (let k = 0; k < 50; k++) bx((rnd(k + 3) * W + Math.sin(now / 900 + k) * 20) | 0, (now / (16 + (k % 4) * 4) + rnd(k + 7) * H) % H, 4, 4, '#ffffff');
+    plate(rm); return true;
+  }
   const ROOF_CACHE = new Map();
   function roofArt(A, p, t) { // a brick building from the tile set: cap row, walls, one window grid per building, a belt course under each floor
     const aw = Math.round(p.w / PX), ah = Math.ceil((H - t) / PX) + 4, key = aw + '|' + ah + '|' + Math.round(p.x0 == null ? p.x : p.x0);
@@ -2237,17 +2336,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, Math.round((p.x - p.w / 2) / PX) * PX, Math.round(t / PX) * PX, aw * PX, ah * PX); ctx.imageSmoothingEnabled = sm;
   }
   let NIGHT = null, DUSK = null;
-  function artBack(sec, dusk) { // parallax layers behind a room: fixed to the screen, sliding slowly with the distance travelled. `dusk` = [h0, h1]: fade in by dither between those heights (the climb's last floors)
-    const A = ART[sec]; if (!A || !A.ok('bg_sky') || !A.ok('bg_far') || !A.ok('bg_mid')) return false;
+  function artBack(sec, dusk, skip) { // backdrop layers of a set. `dusk` = [h0, h1]: fade in by dither between those heights (the climb's last floors); `skip` = a layer to leave out
+    const A = ART[sec], LS = (SETS[sec] || {}).L; if (!A || !LS || !LS.length || LS.some(([n]) => !A.ok(n))) return false;
     const m = ctx.getTransform(), sl = -m.e / m.a, st = -m.f / m.d, gx = (VIEW.gi != null ? VIEW.gi : R.i) * W_ + viewX(), sm = ctx.imageSmoothingEnabled, AW = W / PX, AH = H / PX;
     const x0 = Math.round(sl / PX) * PX, y0 = Math.round(st / PX) * PX;
     let my = null; if (dusk) { my = Math.round((FLOOR - dusk[1] - y0) / PX); if (my + DUSK_H <= 0) return true; if (my >= AH) my = null; } // art row where the night is full
     if (!NIGHT) { NIGHT = document.createElement('canvas'); NIGHT.width = AW; NIGHT.height = AH; }
     const g = NIGHT.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, AW, AH); g.imageSmoothingEnabled = false;
     const sp = A.win && !reduce ? sfx.spectrum(24) : null;
-    [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]].forEach(([n, f]) => { const off = -(Math.round(gx * f / PX) % AW); for (let k = -1; k < 2; k++) {
+    LS.forEach(([n, f]) => { if (n === skip) return; const off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % AW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
       const bx0 = off + k * AW; if (bx0 >= AW || bx0 <= -AW) continue;
-      g.drawImage(A.img[n], bx0, 0, AW, AH);
+      g.drawImage(A.img[n], bx0, oy, AW, AH);
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
         const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
         for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; g.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) g.fillRect(bx0 + b.x + c * b.pitch[0], b.y + row * b.pitch[1], b.cell[0], b.cell[1]); }
@@ -2434,6 +2533,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // Rough backdrops for the sections after the dojo: one function per scene, flat shapes in palette colours.
   function drawScene(rm) {
     const now = performance.now(), sc = rm.scene, col = (x, w, c) => { for (let q = x; q < x + w; q += 8) { const g = rampAt(q + 4); bx(q, FLOOR - g, 8, H - FLOOR + g, c); } };
+    { const AS = sc !== 'roofs' && sc !== 'dive' && artOf(R.i); if (AS && artScene(rm, AS)) return; }
     if (sc === 'bamboo') { // pale haze, three depths of stalks, grass
       bx(0, 0, W, FLOOR, '#c0cbdc'); bx(0, 0, W, 80, '#8b9bb4');
       for (let i = 0; i < 40; i++) { const x = Math.floor(rnd(i + 11) * W / 8) * 8; bx(x, 0, 12, FLOOR, '#8b9bb4'); for (let y = 30 + (i % 4) * 20; y < FLOOR; y += 90) bx(x, y, 12, 4, '#c0cbdc'); }
@@ -2442,13 +2542,21 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       bx(0, FLOOR, W, H - FLOOR, '#733e39'); bx(0, FLOOR, W, 20, '#3e8948'); bx(0, FLOOR, W, 4, '#63c74d');
       for (let k = 0; k < 60; k++) { const gx = Math.floor(rnd(k + 3) * W / 8) * 8; bx(gx, FLOOR - 8, 4, 8, k % 3 ? '#3e8948' : '#63c74d'); bx(Math.floor(rnd(k + 9) * W / 8) * 8, FLOOR + 36 + Math.floor(rnd(k + 5) * 5) * 8, 12, 8, k % 2 ? '#3e2731' : '#b86f50'); }
     } else if (sc === 'roofs' || sc === 'dive') { // the blue-haze city again, seen from high up (roofs) or lower down by the lake (dive)
-      if (!(sc === 'roofs' && artBack('rooftop'))) {
+      const NB = artBack('rooftop'); if (!NB) {
       const Ls = cityLayers(3200), cam = sc === 'roofs' ? 2200 : 500, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
       ctx.drawImage(CITY.sky, 0, 0, W, H);
       Ls.forEach((L, i) => { if (i === 3) return; const oy = Math.round(cam * L.f / PX) * PX - L.sh * PX; ctx.drawImage(L.cv, 0, oy, W, L.cv.height * PX); const hz = CITY.haze[i]; if (hz) ctx.drawImage(hz, 0, H - hz.height * PX, W, hz.height * PX); });
       ctx.imageSmoothingEnabled = sm;
       }
-      if (sc === 'dive') {
+      const LA = sc === 'dive' && NB && artTiles('lake'), RA2 = LA && artTiles('rooftop');
+      if (LA && RA2) { // the dive: the last roof, then the lake seen through its surface
+        const wt = rm.water, wy = FLOOR - wt.top;
+        ctx.save(); ctx.beginPath(); ctx.rect(wt.x0, wy, W - wt.x0, H + 400); ctx.clip(); artBack('lake'); ctx.restore();
+        bx(wt.x0, wy, W - wt.x0, 4, '#ffffff'); for (let x = wt.x0 + 8; x < W; x += 48) bx(x + Math.floor(now / 300 + x) % 3 * 8, wy + 8, 24, 4, '#2ce8f5');
+        ctx.save(); ctx.beginPath(); ctx.rect(wt.x0, FLOOR, W - wt.x0, H); ctx.clip(); groundArt(LA, rm); ctx.restore();
+        roofArt(RA2, { x: 165, w: 340, h: 420 }, FLOOR - 420);
+        bx(250, FLOOR - 440, 84, 8, '#f77622'); bx(326, FLOOR - 440, 8, 20, '#f77622'); // the diving board
+      } else if (sc === 'dive') {
         const wt = rm.water, wy = FLOOR - wt.top;
         bx(wt.x0, wy, W - wt.x0, H - wy, '#124e89'); bx(wt.x0, wy + 150, W - wt.x0, H, '#262b44');
         for (let x = wt.x0; x < W; x += 16) bx(x, wy + 142 + ((x / 16) % 2) * 8, 8, 8, '#262b44');
@@ -2503,7 +2611,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     if (rm.hill && sc !== 'snow' && sc !== 'dive') col(0, W, '#3a4466');
     if (R.i === ROOMS.length - 1) drawDoor(W - 110, Math.max(0, surfAt(W - 110)), true, true);
-    R.props.forEach(p => { if (p.dead) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
+    drawProps();
     if (!VIEW.nb) { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
     ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
@@ -2528,6 +2636,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const rm = ROOMS[R.i], [w0, w1, w2] = rm.wall || [], [f0, f1] = rm.floor || [], rp = rm.ramp, last = !!rm.gate;
     if (rm.climb) { drawClimb(); return; }
     if (rm.scene) { drawScene(rm); return; }
+    { const AS = artOf(R.i); if (AS && artScene(rm, AS)) return; }
     if (rm.outdoor) { // hazy day: the far city, the house's half-timbered wall on the left, a fence
       bx(0, 0, W, FLOOR, '#c0cbdc'); bx(0, 0, W, 60, '#8b9bb4');
       ctx.fillStyle = '#8b9bb4'; for (let j = 0; j < 3; j++) for (let x = (j % 2) * 8; x < W; x += 16 + j * 8) ctx.fillRect(x, 60 + j * 8, 8, 8);

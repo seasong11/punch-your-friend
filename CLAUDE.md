@@ -181,6 +181,19 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   the bamboo art in `pxl-art/bamboo/pixellab/`). The LDtk file stays as the layout format and is frozen; the code-drawn tower
   interior is disliked and waits for a drawn set. Asked the art thread for tiling transparent layers without baked ground, ground
   and platform tiles, and sprites for the placed props per level.
+- Level sets wired (Daniel, 2026-11-14: "build the prototypes ... make it impressive ... the art style should be consistent", no
+  per-set approval needed for this pass; he reviews at the end). Sets come from `pxl-art/levels/<section>/` (art thread) and live in
+  `art/<set>/`: bamboo, dojo, house, lake, volcano, snow, elevator, space, climb (rooftop stays on its approved set). `SETS` lists each
+  set's layers as `[name, factor]` (0 = fixed to the screen, 1 = part of the room, between = parallax) and its sprites; `artOf(i)`
+  names a room's set (garden uses bamboo, lifts use elevator). `artBack(set, dusk, skip)` draws the layers; `artScene(rm, set)` draws a
+  whole room (backdrop, `groundArt` = floor and hills from `top_a/top_b/fill` tile slices cached per room, lava tiles, water surface,
+  snow, lift progress) and is called from `drawScene` and `drawRoom`; `artProp(p)` draws props from sprites or tiles (`tileRow` for
+  one-way platforms, `tileBlock` for solid blocks) and returns false for kinds it does not cover, which then use the old `drawProp`.
+  `FIT` + `fitProps` (run in `buildRooms`, before the rooms are used) resize props to their sprite so what is drawn is what blocks.
+  The lake shows the rooftop night sky above the surface; the dive room is a brick roof over the lake set. `drawClimb` uses the climb
+  sprites (`CA`): wall bays and openings, floor slabs, pillars, stair steps. Local edits to the art: the painted dummy is erased from
+  `art/dojo/bg_near.png` (asked the art thread to drop it; also asked for the house furniture to leave `bg_far`, and for b-variants).
+  Old code backdrops remain only as the fallback when a file is missing or with `?art=0`.
 - Art sets (Daniel, 2026-11-14: revise the prototype from his references in the private repo `seasong11/punch-your-friend-art-refs`;
   the "Set up Claude art generator" thread draws each section with claude-pxl into project files `pxl-art/<section>/`, this
   thread copies approved sets to `art/<section>/` and wires them in). Layout agreed with that thread: `tiles.png` +
