@@ -240,7 +240,8 @@ for n, L in picked:
     if dy > 0: ref.paste(bg.crop((0, 0, CW, 1)).resize((CW, dy)), (0, 0))
     name = f"{S}_{len([l for l in levels if l['_sec'] == S]) + 1:02d}"
     refp = f'reference/{name}.png'; ref.save(os.path.join(DST, refp), optimize=True)
-    beats = {'House': ['Warmup'], 'Climb': ['SetPiece'], 'Space': ['Challenge']}.get(S, ['Challenge'])
+    first = not any(l['_sec'] == S and not l['vals']['setPiece'] for l in levels)
+    beats = ['SetPiece'] if S == 'Climb' else ['Warmup'] if first else ['Challenge']
     if 'Core' in L['identifier'] or 'Gate' in L['identifier']: beats = ['Finale']
     if 'Lift' in L['identifier'] or 'Elevator' in L['identifier']: beats = ['SetPiece']
     vals = {'section': S, 'beats': beats, 'difficulty': 2, 'weight': 1.0, 'setPiece': beats[0] in ('SetPiece', 'Finale'),
@@ -266,9 +267,10 @@ for n, L in picked:
             fd = D_SLOPE['fieldDefs'][0]
             einst.append(dict(d=D_SLOPE, px=[xa, top], w=xb - xa, h=bot - top, fis=[finst(fd, 'UpRight' if yb < ya else 'UpLeft')]))
         # lava only in the floor row
-        lav = g == 4
-        if lav.any():
-            cols = lav.any(0); g[lav] = 1; g[ch - 1, cols] = 4
+        g[g == 4] = 1
+        for a, b in (r['lava'] or []):   # the prototype's lava zones, in the floor row
+            for c in range(cw):
+                if a / 4 < c * G + G / 2 < b / 4: g[ch - 1, c] = 4
         # water: one rectangle (left edge to its right end, surface down to the ground)
         wat = g == 3
         if wat.any():
