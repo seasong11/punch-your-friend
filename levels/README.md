@@ -36,6 +36,7 @@ A run is put together from **chunks**. The game follows each section's **beat li
   - **Seam columns:** the first and last tile column must be one ground run from the bottom (or empty, for a gap 我 must jump). That's how chunks find partners.
   - **Water:** at most one rectangle per chunk.
   - **Lava:** only in the floor row.
+  - **Rooftop gaps:** don't put a gap right before a roof narrower than about 90 px, and never right before a vent. At full speed 我 flies past a short roof and hits the next wall (found by the bot test on Rooftop_04).
 
 The level backgrounds in `reference/` are the prototype's drawings, kept only as a guide. They still show the old doors and room edges, and they were drawn for the old 160 px height, so the top 64 px are just filler. Tiles will replace them.
 

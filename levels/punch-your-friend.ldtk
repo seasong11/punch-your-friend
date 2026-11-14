@@ -21979,7 +21979,7 @@
 							"defUid": 108,
 							"px": [
 								20,
-								193
+								198
 							],
 							"fieldInstances": [
 								{
@@ -22015,7 +22015,7 @@
 								}
 							],
 							"__worldX": 1316,
-							"__worldY": 2769
+							"__worldY": 2774
 						},
 						{
 							"__identifier": "ItemSpawn",
@@ -22111,40 +22111,7 @@
 						{
 							"__identifier": "Roof",
 							"__grid": [
-								1,
-								12
-							],
-							"__pivot": [
-								0.5,
-								0
-							],
-							"__tags": [
-								"RooftopRun"
-							],
-							"__tile": {
-								"tilesetUid": 101,
-								"x": 109,
-								"y": 472,
-								"w": 70,
-								"h": 38
-							},
-							"__smartColor": "#BE4A2F",
-							"iid": "09cb2f45-8efc-4acd-b26f-35dc25e14a27",
-							"width": 55,
-							"height": 38,
-							"defUid": 69,
-							"px": [
-								20,
-								193
-							],
-							"fieldInstances": [],
-							"__worldX": 1316,
-							"__worldY": 2769
-						},
-						{
-							"__identifier": "Roof",
-							"__grid": [
-								6,
+								4,
 								12
 							],
 							"__pivot": [
@@ -22163,15 +22130,15 @@
 							},
 							"__smartColor": "#BE4A2F",
 							"iid": "0c99274a-0eee-4cca-8fd5-eebdf814f03d",
-							"width": 50,
+							"width": 133,
 							"height": 32,
 							"defUid": 69,
 							"px": [
-								108,
+								66,
 								198
 							],
 							"fieldInstances": [],
-							"__worldX": 1404,
+							"__worldX": 1362,
 							"__worldY": 2774
 						},
 						{
@@ -24423,7 +24390,7 @@
 							"defUid": 108,
 							"px": [
 								20,
-								193
+								198
 							],
 							"fieldInstances": [
 								{
@@ -24459,7 +24426,7 @@
 								}
 							],
 							"__worldX": 3044,
-							"__worldY": 2769
+							"__worldY": 2774
 						},
 						{
 							"__identifier": "ItemSpawn",
@@ -24555,40 +24522,7 @@
 						{
 							"__identifier": "Roof",
 							"__grid": [
-								1,
-								12
-							],
-							"__pivot": [
-								0.5,
-								0
-							],
-							"__tags": [
-								"RooftopRun"
-							],
-							"__tile": {
-								"tilesetUid": 101,
-								"x": 109,
-								"y": 472,
-								"w": 70,
-								"h": 38
-							},
-							"__smartColor": "#BE4A2F",
-							"iid": "b0694391-4f03-440a-9480-2cea8f919e52",
-							"width": 55,
-							"height": 38,
-							"defUid": 69,
-							"px": [
-								20,
-								193
-							],
-							"fieldInstances": [],
-							"__worldX": 3044,
-							"__worldY": 2769
-						},
-						{
-							"__identifier": "Roof",
-							"__grid": [
-								6,
+								4,
 								12
 							],
 							"__pivot": [
@@ -24607,15 +24541,15 @@
 							},
 							"__smartColor": "#BE4A2F",
 							"iid": "7b28da1e-faa4-4c2a-93e0-ff4956b31e6a",
-							"width": 50,
+							"width": 133,
 							"height": 32,
 							"defUid": 69,
 							"px": [
-								108,
+								66,
 								198
 							],
 							"fieldInstances": [],
-							"__worldX": 3132,
+							"__worldX": 3090,
 							"__worldY": 2774
 						},
 						{
