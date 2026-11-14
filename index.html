@@ -2242,7 +2242,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const A = ART[sec] = { img: {}, frames: null, ok: n => { const im = A.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } };
     if (location.protocol === 'file:' || /[?&]art=0/.test(location.search)) return;
     const get = (n, f) => { const im = new Image(); im.src = 'art/' + sec + '/' + f; A.img[n] = im; };
-    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of (SETS[sec] || {}).V || []) get(n + '_b', n + '_b.png'); // _b = a second look, used on every other screen for (const n of sprites) get(n, 'sprites/' + n + '.png');
+    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of (SETS[sec] || {}).V || []) get(n + '_b', n + '_b.png'); /* _b = a second look, used on every other screen */ for (const n of sprites) get(n, 'sprites/' + n + '.png');
     fetch('art/' + sec + '/tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { A.frames = {}; for (const k in d.frames) A.frames[k] = d.frames[k].frame; } }).catch(() => {});
   }
   for (const n in SETS) loadArt(n, SETS[n].S);
