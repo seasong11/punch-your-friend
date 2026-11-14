@@ -7,7 +7,7 @@ Open `punch-your-friend.ldtk` in LDtk 1.5.3 or newer. Keep this folder together,
 A run is put together from **chunks**. The game follows each section's **beat list** and, for each beat, picks a chunk that fits from a shared seed, so 我 and every 兄弟 get the same run. Then it rolls each chunk's **random parts**.
 
 - **Chunks join seamlessly.** They aren't rooms: there are no doors and no visible edges, and the ground of one runs straight into the next. Two chunks fit together when the terrain heights match at the seam (the right edge of one, the left edge of the next). The game reads those heights from the Terrain layer, so there is nothing to fill in by hand.
-- **Sizes.** Pixels are the game's own art pixels. The grid is 16 px. The screen is 400 x 160 (25 x 10 tiles), and Hoodie Guy is about 3 tiles tall. A chunk is 400 wide by default but can be any multiple of 16. The floor line is the top of the bottom tile row (y = 144).
+- **Sizes.** Pixels are the game's own art pixels. The grid is 16 px. The screen is 400 x 224 (25 x 14 tiles; Daniel's pick, 2026-11-14), and Hoodie Guy is about 3 tiles tall. A chunk is 400 x 224 by default but can be any multiple of 16. The floor line is the top of the bottom tile row (y = 208). On wide phones the game may show a little more width, so keep anything important inside the 400.
 - **Set pieces** (`setPiece` on) are never picked at random. The beat list places them on purpose: the rooftop climb, the tower lift and elevator, the mothership gate and core.
 
 ## Level fields (select a level, then the Level panel)
@@ -31,7 +31,7 @@ A run is put together from **chunks**. The game follows each section's **beat li
 - **Entities**: fixed props and climbing pieces, with their prototype pictures. Mapping rules as before: props anchor at top-centre, the standing height is the top edge, and climb pieces sit on their floor.
 - **Terrain** (IntGrid, 16 px): `ground`, `platform` (one-way), `water`, `lava`, `wall`. Tile auto-layers will read this layer once the art bundles are in, so painting Terrain will paint the art too.
 
-The level backgrounds in `reference/` are the prototype's drawings, kept only as a guide. They still show the old doors and room edges. Tiles will replace them.
+The level backgrounds in `reference/` are the prototype's drawings, kept only as a guide. They still show the old doors and room edges, and they were drawn for the old 160 px height, so the top 64 px are just filler. Tiles will replace them.
 
 ## Starter chunks
 

@@ -15,7 +15,7 @@ items = json.load(open(os.path.join(ITEMS, 'items.json')))
 os.makedirs(os.path.join(DST, 'reference'), exist_ok=True)
 
 G = 16                     # tile size in art pixels
-CW, CH = 400, 160          # one screen-sized chunk (25 x 10 tiles)
+CW, CH = 400, 224          # one screen-sized chunk (25 x 14 tiles)
 FLOOR = CH - G             # floor line: top of the bottom tile row (144)
 WFLOOR = 550               # floor line in the old world units
 iid = lambda: str(uuid.uuid4())
