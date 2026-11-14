@@ -176,6 +176,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   kind come from the code-built rooms (`KF`, `learnKinds`); entity names map through `ENT_K`. Not read yet: Decor entities,
   Terrain platform cells, the Climb chunk and the lifts (still built by the game). Without the file, or with `?gen=1`, the
   code generators are used (`MODE` 0). The file is about 0.8 MB; a build step that slims it is a later option.
+- Placement (Daniel, 2026-11-14): Daniel no longer places things by hand in LDtk. Claude decides where things go, from Daniel's
+  references and the art thread's sets (thread now named "Create art for all levels"; approved look = layered misty silhouettes like
+  the bamboo art in `pxl-art/bamboo/pixellab/`). The LDtk file stays as the layout format and is frozen; the code-drawn tower
+  interior is disliked and waits for a drawn set. Asked the art thread for tiling transparent layers without baked ground, ground
+  and platform tiles, and sprites for the placed props per level.
 - Art sets (Daniel, 2026-11-14: revise the prototype from his references in the private repo `seasong11/punch-your-friend-art-refs`;
   the "Set up Claude art generator" thread draws each section with claude-pxl into project files `pxl-art/<section>/`, this
   thread copies approved sets to `art/<section>/` and wires them in). Layout agreed with that thread: `tiles.png` +
