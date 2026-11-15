@@ -1204,7 +1204,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       gclock: x => { P('crate', x - 60, 64, 64); P('gclock', x, 56, 160); }
     };
     const set = (HOUSE_SETS[name] || HOUSE_SETS.STOREROOM).slice(); let skip = mixOf(n, 4, 101);
-    [430, 810, 1190].forEach((x, q) => { const k = set[(q + skip) % set.length]; G[k](x + pk(r, -40, 40, 20)); });
+    const two = n % 2 === 0; /* every other room has a second floor (Daniel: stairs to guide players up and down). Stairs up, five planks at the painted floor line (320), stairs down; a fist breaks a plank in two hits */
+    if (two) { P('stairs', 440, 320, 320, { plat: 1, rise: 1, raw: 1 }); for (let q = 0; q < 5; q++) P('floor', 656 + q * 112, 112, 320, { plat: 1, hp: 2, raw: 1 }); P('stairs', 1316, 320, 320, { plat: 1, rise: -1, raw: 1 }); }
+    (two ? [720, 1040] : [430, 810, 1190]).forEach((x, q) => { const k = set[(q + skip) % set.length]; G[k](x + pk(r, -40, 40, 20)); });
     return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props, deco };
   }
   function genDojo(n) {
@@ -1258,23 +1260,33 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function genLake(n) {
     const r = rngOf(401 + n * 7), props = [], deco = [], m = mixOf(n, 3, 401), blk = (x0, w, h) => props.push({ k: 'rock', x: x0 + w / 2, w, h });
     if (m === 1) { /* a sunken ruin (Daniel's underwater references): a broken wall with a stepped top to swim over, then an arch that is cover */
-      let x = pk(r, 380, 460, 40); for (const h of r() < 0.5 ? [160, 288, 224] : [224, 288, 160]) { blk(x, 128, h); x += 128; }
-      const ax = pk(r, 1000, 1120, 40); blk(ax - 150, 64, 256); blk(ax + 86, 64, 256); props.push({ k: 'turtle', plat: 1, x: ax, w: 200, h: 300 }); deco.push(['statue', ax, 0]);
+      let x = pk(r, 380, 460, 40); for (const h of r() < 0.5 ? [224, 416, 320] : [320, 416, 224]) { blk(x, 128, h); x += 128; }
+      const ax = pk(r, 1000, 1120, 40); blk(ax - 150, 64, 384); blk(ax + 86, 64, 384); props.push({ k: 'turtle', plat: 1, x: ax, w: 200, h: 430 }); deco.push(['statue', ax, 0], ['column_top', ax - 118, 384], ['column_top', ax + 118, 384]);
     } else if (m === 2) { /* a row of columns of different heights with turtles drifting between them */
-      for (let x = pk(r, 400, 460, 30), q = 0; x < 1400; x += pk(r, 300, 360, 30), q++) { blk(x, 64, pk(r, 200, 340, 70)); if (q % 2 === 0) props.push({ k: 'turtle', plat: 1, x: x + 180, w: 200, h: pk(r, 260, 320, 30), drift: [pk(r, 40, 70, 30), +(0.6 + r() * 0.4).toFixed(2), +(r() * 6).toFixed(1)] }); }
+      for (let x = pk(r, 400, 460, 30), q = 0; x < 1400; x += pk(r, 300, 360, 30), q++) { { const ch = pk(r, 260, 520, 65); blk(x, 64, ch); deco.push(['column_top', x + 32, ch]); } if (q % 2 === 0) props.push({ k: 'turtle', plat: 1, x: x + 180, w: 200, h: pk(r, 360, 520, 40), drift: [pk(r, 40, 70, 30), +(0.6 + r() * 0.4).toFixed(2), +(r() * 6).toFixed(1)] }); }
     } else
-    for (let x = pk(r, 380, 460, 40); x < 1400; x += pk(r, 380, 520, 70)) { props.push({ k: 'rock', x, w: pk(r, 150, 190, 20), h: pk(r, 150, 300, 50) }); if (r() < 0.7) props.push({ k: 'turtle', plat: 1, x: x + 220, w: 200, h: pk(r, 230, 320, 30), drift: [pk(r, 60, 120, 30), +(0.6 + r() * 0.4).toFixed(2), +(r() * 6).toFixed(1)] }); }
-    return { name: 'LAKE ' + n, sec: 'lake', scene: 'lake', enterY: 330, water: { x0: -1, top: 470 }, props, deco };
+    for (let x = pk(r, 380, 460, 40); x < 1400; x += pk(r, 380, 520, 70)) { props.push({ k: 'rock', x, w: pk(r, 150, 190, 20), h: pk(r, 200, 460, 65) }); if (r() < 0.7) props.push({ k: 'turtle', plat: 1, x: x + 220, w: 200, h: pk(r, 330, 520, 40), drift: [pk(r, 60, 120, 30), +(0.6 + r() * 0.4).toFixed(2), +(r() * 6).toFixed(1)] }); }
+    return { name: 'LAKE ' + n, sec: 'lake', scene: 'lake', enterY: 330, water: { x0: -1, top: FLOOR - 88 }, props, deco }; /* the surface sits where the backdrop paints it */
   }
   function genVolcano(n) {
     const r = rngOf(503 + n * 19), props = [], lava = [];
-    if (modOf(r, n, 2)) { let a = pk(r, 340, 420, 40); for (let z = 0; z < 2; z++) { const w = pk(r, 300, 380, 40); lava.push([a, a + w]); if (r() < 0.6) props.push({ k: 'slab', x: a + w * 0.28, w: 80, h: 60, hp: 2 }, { k: 'slab', x: a + w * 0.72, w: 80, h: 60, hp: 2 }); else props.push({ k: 'rock', x: a + w / 2, w: 90, h: pk(r, 80, 100, 10) }); a += w + pk(r, 200, 260, 30); } }
+    const vm = mixOf(n, 3, 503);
+    if (vm === 2) { /* pillar hop (Daniel's lava references): one long lava lake, stone pillars of different heights, a floating shelf as cover */
+      const a = pk(r, 300, 360, 30); let x = a + 90, h = 64, q = 0; for (; x < 1300; x += 208, q++) { props.push({ k: 'box', x, w: 96, h }); if (q === 2) props.push({ k: 'sign', plat: 1, x: x + 104, w: 192, h: h + 170 }); h = Math.max(64, Math.min(112, h + [32, -48, 32, 16, -48, 32][q % 6])); } /* low enough, and far enough apart, to get out of the lava between two of them */
+      lava.push([a, x - 208 + 90]);
+    } else
+    if (vm === 1) { let a = pk(r, 340, 420, 40); for (let z = 0; z < 2; z++) { const w = pk(r, 300, 380, 40); lava.push([a, a + w]); if (r() < 0.6) props.push({ k: 'slab', x: a + w * 0.28, w: 80, h: 60, hp: 2 }, { k: 'slab', x: a + w * 0.72, w: 80, h: 60, hp: 2 }); else props.push({ k: 'rock', x: a + w / 2, w: 90, h: pk(r, 80, 100, 10) }); a += w + pk(r, 200, 260, 30); } }
     else { const a = pk(r, 280, 340, 30), b = pk(r, 1300, 1380, 40); lava.push([a, b]); for (let x = a + 100, k = 0; x < b - 60; x += 170, k++) props.push(k % 3 === 2 ? { k: 'rock', x, w: 90, h: 100 } : { k: 'slab', x, w: 80, h: pk(r, 60, 70, 10), hp: 2 }); }
     return { name: 'VOLCANO ' + n, sec: 'volcano', scene: 'volcano', lava, props };
   }
   function genSnow(n) {
     const r = rngOf(601 + n * 23), a = pk(r, 160, 280, 40), props = []; let hill;
-    if (modOf(r, n, 2)) { const l = pk(r, 160, 220, 30); hill = [[0, 0], [a, 0], [a + 200, 200], [a + 200 + l, 200], [a + 380 + l, 380], [1600, 380]]; props.push({ k: 'rock', snow: 1, x: a + 200 + l / 2 + 20, w: 70, h: 300, hh: 100 }); }
+    const sm = mixOf(n, 3, 601);
+    if (sm === 2) { /* a gully: up, down into a sheltered dip under a snow ledge, then the long slope out */
+      const g = Math.min(a, 160); /* the top must start before the big rock at 1100+ */ hill = [[0, 0], [g, 0], [g + 200, 200], [g + 320, 200], [g + 400, 120], [g + 560, 120], [g + 700, 260], [g + 760, 260], [g + 880, 380], [1600, 380]];
+      props.push({ k: 'leaf', plat: 1, x: g + 440, w: 100, h: 120 + 200, hp: 2 }, { k: 'leaf', plat: 1, x: g + 540, w: 100, h: 120 + 200, hp: 2 });
+    } else
+    if (sm === 1) { const l = pk(r, 160, 220, 30); hill = [[0, 0], [a, 0], [a + 200, 200], [a + 200 + l, 200], [a + 380 + l, 380], [1600, 380]]; props.push({ k: 'rock', snow: 1, x: a + 200 + l / 2 + 20, w: 70, h: 300, hh: 100 }); }
     else hill = [[0, 0], [a, 0], [a + 150, 150], [a + 260, 150], [a + 390, 280], [a + 500, 280], [a + 600, 380], [1600, 380]];
     props.push({ k: 'rock', snow: 1, x: pk(r, 1100, 1300, 50), w: 110, h: 500, hh: 120 });
     return { name: 'SNOW SLOPE ' + n, sec: 'snow', scene: 'snow', slide: 1, hill, props };
@@ -1283,6 +1295,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // spacewalk (↑ is a jetpack), and a laser deck. Gravity is halved everywhere.
   function genSpace(n, kind, name) {
     const r = rngOf(701 + n * 29 + kind.length * 7), props = []; let extra = {};
+    if (kind === 'deck' && mixOf(n, 2, 701)) { /* cargo stacks: two stepped stacks with a panel bridge between them */
+      const x0 = pk(r, 380, 440, 30), bl = (x, w, h) => props.push({ k: 'box', x: x + w / 2, w, h }); bl(x0, 128, 112); bl(x0 + 128, 128, 224);
+      props.push({ k: 'panel', plat: 1, x: x0 + 256 + 120, w: 240, h: 224 }); bl(x0 + 496, 128, 224); bl(x0 + 624, 128, 112); props.push({ k: 'pod', x: pk(r, 1260, 1340, 40), w: 120, h: 130, hp: 3 });
+    } else
     if (kind === 'deck') { for (let x = pk(r, 420, 520, 50); x < 1350; x += pk(r, 330, 420, 30)) props.push(r() < 0.55 ? { k: 'pod', x, w: 120, h: pk(r, 130, 150, 20), hp: 3 } : { k: 'panel', plat: 1, x, w: 200, h: pk(r, 200, 260, 30) }); }
     else if (kind === 'aster') {
       extra = { void: 1 }; let x = -30, h = 80;
@@ -1386,12 +1402,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const HAZ_SIZE = { laser: [36, 0], shroom: [56, 36], crate: [90, 90], box: [90, 60], pod: [120, 150], rock: [90, 100], slab: [80, 60], dummy: [60, 110], vent: [64, 0] }; // world size of things a spawn can add
   const BEAT_LOOP = ['Challenge', 'Challenge', 'Rest', 'Challenge', 'Challenge', 'Checkpoint', 'Challenge']; // after the opening Warmup
   function chunkList(gl) { // swap the code-built screens of each section for chunks picked by the seed
+    const OWN_ = { lake: 1, house: 1, volcano: 1, snow: 1, space: 1 }; /* sections with Claude's own layouts: only the rooftop run still takes LDtk blocks */
     const sk = r => r.climb ? 'climb' : r.scene === 'lift' ? 'lift' : r.sec === 'lake-dive' ? 'lake' : r.outdoor ? 'garden' : r.sec || 'house', out = [];
     const secOfSk = {}; for (const s in SEC_SK) secOfSk[SEC_SK[s]] = s;
     for (let i = 0; i < gl.length;) {
       let j = i; while (j < gl.length && sk(gl[j]) === sk(gl[i])) j++;
       const sec = secOfSk[sk(gl[i])], all = sec && CHUNKS[sec] || [], pool = all.filter(c => !c.sp), fin = sec === 'Space' ? all.filter(c => c.sp && c.beats.includes('Finale')) : [];
-      if (!pool.length || sk(gl[i]) === 'bamboo' || sk(gl[i]) === 'dojo' || sk(gl[i]) === 'lake' || sk(gl[i]) === 'house') { for (let k = i; k < j; k++) out.push(gl[k]); i = j; continue; } // house, bamboo, dojo, lake: Claude's own layouts, not LDtk blocks
+      if (!pool.length || sk(gl[i]) === 'bamboo' || sk(gl[i]) === 'dojo' || OWN_[sk(gl[i])]) { for (let k = i; k < j; k++) out.push(gl[k]); i = j; continue; } // house, bamboo, dojo, lake: Claude's own layouts, not LDtk blocks
       const r = rngOf(9001 + i * 37), label = sec.toUpperCase(); let last = null;
       for (let k = i; k < j; k++) {
         const n = k - i, f = fin[fin.length - (j - k)];
@@ -1487,9 +1504,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return Math.round((r.up ? k : 1 - k) * r.h);
   }
   // Height of whatever stands at x (ramp or the tallest prop within `half` px), measured up from the floor.
+  const stairH = (p, x, half) => Math.round(p.h * clamp(((x - p.x) * p.rise + (half || 0)) / p.w + 0.5, 0, 1)); // `rise` props are one-way stairs: +1 climbs to the right, -1 to the left; 我 walks up from the foot or passes underneath
   function surfAt(x, half, y) { // with y: one-way platforms (beams) only count once 我 is on or above them
     let g = ROOMS[R.i].void ? -999 : rampAt(x); half = half || 0;
-    for (const p of R.props) if (!p.dead && !p.open && !p.ghost && Math.abs(x - p.x) < p.w / 2 + half && (!p.plat || y == null || p.h <= y + STEP_UP)) g = Math.max(g, p.h);
+    for (const p of R.props) if (!p.dead && !p.open && !p.ghost && Math.abs(x - p.x) < p.w / 2 + half) { const ph = p.rise ? stairH(p, x, half) : p.h; if (!p.plat || y == null || ph <= y + STEP_UP) g = Math.max(g, ph); }
     return g;
   }
   // ----- rough sections: helpers -----
@@ -2262,12 +2280,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
     rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign'] },
-    bamboo: { L: OUT_L, S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue'] },
-    lake: { L: OUT_L, S: ['turtle', 'weed', 'rock'] },
+    bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue'] },
+    lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock'] },
     dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate'], V: ['bg_mid'] },
-    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug'], V: ['bg_far'] },
+    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
     climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
@@ -2286,10 +2304,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const artTiles = sec => { const A = ART[sec]; return A && A.frames && A.ok('tiles') ? A : null; };
   function tile(A, g, name, ax, ay) { const f = A.frames[name]; if (f) g.drawImage(A.img.tiles, f.x, f.y, f.w, f.h, ax, ay, f.w, f.h); } // on an art-pixel canvas
   const wt = (A, n, x, y, sx, sw) => { const f = A.frames[n]; if (!f) return; sx = sx || 0; sw = sw || f.w; ctx.drawImage(A.img.tiles, f.x + sx, f.y, sw, f.h, Math.round(x / PX) * PX, Math.round(y / PX) * PX, sw * PX, f.h * PX); }; // a tile in the world, by its top-left
-  function tileRow(A, l, t, w) { // a one-way platform: left cap, middles, right cap
-    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-    for (let x = l + 64; x < l + w - 64; x += 64) wt(A, 'plat_m', Math.min(x, l + w - 128), t);
-    wt(A, 'plat_l', l, t); wt(A, 'plat_r', l + w - 64, t); ctx.imageSmoothingEnabled = sm;
+  function tileRow(A, l, t, w, pre) { // a one-way platform: left cap, middles, right cap (`pre` = another frame family, e.g. 'roof')
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; pre = pre && A.frames[pre + '_m'] ? pre : 'plat';
+    for (let x = l + 64; x < l + w - 64; x += 64) wt(A, pre + '_m', Math.min(x, l + w - 128), t);
+    wt(A, pre + '_l', l, t); wt(A, pre + '_r', l + w - 64, t); ctx.imageSmoothingEnabled = sm;
   }
   function tileBlock(A, l, t, w, h) { // a solid block of the level's ground: top row, then fill with side edges
     const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; l = Math.round(l / PX) * PX; t = Math.round(t / PX) * PX;
@@ -2328,7 +2346,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (k === 'turtle') { if (!A.ok('turtle')) return false; S('turtle', p.x - w / 2 + 64, t + 44); S('turtle', p.x + w / 2 - 64, t + 44, true); return true; }
     if (k === 'ufo') { tileRow(A, l, t, w); S('ufo', p.x, t + 52); return true; }
     if (k === 'panel') { tileRow(A, l, t, w); R_('#3a4466', p.x - 4, t + 40, 8, 20); R_(Math.floor(now / 400) % 2 ? '#2ce8f5' : '#0099db', p.x - 8, t + 60, 16, 8); return true; }
-    if (k === 'leaf' || k === 'beam' || k === 'sign') { if (k === 'beam') { R_('#3e2731', l + 8, t + 24, 8, h - 24); R_('#3e2731', l + w - 16, t + 24, 8, h - 24); } tileRow(A, l, t, w); cracks(); return true; }
+    if (k === 'stairs') return S('stairs', p.x, FLOOR, p.rise < 0);
+    if (k === 'floor') { tileRow(A, l, t, w); cracks(); return true; }
+    if (k === 'leaf' || k === 'beam' || k === 'sign') { if (k === 'beam') { R_('#3e2731', l + 8, t + 24, 8, h - 24); R_('#3e2731', l + w - 16, t + 24, 8, h - 24); } tileRow(A, l, t, w, k === 'leaf' && 'roof'); cracks(); return true; }
     if (k === 'aster') { tileBlock(A, l, t, w, 64); if (w > 150) tileBlock(A, l + 32, t + 64, w - 64, 32); return true; }
     if (k === 'laser') { const ph = (R.t + p.off) % 3, on = ph < 1.6, warn = ph > 2.5;
       if (on) { R_('#f6757a', p.x - 12, 28, 24, FLOOR - 56); R_('#ffffff', p.x - 4, 28, 8, FLOOR - 56); } else if (warn) for (let y = 28 + (Math.floor(now / 60) % 2) * 12; y < FLOOR - 24; y += 24) R_('#f6757a', p.x - 2, y, 4, 12);
@@ -2337,11 +2357,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return false;
   }
   function plate(rm) { if (VIEW.nb) return; bx(248 + viewX(), 16 - camY(), 412, 28, '#181425'); ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left'; ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
-  const drawProps = () => R.props.forEach(p => { if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
+  const drawProps = () => R.props.forEach(p => { if (p.dead && p.k === 'floor') { bx(p.x - p.w / 2, FLOOR - p.h, p.w, 32, '#181425'); return; } if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
   function artScene(rm, sec) { // a whole room from its level set: backdrop, ground, the moving bits, props
     const A = ART[sec], sc = rm.scene, now = performance.now(), open = rm.void || rm.vac;
-    if (sc === 'lake') { const wy = FLOOR - rm.water.top; if (!artBack('rooftop')) return false; ctx.save(); ctx.beginPath(); ctx.rect(0, wy, W, H + 600); ctx.clip(); const ok = artBack(sec); ctx.restore(); if (!ok) return false; }
-    else if (!artBack(sec, null, open ? 'bg_near' : null)) return false;
+    if (!artBack(sec, null, open ? 'bg_near' : null)) return false;
     if (sc === 'lake') { const wy = FLOOR - rm.water.top; bx(0, wy, W, 4, '#ffffff'); for (let x = 8; x < W; x += 48) bx(x + Math.floor(now / 300 + x) % 3 * 8, wy + 8, 24, 4, '#2ce8f5');
       for (let k = 0; k < 26; k++) { const by = FLOOR - ((now / 14 + rnd(k + 2) * 2000) % (rm.water.top - 10)); bx(Math.floor(rnd(k + 31) * W / 8) * 8 + Math.round(Math.sin(now / 500 + k)) * 4, by, k % 4 ? 4 : 8, k % 4 ? 4 : 8, '#c0cbdc'); } }
     if (sc === 'volcano') for (let k = 0; k < 24; k++) bx(Math.floor(rnd(k + 5) * W / 8) * 8, FLOOR - ((now / 22 + rnd(k + 6) * 900) % 520), 4, 4, k % 3 ? '#f77622' : '#fee761'); // embers
@@ -2385,9 +2404,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!NIGHT) { NIGHT = document.createElement('canvas'); NIGHT.width = AW; NIGHT.height = AH; }
     const g = NIGHT.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, AW, AH); g.imageSmoothingEnabled = false;
     const sp = A.win && !reduce ? sfx.spectrum(24) : null;
-    LS.forEach(([n, f]) => { if (n === skip) return; const off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % AW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
-      const bx0 = off + k * AW; if (bx0 >= AW || bx0 <= -AW) continue;
-      g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, AW, AH);
+    LS.forEach(([n, f]) => { if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
+      const bx0 = off + k * IW; if (bx0 >= AW || bx0 <= -IW) continue;
+      g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH);
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
         const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
         for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; g.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) g.fillRect(bx0 + b.x + c * b.pitch[0], b.y + row * b.pitch[1], b.cell[0], b.cell[1]); }

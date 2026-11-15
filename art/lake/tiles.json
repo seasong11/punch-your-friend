@@ -199,13 +199,33 @@
     "w": 16,
     "h": 16
    }
+  },
+  "wall": {
+   "frame": {
+    "x": 0,
+    "y": 32,
+    "w": 16,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 16
+   }
   }
  },
  "meta": {
   "image": "tiles.png",
   "size": {
    "w": 80,
-   "h": 32
+   "h": 48
   },
   "scale": "1"
  }

@@ -240,6 +240,17 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   grandfather clock `gclock`). Wardrobe and clock are 160 high and get a crate as a step. Solid kinds are sized by `FIT.house`;
   `lamp`, `vase`, `candle_table` and `rug` are `deco` (the lamp only behind an armchair, vases and candles on furniture), because
   anything that stands free on the floor has to be solid. The house skips the chunks, so rooms keep their names.
+  Two floors (Daniel, 2026-11-15: the house backdrop is a three-storey cross-section at human scale, a storey is 320 px; "the two
+  layers design need ladders or stairs to guide players to go up and down"): every other generated room (`two`) has `stairs` up,
+  five `floor` planks at height 320 (the painted floor line; `plat`, 2 hp, a dead plank is drawn as a dark hole) and `stairs` down.
+  `stairs` are one-way ramps: a `plat` prop with `rise` (+1 up to the right, -1 to the left), height from `stairH` in `surfAt`;
+  我 walks up from the foot or passes underneath. The attic (640) is not reachable and the art thread's `ladder` sprites are not used.
+  Volcano: third screen, pillar hop (`box` pillars 64 to 112 high, 208 apart, a `sign` shelf). Snow: third screen, a gully under `leaf`
+  ledges. Space deck: cargo stacks. `OWN_` in `chunkList` lists the sections that skip the LDtk blocks: only the rooftop run takes them.
+  Lake (Daniel: no city above the water, 90% under water, no boats): layers `bg_sky_b` / `bg_far_b` with the waterline 22 art px from
+  the top, `water.top = FLOOR - 88`, taller ruins. The dive screen still shows the city behind its pond.
+  Bamboo backdrop: `bg_*_long` layers, 1200 art px wide (`artBack` wraps a layer at its own width); `leaf` planks use `roof_*` tiles.
+  Tower climb stairs stay the original `stair_step` (Daniel rejected the station-style stairs; never wired).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
