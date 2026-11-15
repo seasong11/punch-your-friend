@@ -1211,10 +1211,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props, deco };
   }
   function genCourt(b) { /* the dojo as a temple compound (Daniel, 2026-11-15: "separate an entire dojo into different buildings. people enter the garden and can go to the rooftop by (you create)"; references: a red-walled courtyard, a torii with pines and a pavilion, a koi pond with an arched bridge). The way up is Claude's proposal: a stone step, the pavilion's two roof tiers, a cherry tree, a pine on a stone terrace, then the end of the next hall, whose eave is the hall roof (640). Each hop is at most 144. On the ground 我 goes over the bridge and on into the hall */
-    const props = [], inv = (x, w, h) => props.push({ k: 'inv', plat: 1, raw: 1, x, w, h }); /* invisible one-way walk lines on drawn scenery */
-    props.push({ k: 'rock', x: 570, w: 100, h: 112 }, { k: 'rock', x: 1300, w: 200, h: 112 });
-    inv(836, 432, 224); inv(836, 160, 320); inv(1120, 200, 360); inv(1300, 220, 500); inv(1456, 304, 640);
-    const deco = [['koi_pond', 280, -36], ['arch_bridge', 280, 0], ['pavilion', 836, 0], ['cherry_tree', 1120, 0], ['stone_lantern', 160 + (b % 2) * 1020, 0], ['pine', 1300, 112], ['hall_end', 1456, 0]];
+    const props = [], inv = (x, w, h, h2) => props.push({ k: 'inv', plat: 1, raw: 1, x, w, h, h2 }); /* invisible one-way walk lines on drawn scenery; h2 = height at the right end (a sloping roof) */
+    props.push({ k: 'rock', x: 570, w: 100, h: 112 }, { k: 'rock', x: 1080, w: 200, h: 80 });
+    inv(836, 560, 236); inv(836, 380, 288); inv(836, 120, 336); inv(1080, 220, 466); inv(1190, 100, 484); inv(1284, 88, 484, 532); inv(1364, 72, 532, 640); inv(1504, 208, 640);
+    const deco = [['koi_pond', 280, -36], ['arch_bridge', 280, 0], ['cherry_tree', 120 + (b % 2) * 300, 0], ['pavilion', 836, 0], ['stone_lantern', 1240, 0], ['pine', 1080, 80], ['hall_end', 1392, 0, 1]];
     return { name: 'TEMPLE GARDEN ' + b, sec: 'dojo', outdoor: 1, court: 1, tall: 1, arch: [40, 480], props, deco };
   }
   function genDojo(n, hall) {
@@ -1537,7 +1537,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const stairH = (p, x, half) => Math.round(p.h * clamp(((x - p.x) * p.rise + (half || 0)) / p.w + 0.5, 0, 1)); // `rise` props are one-way stairs: +1 climbs to the right, -1 to the left; 我 walks up from the foot or passes underneath
   function surfAt(x, half, y) { // with y: one-way platforms (beams) only count once 我 is on or above them
     let g = ROOMS[R.i].void ? -999 : rampAt(x); half = half || 0;
-    for (const p of R.props) if (!p.dead && !p.open && !p.ghost && Math.abs(x - p.x) < p.w / 2 + half && !(p.thru && y == null && P.y < p.h - 20)) { /* `thru`: a roof that only counts for fists while 我 stands on it, so the hall below is not one big shelter */ const ph = p.rise ? stairH(p, x, half) : p.h; if (!p.plat || y == null || ph <= y + STEP_UP) g = Math.max(g, ph); }
+    for (const p of R.props) if (!p.dead && !p.open && !p.ghost && Math.abs(x - p.x) < p.w / 2 + half && !(p.thru && y == null && P.y < p.h - 20)) { /* `thru`: a roof that only counts for fists while 我 stands on it, so the hall below is not one big shelter */ const ph = p.rise ? stairH(p, x, half) : p.h2 != null ? Math.round(p.h + (p.h2 - p.h) * clamp((x - p.x) / p.w + 0.5, 0, 1)) : p.h; if (!p.plat || y == null || ph <= y + STEP_UP) g = Math.max(g, ph); }
     return g;
   }
   // ----- rough sections: helpers -----
@@ -2379,7 +2379,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x / PX) * PX, Math.round(y / PX) * PX, Math.round(ww), Math.round(hh)); };
     const S = (n, cx, bottom, flip) => { const im = A.ok(n); if (!im) return false; if (flip) { ctx.save(); ctx.translate(Math.round(cx / PX) * PX * 2, 0); ctx.scale(-1, 1); } spr(im, cx, bottom - im.naturalHeight * PX); if (flip) ctx.restore(); return true; };
     const cracks = () => { if (hurt) { R_('#181425', p.x - 12, t + 4, 4, 12); R_('#181425', p.x + 16, t, 4, 16); R_('#181425', p.x - 4, t + 12, 4, 8); } };
-    if (k === 'inv') return true; /* a walk line on scenery that is already drawn (temple garden) */
+    if (k === 'inv') { /* a walk line on scenery that is already drawn (temple garden). Daniel: the route should be highlighted, but not so bold that it feels out of place: a faint dotted warm edge, with a soft glint sweeping along it now and then */
+      const sw = ((now / 1000 + p.x / 700) % 3.2) / 1.2, hx = l + w * sw;
+      for (let x = l + 8; x < l + w - 4; x += 16) { const hh = p.h2 != null ? p.h + (p.h2 - p.h) * (x - l) / w : p.h, near = sw < 1 && Math.abs(x - hx) < 28; R_(near ? '#fee761' : '#feae34', x, FLOOR - hh - 4, 4, 4); }
+      return true; }
     if (k === 'ladder') { const im = A.ok('bamboo_ladder'); if (!im) return false; for (let y = FLOOR - (p.base || 0); y > FLOOR - (p.base || 0) - p.h + 4; y -= im.naturalHeight * PX) spr(im, p.x, y - im.naturalHeight * PX); return true; }
     if (k === 'raft') { const im = A.ok('raft'), tr = A.ok('trunk'); if (!im) return false;
       if (tr) for (const sx of [l + 28, l + w - 28]) for (let y = t + 40; y < FLOOR; y += tr.naturalHeight * PX) { const hh = Math.min(tr.naturalHeight * PX, FLOOR - y); ctx.drawImage(tr, 0, 0, tr.naturalWidth, hh / PX, sx - tr.naturalWidth * PX / 2, y, tr.naturalWidth * PX, hh); } /* stilts down to the ground */
@@ -2422,7 +2425,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (sc === 'lift') { const left = rideLeft(); if (left > 0) for (let k = 0; k < 14; k++) { const x = 120 + k * 104, y = ((R.t - R.t0) * 900 + rnd(k + 4) * 900) % (FLOOR + 80) - 80; bx(x, y, 4, 56, '#8b9bb4'); }
       bx(W / 2 - 200, 60, 400, 28, '#181425'); bx(W / 2 - 196, 64, Math.round(392 * (1 - left / rm.ride) / 8) * 8, 20, left > 0 ? '#feae34' : '#63c74d');
       ctx.fillStyle = '#ffffff'; ctx.font = '16px ' + PF; ctx.textAlign = 'center'; ctx.fillText(left > 0 ? `GOING UP · ${Math.ceil(left)}s` : 'TOP FLOOR · GO', W / 2, 110); }
-    for (const [n, x, bh] of rm.deco || []) { const im = A.ok(n); if (im) spr(im, x, FLOOR - bh - im.naturalHeight * PX); } // shrine pieces and the like: decor only
+    for (const [n, x, bh, fl] of rm.deco || []) { const im = A.ok(n); if (!im) continue; if (fl) { ctx.save(); ctx.translate(2 * Math.round(x / PX) * PX, 0); ctx.scale(-1, 1); } spr(im, x, FLOOR - bh - im.naturalHeight * PX); if (fl) ctx.restore(); } /* fl = mirrored */ // shrine pieces and the like: decor only
     if (R.i === ROOMS.length - 1 || rm.gate) { // the way out: a signpost with a blinking arrow, in place of the old door
       const x = W - 110, b = FLOOR - Math.max(0, surfAt(x)), on = Math.floor(now / 350) % 2;
       bx(x - 4, b - 136, 8, 136, '#3e2731'); bx(x - 4, b - 136, 4, 136, '#733e39'); bx(x - 52, b - 148, 104, 48, '#181425'); bx(x - 48, b - 144, 96, 40, '#f77622'); bx(x - 48, b - 144, 96, 4, '#feae34'); bx(x - 48, b - 108, 96, 4, '#be4a2f');

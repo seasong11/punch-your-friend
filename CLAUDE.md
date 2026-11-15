@@ -289,8 +289,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   arched bridge). The dojo section is now DOJO HALL x3, then four times a `genCourt` TEMPLE GARDEN (`outdoor`, `court`, `tall`) followed
   by a hall of 3, 3, 3 and 2 `genDojo` screens (named HALL n · kind). Gardens use the art thread's `temple` set (`artOf` → 'temple'):
   scenery is `deco` (koi_pond, arch_bridge, pavilion, cherry_tree, stone_lantern, pine on a stone terrace, hall_end) and the walk lines
-  are invisible one-way `inv` props. The way up (Claude's proposal, every hop ≤ 144): stone step 112 → pavilion eave 224 → roof tier
-  320 → cherry crown 360 → pine crown 500 → the next hall's end eave 640, then on along that hall's `ridge`. On the ground the
+  are invisible one-way `inv` props (`h2` = height at the right end makes a slope). The way up (Claude's proposal, every hop ≤ 144),
+  fitted to the art thread's wide-eave pavilion (148x90) and hall_end (128x170, drawn flipped: deco `[sprite, x, h, 1]`): stone step 112 →
+  pavilion eaves 236 → upper tier 288 → ridge 336 → pine crown 466 (x 1080) → hall eave tip 484 → hip slope up to the ridge 640, then on
+  along the next hall's `ridge`. Route highlight (Daniel: "highlighted but not too bold"): `artProp` draws each `inv` line as a row of
+  4 px orange (#feae34) dots every 16 px, with a pale gold glint sweeping along it about every 3 s. On the ground the
   `arch` bridge is a hump in `rampAt` (physics only; `rampAt0` is the drawn ground). In a tall room, layers with no `_tall` picture sink
   as the camera rises (`artBack`, factor ≥ 0.1 fully, else 0.6). The earlier bamboo scaffold in the gardens is gone.
 - Catch and throw back (Daniel picked option A for 我's combat, 2026-11-15; the details are Claude's): a perfect block on a normal fist (not
