@@ -250,6 +250,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   Lake (Daniel: no city above the water, 90% under water, no boats): layers `bg_sky_b` / `bg_far_b` with the waterline 22 art px from
   the top, `water.top = FLOOR - 88`, taller ruins. The dive screen still shows the city behind its pond.
   Bamboo backdrop: `bg_*_long` layers, 1200 art px wide (`artBack` wraps a layer at its own width); `leaf` planks use `roof_*` tiles.
+  Tower scale (Daniel, 2026-11-15: "change the skyscraper floor height to match the player's height"): `FH = 320` (80 art px, the
+  same storey as the house; it was 200) and the tower has 18 floors (`buildClimb(18)`, was 28) so the climb is about as long as
+  before. Stairs are 640 wide and zigzag on the right (`a` = 600/680 going right, 200/280 going left), the left stays free for the
+  other ways up. Ledges come in two steps (`off` 110 and 215), wall kicks allow 3. Only stairs, ladders and hooks are bot-tested at
+  this height; ropes, pipes, the lift and the elevator are not re-tested. Older notes that say `FH` apart = 200 or 28 floors are stale.
   Tower climb stairs stay the original `stair_step` (Daniel rejected the station-style stairs; never wired).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.

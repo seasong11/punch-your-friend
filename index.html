@@ -1101,6 +1101,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // next room, and the last door ends the section. Props are solid boxes 我 can jump onto; the ones with `hp`
   // break under punches (`elec` ones spark for a second first). Both sides build the room from ROOMS; 我's page
   // owns the prop state and sends it in presence (`rm`, `pp`, `y`).
+  const FH = 320; // a tower storey: 80 art px, the same as a house storey, so floors are at the scale of 我 (Daniel, 2026-11-15)
   const JOURNEY = true, GRAV = 2600, JUMP_V = 940, STEP_UP = 14, W_ = 1600;
   // The tower is generated from a fixed seed. Inside floors each get a staircase (alternating direction), one or two
   // faster ways up from a fixed plan (ladder, hook, wall-jump shaft, ledge, rope, elevator) and pillars for cover.
@@ -1122,16 +1123,16 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         if (lv === out[0] + 3) pipes.push({ lv, n: 2, x: 600 });
         continue;
       }
-      const a = 200 + Math.floor(r() * 5) * 100, b = a + 400, right = lv % 2 === 0;
+      const right = lv % 2 === 0, a = (right ? 600 : 200) + Math.floor(r() * 2) * 80, b = a + 640; /* ten steps climb a storey over 640 px; stairs zigzag on the right, the left stays free for the other ways up */
       const st = right ? { lv, x0: a, x1: b } : { lv, x0: W_ - a, x1: W_ - b };
       stairs.push(st);
-      const lo = Math.min(st.x0, st.x1), hi = lo + 400, used = [];
+      const lo = Math.min(st.x0, st.x1), hi = lo + 640, used = [];
       let slot = lo >= 600 ? 230 : hi + 170; // the side of the floor the staircase leaves free
       for (const ch of PLAN[lv] || '') {
         const x = slot;
         if (ch === 'L') ladders.push({ lv, x });
         else if (ch === 'H') hooks.push({ lv, x });
-        else if (ch === 'G') ledges.push({ lv, x: x + 30, w: 150 });
+        else if (ch === 'G') ledges.push({ lv, x: x + 20, w: 120, off: 110 }, { lv, x: x + 150, w: 120, off: 215 }); /* two steps: a storey (320) is more than one jump (170) */
         else if (ch === 'R') ropes.push({ lv, n: 2, x });
         else if (ch === 'E') els.push({ lv, n: 2, x: x + 20 });
         else if (ch === 'S') { props.push({ k: 'pillar', wall: 1, lv, x: x - 30, w: 40, h: 0, hp: 4 }, { k: 'pillar', wall: 1, lv, x: x + 150, w: 40, h: 0, hp: 4 }); slot += 120; used.push(x + 150); }
@@ -1166,7 +1167,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'box', x: 300, w: 90, h: 80 }, ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ k: 'beam', plat: 1, x: 440 + i * 100, w: 100, h: 160, hp: 2 })),
       { k: 'dummy', x: 600, w: 60, h: 110 }, { k: 'dummy', x: 880, w: 60, h: 110 }, { k: 'dummy', x: 1140, w: 60, h: 110 }] },
     // Everything below is a rough first pass of the remaining sections (rules are placeholders to be revised).
-    { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(28) },
+    { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(18) },
     { name: 'LAKE DIVE', sec: 'lake-dive', scene: 'dive', hill: [[0, 560], [330, 560], [334, 0], [1600, 0]], water: { x0: 334, top: 200 }, props: [
       { k: 'rock', x: 760, w: 150, h: 120 }, { k: 'rock', x: 1220, w: 170, h: 170 }] },
     { name: 'TOWER LIFT', sec: 'space', music: 'elevator', scene: 'lift', ride: 14, props: [
@@ -1465,7 +1466,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const viewX = () => Math.round(VIEW.x / PX) * PX;
   const exitX = i => ROOMS[i].climb ? W_ - 40 - P.w / 2 : W_ - P.w / 2, entryX = i => ROOMS[i].climb ? 40 + P.w / 2 : P.w / 2 + 1;
   function edgeH(i, right) { // floor height at a room's left or right edge
-    const rm = ROOMS[i]; if (rm.climb) return right ? rm.climb.top * 200 : 0;
+    const rm = ROOMS[i]; if (rm.climb) return right ? rm.climb.top * FH : 0;
     const x = right ? W_ - 14 : 14; let g = rm.void ? -999 : rampAt(x, rm);
     for (const p of rm.props) if (!p.ghost && !p.plat && Math.abs(x - p.x) < p.w / 2 + 18) g = Math.max(g, p.h);
     return Math.max(0, g);
@@ -1487,7 +1488,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     R.props = ROOMS[R.i].props.map(p => ({ ...p, x0: p.x, hp0: p.hp, sparkT: 0, spinT: 0, open: false, dead: false }));
     R.t0 = role === 'me' ? S.t : R.t; driftProps();
     R.gl = [0, 0];
-    R.el = ((ROOMS[R.i].climb || {}).els || []).map(e => ({ y: e.lv * 200, st: 'idle', t: 0, stall: 0 }));
+    R.el = ((ROOMS[R.i].climb || {}).els || []).map(e => ({ y: e.lv * FH, st: 'idle', t: 0, stall: 0 }));
     P.grip = null; P.el = null; P.kt = 0;
     FX.holes = [];
   }
@@ -1540,7 +1541,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     }
     if (P.grip) { P.slide = 0; return; } // on a pipe: ↑ climbs again after a slide
     if (P.air) { // wall kick: ↑ in the air next to a shaft wall pushes off it, up and across
-      if (!cl || (P.kicks | 0) >= 2) return;
+      if (!cl || (P.kicks | 0) >= 3) return;
       const row = Math.floor((P.y + 20) / FH), wl = R.props.find(p => p.wall && !p.dead && p.lv === row && Math.abs(p.x - P.x) < 70);
       if (!wl) return;
       P.kicks = (P.kicks | 0) + 1; P.vy = 700; P.kd = P.x >= wl.x ? 1 : -1; P.kt = 0.2;
@@ -1694,7 +1695,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // A vertical section. Floors are one-way platforms FH apart, joined by stairs, ladders and hooks. Punches come
   // from the side here: a fist runs along one row until it hits a pillar or reaches 我. The view scrolls up
   // with 我 (CAMV).
-  const FH = 200, SIDE_V = 1500, WALL = 40;
+  const SIDE_V = 1500, WALL = 40;
   const CAMV = { y: 0 };
   const climbOf = () => ROOMS[R.i].climb || null;
   const outsideRow = row => { const cl = climbOf(); return !!cl && row >= cl.out[0] && row < cl.out[1]; };
@@ -1715,7 +1716,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const h = s.lv * FH + k * FH;
       if (h <= y + STEP_UP && h > g) g = h;
     }
-    for (const d of cl.ledges) { const h = d.lv * FH + 100; if (Math.abs(x - d.x) < d.w / 2 + 10 && h <= y + STEP_UP && h > g) g = h; }
+    for (const d of cl.ledges) { const h = d.lv * FH + (d.off || 100); if (Math.abs(x - d.x) < d.w / 2 + 10 && h <= y + STEP_UP && h > g) g = h; }
     for (const pl of cl.plats) { const h = platY(pl); if (Math.abs(x - pl.x) < 70 && h <= y + STEP_UP && h > g) g = h; }
     return g;
   }
@@ -2057,7 +2058,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       for (let i = 0; i <= n; i += 3) { const px = s.x0 + (i + 0.5) * d, ty = base - Math.min(n, i + 1) * rise; box(px - 2, ty - 44, 4, 44, '#c0cbdc'); }
     }
     for (const d of cl.ledges) { // a ledge halfway up: jump onto it, then up through the floor above
-      const y = yOf(d.lv * FH + 100); if (!vis(y, 40)) continue;
+      const y = yOf(d.lv * FH + (d.off || 100)); if (!vis(y, 40)) continue;
       box(d.x - d.w / 2, y, d.w, 12, '#8b9bb4'); box(d.x - d.w / 2, y, d.w, 4, '#ffffff'); box(d.x - d.w / 2, y + 8, d.w, 4, '#2ce8f5');
       box(d.x - d.w / 2 + 8, y + 12, 4, 16, '#3a4466'); box(d.x + d.w / 2 - 12, y + 12, 4, 16, '#3a4466'); box(d.x - 2, y - 100 + 12, 4, 88, '#3a4466');
     }
@@ -2685,7 +2686,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function drawNb(j, dx, dy) { // a neighbouring room, drawn beside the current one
     const sv = { i: R.i, props: R.props, gl: R.gl, el: R.el };
     R.i = j; R.props = NBP[j] || (NBP[j] = ROOMS[j].props.map(p => ({ ...p, x0: p.x, hp0: p.hp, sparkT: 0, spinT: 0, open: false, dead: false })));
-    R.gl = [0, 0]; R.el = ((ROOMS[j].climb || {}).els || []).map(e => ({ y: e.lv * 200, st: 'idle', t: 0, stall: 0 }));
+    R.gl = [0, 0]; R.el = ((ROOMS[j].climb || {}).els || []).map(e => ({ y: e.lv * FH, st: 'idle', t: 0, stall: 0 }));
     dx = Math.round(dx / PX) * PX; dy = Math.round(dy / PX) * PX;
     VIEW.nb = 1; VIEW.dy = dy; ctx.save(); ctx.translate(dx, dy); drawRoom(); ctx.restore(); VIEW.nb = 0; VIEW.dy = 0;
     Object.assign(R, sv);
