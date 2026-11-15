@@ -294,7 +294,7 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   (128x170, drawn flipped: deco `[sprite, x, h, 1]`) eave tip 484 → hip slope up to the ridge 640, then on along the next hall's `ridge`.
   The trees (Karsiori's CC0 pack via the art thread, still under review) are decoration only and carry no step. Route highlight
   (Daniel: "highlighted but not too bold", then "instead of the yellow dot, use a cover of falling leaves or snows"): `artProp` draws
-  each `inv` line with an uneven cover of fallen cherry petals and a few petals drifting down onto it; `inv` lines are split so
+  each `inv` line with an uneven cover of fallen cherry petals and a few petals drifting down onto it (Daniel: "keep it for now"); `inv` lines are split so
   petals only lie on edges that show. On the ground the
   `arch` bridge is a hump in `rampAt` (physics only; `rampAt0` is the drawn ground). In a tall room, layers with no `_tall` picture sink
   as the camera rises (`artBack`, factor ≥ 0.1 fully, else 0.6). The earlier bamboo scaffold in the gardens is gone.
