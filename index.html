@@ -1315,6 +1315,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       extra = { water: { x0: -1, top: 2000 }, vac: 1, enterY: 60 };
       for (let x = pk(r, 380, 460, 40); x < 1400; x += pk(r, 360, 460, 50)) { props.push({ k: 'rock', x, w: pk(r, 130, 170, 20), h: pk(r, 160, 300, 70) }); if (r() < 0.6) props.push({ k: 'ufo', plat: 1, x: x + 200, w: 180, h: pk(r, 260, 340, 40), drift: [pk(r, 60, 120, 30), 0.7, +(r() * 6).toFixed(1)] }); }
     } else { for (let x = pk(r, 380, 460, 40), k = 0; x < 1380; x += pk(r, 240, 320, 40), k++) props.push(k % 3 === 1 ? { k: 'pod', x, w: 120, h: 130, hp: 3 } : { k: 'laser', ghost: 1, raw: 1, x, w: 36, h: 0, off: +(r() * 3).toFixed(1) }); }
+    if (name === 'MOTHERSHIP CORE') { /* the finale (Claude's proposal): a shield wall bars the exit until the three power cells are gone. Only fists break a cell (2 hits), so 我 lures them; a cell also burns out by itself, one notch every 10 s */
+      props.length = 0; for (const x of [480, 800, 1120]) props.push({ k: 'cell', x, w: 72, h: 88, hp: 3, elec: 1 });
+      props.push({ k: 'laser', ghost: 1, raw: 1, x: 1400, w: 36, h: 0, off: 0, lock: 1 }); extra = { core: 1 };
+    }
     return { name: name || { deck: 'LANDING DECK', aster: 'ASTEROID FIELD', walk: 'SPACEWALK', laser: 'LASER DECK' }[kind] + ' ' + n, sec: 'space', scene: 'space', grav: 0.5, props, ...extra };
   }
   const B_ = n => BASE.find(r => r.name === n), seq = (n, f) => Array.from({ length: n }, (_, i) => f(i + 1));
@@ -1523,7 +1527,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const inWater = () => { const w = ROOMS[R.i].water; return !!w && P.x > w.x0 && P.y < w.top; };
   const lavaAt = x => (ROOMS[R.i].lava || []).some(z => x > z[0] && x < z[1]);
   const rideLeft = () => ROOMS[R.i].ride ? Math.max(0, ROOMS[R.i].ride - (R.t - R.t0)) : 0;
-  const laserOn = p => ((R.t + p.off) % 3) < 1.6; // laser gates: on 1.6s, off 1.4s
+  const laserOn = p => p.lock ? R.props.some(q => q.k === 'cell' && !q.dead) : ((R.t + p.off) % 3) < 1.6; // laser gates: on 1.6s, off 1.4s
   function fallBoard(p) { p.fallen = 1; p.ghost = 0; p.plat = 1; p.x = p.bx; p.w = p.bw; p.h = p.bh; p.hp = null; } // a billboard drops across the gap as a bridge
   function driftProps() { for (const p of R.props) if (p.drift) p.x = p.x0 + Math.sin(R.t * p.drift[1] + p.drift[2]) * p.drift[0]; }
   function spawnAt(x) { // put 我 at the start of a room
@@ -1607,6 +1611,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const vt = R.props.find(p => p.k === 'vent' && P.x > p.x - 34 && P.x < p.x + 62 && Math.abs(P.y - p.h) < 6);
       if (vt) { P.vy = 1180; P.air = true; vt.spinT = 0.3; sfx.dash(); if (!reduce) burst(vt.x, FLOOR - vt.h - 4, 8, ['#ffffff', '#c0cbdc'], 260, 1, 300, 4); }
     }
+    if (S.st === 'play') for (const p of R.props) if (p.lock && laserOn(p) && P.x > p.x - 40 && S.hurt > 0) { P.x = p.x - 40; P.vx = 0; } /* the core's shield is a wall even while 我 blinks after a hit */
     if (S.st === 'play' && S.hurt <= 0) for (const p of R.props) if (p.k === 'laser' && laserOn(p) && Math.abs(P.x - p.x) < p.w / 2 + 16) { // a laser gate: one heart, pushed back
       P.x = Math.max(P.w / 2, p.x - 80); P.vx = 0; loseHeart('ZAP!', '#f6757a'); break;
     }
@@ -1636,6 +1641,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       S.lives = 3; S.startRm = R.i; hud(S.score, 3);
       const inf = SEC_INFO[secOf(R.i)] || ['NEXT!', '', '#feae34'];
       banner(inf[0], 'Hearts refilled · ' + inf[1], inf[2]);
+    } else if (ROOMS[R.i].core) { S.startRm = R.i; banner('THE CORE!', 'A shield bars the exit · lure fists onto the 3 power cells to break it', '#f6757a');
     } else if (ROOMS[R.i].cp) { S.startRm = R.i; banner('CHECKPOINT', 'A lost turn restarts from here', '#63c74d'); }
     spawnAt(entryX(R.i)); P.lad = null;
     { const y1 = py0 - pairD(R.i - 1); if (y1 > P.y + 2 && !climbOf()) { P.y = y1; P.air = true; P.wet = inWater(); } } // keep 我's height across the seam
@@ -1672,7 +1678,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (p.hp <= 0) { if (p.k === 'board') fallBoard(p); else if (p.elec) p.sparkT = 1; else p.dead = true; }
     }
   }
-  function tickProps(dt) { driftProps(); for (const p of R.props) { if (p.spinT > 0) p.spinT -= dt; if (p.sparkT > 0) { p.sparkT -= dt; if (p.sparkT <= 0) p.dead = true; } } }
+  function tickProps(dt) { driftProps();
+    if (role === 'me' && ROOMS[R.i] && ROOMS[R.i].core) { /* the core: cells burn out slowly by themselves, and the shield falls with the last one */
+      for (const p of R.props) if (p.k === 'cell' && !p.dead && !(p.sparkT > 0)) { p.ct = (p.ct || 0) + dt; if (p.ct >= 10) { p.ct = 0; p.hp -= 1; propFx(p, p.hp <= 0); if (p.hp <= 0) p.sparkT = 1; } }
+      const lk = R.props.find(p => p.lock); if (lk && !lk.down && !laserOn(lk)) { lk.down = 1; banner('SHIELD DOWN!', 'Run for the exit', '#63c74d'); sfx.levelup(); }
+    } for (const p of R.props) { if (p.spinT > 0) p.spinT -= dt; if (p.sparkT > 0) { p.sparkT -= dt; if (p.sparkT <= 0) p.dead = true; } } }
   const propCode = p => p.dead ? 0 : p.fallen ? 5 : p.sparkT > 0 ? -1 : p.open ? 7 : p.spinT > 0 ? 6 : p.hp == null ? 9 : p.hp;
   // 兄弟 side: follow 我's room and prop state.
   function syncRoom(tp, dt) {
@@ -2361,7 +2371,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (k === 'floor') { tileRow(A, l, t, w); cracks(); return true; }
     if (k === 'leaf' || k === 'beam' || k === 'sign') { if (k === 'beam') { R_('#3e2731', l + 8, t + 24, 8, h - 24); R_('#3e2731', l + w - 16, t + 24, 8, h - 24); } tileRow(A, l, t, w, k === 'leaf' && 'roof'); cracks(); return true; }
     if (k === 'aster') { tileBlock(A, l, t, w, 64); if (w > 150) tileBlock(A, l + 32, t + 64, w - 64, 32); return true; }
-    if (k === 'laser') { const ph = (R.t + p.off) % 3, on = ph < 1.6, warn = ph > 2.5;
+    if (k === 'laser') { const ph = (R.t + p.off) % 3, on = laserOn(p), warn = !p.lock && ph > 2.5;
       if (on) { R_('#f6757a', p.x - 12, 28, 24, FLOOR - 56); R_('#ffffff', p.x - 4, 28, 8, FLOOR - 56); } else if (warn) for (let y = 28 + (Math.floor(now / 60) % 2) * 12; y < FLOOR - 24; y += 24) R_('#f6757a', p.x - 2, y, 4, 12);
       S('laser', p.x, 32); S('laser', p.x, FLOOR); return true; }
     if (k === 'rock' || k === 'slab' || k === 'crate' || k === 'box' || k === 'pod' || k === 'hedge' || k === 'pot') { if ((k === 'rock') && !p.hh && Math.abs(w - 96) < 20 && Math.abs(h - 64) < 20 && S('rock', p.x, t + h)) return true; tileBlock(A, l, t, w, (p.hh || h) + (p.hh ? 0 : 0)); cracks(); return true; }
@@ -2478,7 +2488,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       return;
     }
     if (p.k === 'laser') { // a laser gate: steady beam, or a thin flicker just before it fires
-      const ph = (R.t + p.off) % 3, on = ph < 1.6, warn = ph > 2.5;
+      const ph = (R.t + p.off) % 3, on = laserOn(p), warn = !p.lock && ph > 2.5;
       R_('#3a4466', p.x - 20, 0, 40, 20); R_('#f6757a', p.x - 8, 20, 16, 8); R_('#3a4466', p.x - 20, FLOOR - 12, 40, 12); R_('#f6757a', p.x - 8, FLOOR - 20, 16, 8);
       if (on) { R_('#f6757a', p.x - 12, 28, 24, FLOOR - 48); R_('#ffffff', p.x - 4, 28, 8, FLOOR - 48); }
       else if (warn) for (let y = 28 + (Math.floor(performance.now() / 60) % 2) * 12; y < FLOOR - 24; y += 24) R_('#f6757a', p.x - 2, y, 4, 12);
@@ -2492,6 +2502,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (p.k === 'pod') { // cargo pod: cover in the space arena
       R_('#5a6988', l, t + 8, w, h - 8); R_('#8b9bb4', l + 8, t, w - 16, 8); R_('#c0cbdc', l + 8, t, w - 16, 4); R_('#3a4466', l + w - 12, t + 8, 12, h - 8); R_('#262b44', l + 12, t + 28, w - 24, 8);
       R_(fried || hurt ? '#e43b44' : '#2ce8f5', l + 16, t + 48, w - 40, 12); R_('#262b44', l + 12, t + h - 28, w - 24, 8); R_('#f77622', l, t + h - 12, w, 4);
+    }
+    if (p.k === 'cell') { /* power cell of the mothership core: one light per hit it can still take */
+      R_('#262b44', l, t + h - 12, w, 12); R_('#3a4466', l + 4, t + 8, w - 8, h - 20); R_('#8b9bb4', l + 8, t, w - 16, 8); R_('#c0cbdc', l + 8, t, w - 16, 4); R_('#181425', l + 16, t + 16, w - 32, h - 36);
+      for (let q = 0; q < 3; q++) R_(fried ? (Math.floor(performance.now() / 80) % 2 ? '#fee761' : '#ffffff') : q < p.hp ? '#2ce8f5' : '#3e2731', l + 20, t + h - 32 - q * 20, w - 40, 12);
+      return;
     }
     if (p.k === 'panel') { // a floating solar panel to stand on
       R_('#124e89', l, t, w, 16); R_('#2ce8f5', l, t, w, 4); R_('#0099db', l, t + 12, w, 4); for (let x = l + 20; x < l + w; x += 28) R_('#262b44', x, t, 4, 16);

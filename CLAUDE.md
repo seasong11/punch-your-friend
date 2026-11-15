@@ -273,6 +273,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   m 5, three roofs stepping up 90 each, then a cable down. `rooftop-jumps` is in `OWN_`, so no section takes LDtk blocks any more
   (the file is still fetched; `?gen=1` behaves the same as the default except for the map mode flag).
   Tower climb stairs stay the original `stair_step` (Daniel rejected the station-style stairs; never wired).
+- Core finale (Claude's proposal, 2026-11-15, awaiting Daniel's word): MOTHERSHIP CORE (`core: 1`) has three `cell` props (power cells, solid, 88 high,
+  3 hp, `elec`) and a `lock` laser at x 1400 that stays on while any cell lives (`laserOn`; it is a wall even while 我 blinks after a hit).
+  Only fists wear a cell down, so 我 lures them onto the cells; a cell also loses a notch by itself every 10 s (`tickProps`, `p.ct`), so
+  a round cannot stall. Banners THE CORE! / SHIELD DOWN!; entering the core is a checkpoint. Baiting clears it in about 20 s, waiting in 31 s.
+  Bamboo sprites were resized by the art thread (torii 112x126, lantern 22x52, statue 18x34, shroom 8x7; new `rabbit`, `bird`, not placed).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
