@@ -2323,7 +2323,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   const ROOF_CACHE = new Map();
   function roofArt(A, p, t) { // a brick building from the tile set: cap row, walls, one window grid per building, a belt course under each floor
-    const aw = Math.round(p.w / PX), ah = Math.ceil((H - t) / PX) + 4, key = aw + '|' + ah + '|' + Math.round(p.x0 == null ? p.x : p.x0);
+    const aw = Math.round(p.w / PX), ah = Math.ceil((H - t) / PX) + 180 /* well below the screen: a neighbouring screen can be drawn higher up */, key = aw + '|' + ah + '|' + Math.round(p.x0 == null ? p.x : p.x0);
     let cv = ROOF_CACHE.get(key);
     if (!cv) {
       if (ROOF_CACHE.size > 60) ROOF_CACHE.clear();
