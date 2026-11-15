@@ -291,6 +291,10 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   the way takes one hit (`throwHit`: billboards fall, dummies spin, `hp` props crack, power cells too), +1. Throws live in `S.throws`
   (`tickThrows`); presence `hd` / `tw` let the 兄弟 side draw them. The existing 反震 2.5 s stun on a perfect block is unchanged.
   New characters 接 自 己 砸 were added to the font subset. `?dbg=1` also exposes `parry`, `bro()` and `bros()`.
+- One sun or moon per level (Daniel, 2026-11-15: backgrounds showed several; the sky body should follow the player at a slower rate,
+  like the real sky): each set may have `art/<set>/sky_body.png`; `skyBody` (called from `artBack` right after the first, screen-fixed
+  layer) draws it once, never tiled, drifting from 78% to 28% of the screen width over the whole section (`secOf` range) and sinking
+  slightly as a tall room's camera rises. The art thread removes the suns and moons baked into the bg_* layers and exports the sprites.
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other

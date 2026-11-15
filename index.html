@@ -2328,7 +2328,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const A = ART[sec] = { img: {}, frames: null, ok: n => { const im = A.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } };
     if (location.protocol === 'file:' || /[?&]art=0/.test(location.search)) return;
     const get = (n, f) => { const im = new Image(); im.src = 'art/' + sec + '/' + f; A.img[n] = im; };
-    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of (SETS[sec] || {}).V || []) get(n + '_b', n + '_b.png'); for (const n of (SETS[sec] || {}).T || []) get(n + '_tall', n + '_tall.png'); /* _b = a second look, used on every other screen */ for (const n of sprites) get(n, 'sprites/' + n + '.png');
+    get('tiles', 'tiles.png'); get('sky_body', 'sky_body.png'); /* the one sun or moon of the level, drawn by artBack */ for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of (SETS[sec] || {}).V || []) get(n + '_b', n + '_b.png'); for (const n of (SETS[sec] || {}).T || []) get(n + '_tall', n + '_tall.png'); /* _b = a second look, used on every other screen */ for (const n of sprites) get(n, 'sprites/' + n + '.png');
     fetch('art/' + sec + '/tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { A.frames = {}; for (const k in d.frames) A.frames[k] = d.frames[k].frame; } }).catch(() => {});
   }
   for (const n in SETS) loadArt(n, SETS[n].S);
@@ -2434,6 +2434,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, Math.round((p.x - p.w / 2) / PX) * PX, Math.round(t / PX) * PX, aw * PX, ah * PX); ctx.imageSmoothingEnabled = sm;
   }
   let NIGHT = null, DUSK = null;
+  function skyBody(A, g, AW, AH) { /* one sun or moon per level (Daniel, 2026-11-15): never tiled; it drifts slowly across the sky as 我 goes through the section, like the real sky */
+    const im = A.ok('sky_body'); if (!im) return;
+    const gi = VIEW.gi != null ? VIEW.gi : R.i, sc = secOf(gi); let a = gi, b = gi; while (a > 0 && secOf(a - 1) === sc) a--; while (b < ROOMS.length - 1 && secOf(b + 1) === sc) b++;
+    const p = clamp((gi - a + clamp(viewX() / W_, 0, 1)) / (b - a + 1), 0, 1);
+    g.drawImage(im, Math.round(AW * 0.78 - p * AW * 0.5 - im.naturalWidth / 2), Math.round(AH * 0.12 + Math.max(0, camY()) / PX * 0.15));
+  }
   function artBack(sec, dusk, skip) { // backdrop layers of a set. `dusk` = [h0, h1]: fade in by dither between those heights (the climb's last floors); `skip` = a layer to leave out
     const A = ART[sec], LS = (SETS[sec] || {}).L; if (!A || !LS || !LS.length || LS.some(([n]) => !A.ok(n))) return false;
     const m = ctx.getTransform(), sl = -m.e / m.a, st = -m.f / m.d, gx = (VIEW.gi != null ? VIEW.gi : R.i) * W_ + viewX(), sm = ctx.imageSmoothingEnabled, AW = W / PX, AH = H / PX;
@@ -2442,7 +2448,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!NIGHT) { NIGHT = document.createElement('canvas'); NIGHT.width = AW; NIGHT.height = AH; }
     const g = NIGHT.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, AW, AH); g.imageSmoothingEnabled = false;
     const sp = A.win && !reduce ? sfx.spectrum(24) : null;
-    LS.forEach(([n, f]) => { if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
+    LS.forEach(([n, f], li) => { if (li === 1) skyBody(A, g, AW, AH); if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
       const bx0 = off + k * IW; if (bx0 >= AW || bx0 <= -IW) continue;
       { const tl = f !== 1 && A.ok(n + '_tall'); if (tl) g.drawImage(tl, bx0, AH - tl.naturalHeight + clamp(Math.round(camY() / PX), 0, tl.naturalHeight - AH), IW, tl.naturalHeight); else g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH); }
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
