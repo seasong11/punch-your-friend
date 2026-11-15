@@ -1432,7 +1432,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [160, 128, 'tv'], wardrobe: [96, 160, 'wardrobe'], shelf: [128, 128, 'shelf'], armchair: [96, 96, 'armchair'], chair: [48, 80, 'chair'], stove: [80, 112, 'stove'], gclock: [56, 160, 'clock'], plant: [96, 128, 'plant'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
     dojo: { box: [104, 136, 'drum'] /* no crates in the dojo (Daniel questioned them, 2026-11-15): every dojo `box` is a drum */, dummy: [72, 150, 'dummy'] /* drawn 184 tall at the scale of 我, but it blocks only up to 150 so one jump clears it */, drum: [104, 136, 'drum'] }, bamboo: { shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
-  function fitProps(list) { for (const rm of list) { if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
+  function fitProps(list) { for (const rm of list) { if (rm.sec === 'dojo' && !rm.tall) { rm.tall = 1; rm.props = (rm.props || []).concat([{ k: 'ridge', plat: 1, thru: 1, raw: 1, x: 800, w: 1700, h: 640 }, { k: 'stalk', ghost: 1, x: 170, w: 24, h: 330, boost: 1900 }]); } /* the dojo roof: a ridge to run along, and a bamboo stalk by the entrance that flings 我 up to it (Claude's proposal for the way up) */ if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
     SEED = (seed >>> 0) % 1000000; MODE = mode ? 1 : 0;
     let list = [
@@ -1511,7 +1511,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const stairH = (p, x, half) => Math.round(p.h * clamp(((x - p.x) * p.rise + (half || 0)) / p.w + 0.5, 0, 1)); // `rise` props are one-way stairs: +1 climbs to the right, -1 to the left; 我 walks up from the foot or passes underneath
   function surfAt(x, half, y) { // with y: one-way platforms (beams) only count once 我 is on or above them
     let g = ROOMS[R.i].void ? -999 : rampAt(x); half = half || 0;
-    for (const p of R.props) if (!p.dead && !p.open && !p.ghost && Math.abs(x - p.x) < p.w / 2 + half) { const ph = p.rise ? stairH(p, x, half) : p.h; if (!p.plat || y == null || ph <= y + STEP_UP) g = Math.max(g, ph); }
+    for (const p of R.props) if (!p.dead && !p.open && !p.ghost && Math.abs(x - p.x) < p.w / 2 + half && !(p.thru && y == null && P.y < p.h - 20)) { /* `thru`: a roof that only counts for fists while 我 stands on it, so the hall below is not one big shelter */ const ph = p.rise ? stairH(p, x, half) : p.h; if (!p.plat || y == null || ph <= y + STEP_UP) g = Math.max(g, ph); }
     return g;
   }
   // ----- rough sections: helpers -----
@@ -1560,7 +1560,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (ei >= 0) { P.el = ei + 1; R.el[ei].st = 'up'; P.vx = 0; S.blockT = 0; sfx.warn(); return; }
     }
     { const stk = !cl && R.props.find(p => p.k === 'stalk' && Math.abs(P.x - p.x) < 64); // ↑ at a bamboo stalk: it bends and flings 我 high
-      if (stk) { stk.spinT = 0.5; P.vy = 1280; P.air = true; S.blockT = 0; sfx.dash(); if (!reduce) burst(P.x, FLOOR - P.y - 3, 8, ['#63c74d', '#ffffff'], 200, 0.8, 400, 4); return; } }
+      if (stk) { stk.spinT = 0.5; P.vy = stk.boost || 1280; P.air = true; S.blockT = 0; sfx.dash(); if (!reduce) burst(P.x, FLOOR - P.y - 3, 8, ['#63c74d', '#ffffff'], 200, 0.8, 400, 4); return; } }
     P.vy = JUMP_V * (cl && cl.space ? 0.8 : 1); P.air = true; S.blockT = 0; P.kicks = 0;
     if (!reduce) burst(P.x, FLOOR - P.y - 3, 6, ['#c9b6de', '#fff4e0'], 120, 0.5, 300, 4);
     sfx.whoosh();
@@ -2131,7 +2131,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   const camY = () => Math.round((CAMV.y + VIEW.oy + VIEW.dy) / PX) * PX;
   function camFollow(h, dt) {
-    const cl = climbOf(), target = cl ? clamp(h - 170, 0, cl.top * FH - 170) : 0;
+    const cl = climbOf(), tall = !cl && ROOMS[R.i].tall, target = cl ? clamp(h - 170, 0, cl.top * FH - 170) : tall ? clamp(h - 330, 0, 896) : 0; /* `tall` rooms (the dojo): the view rises with 我 onto the roof, up to one extra screen (Daniel, 2026-11-15) */
+    if (tall && CAMV.rm !== R.i) CAMV.rm = R.i; /* keep the height across a seam between two tall rooms */
+    if (tall) CAMV.y += (target - CAMV.y) * Math.min(1, dt ? dt * 6 : 1); else
     if (!cl || CAMV.rm !== R.i) { CAMV.y = target; CAMV.rm = R.i; }
     else CAMV.y += (target - CAMV.y) * Math.min(1, dt * 8);
     VIEW.oy *= Math.pow(0.006, dt); if (Math.abs(VIEW.oy) < 2) VIEW.oy = 0;
@@ -2288,7 +2290,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock'] },
-    dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum'], V: ['bg_mid'] },
+    dojo: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum'], V: ['bg_mid'], T: ['bg_sky', 'bg_far'] /* T: layers with a `_tall` file, one more screen of picture above for when the view rises */ },
     house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
@@ -2299,7 +2301,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const A = ART[sec] = { img: {}, frames: null, ok: n => { const im = A.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } };
     if (location.protocol === 'file:' || /[?&]art=0/.test(location.search)) return;
     const get = (n, f) => { const im = new Image(); im.src = 'art/' + sec + '/' + f; A.img[n] = im; };
-    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of (SETS[sec] || {}).V || []) get(n + '_b', n + '_b.png'); /* _b = a second look, used on every other screen */ for (const n of sprites) get(n, 'sprites/' + n + '.png');
+    get('tiles', 'tiles.png'); for (const [n] of (SETS[sec] || SETS.rooftop).L) get(n, n + '.png'); for (const n of (SETS[sec] || {}).V || []) get(n + '_b', n + '_b.png'); for (const n of (SETS[sec] || {}).T || []) get(n + '_tall', n + '_tall.png'); /* _b = a second look, used on every other screen */ for (const n of sprites) get(n, 'sprites/' + n + '.png');
     fetch('art/' + sec + '/tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { A.frames = {}; for (const k in d.frames) A.frames[k] = d.frames[k].frame; } }).catch(() => {});
   }
   for (const n in SETS) loadArt(n, SETS[n].S);
@@ -2345,11 +2347,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (p.sparkT > 0 && Math.floor(now / 80) % 2) { R_('#fee761', p.x - 20, t + 8, 8, 8); R_('#ffffff', p.x + 8, t + 20, 8, 8); R_('#fee761', p.x, t - 8, 4, 12); }
       cracks(); return true;
     }
-    if (k === 'stalk') { const im = A.ok('stalk'); if (!im) return false; const base = FLOOR - Math.max(0, rampAt(p.x)), bend = p.spinT > 0 ? 8 : 0; for (let y = base; y > t - 40; y -= im.naturalHeight * PX) S('stalk', p.x + (y === base ? 0 : bend), y); R_('#f77622', l - 4, base - 60, w + 8, 8); R_('#feae34', l - 4, base - 60, w + 8, 4); return true; }
+    if (k === 'stalk') { const A0 = A, im = A.ok('stalk') || ART.bamboo.ok('stalk'); if (!im) return false; const S = (n, cx, bottom) => { spr(im, cx, bottom - im.naturalHeight * PX); return true; }; /* other sets borrow the bamboo stalk */ const base = FLOOR - Math.max(0, rampAt(p.x)), bend = p.spinT > 0 ? 8 : 0; for (let y = base; y > t - 40; y -= im.naturalHeight * PX) S('stalk', p.x + (y === base ? 0 : bend), y); R_('#f77622', l - 4, base - 60, w + 8, 8); R_('#feae34', l - 4, base - 60, w + 8, 4); return true; }
     if (k === 'thick') { const im = A.ok('thick'); if (!im) return false; const n = Math.max(1, Math.round(w / 80)); for (let q = 0; q < n; q++) for (let y = t + h; y > t - 60; y -= 120) S('thick', l + (q + 0.5) * w / n, y); return true; }
     if (k === 'turtle') { if (!A.ok('turtle')) return false; S('turtle', p.x - w / 2 + 64, t + 44); S('turtle', p.x + w / 2 - 64, t + 44, true); return true; }
     if (k === 'ufo') { tileRow(A, l, t, w); S('ufo', p.x, t + 52); return true; }
     if (k === 'panel') { tileRow(A, l, t, w); R_('#3a4466', p.x - 4, t + 40, 8, 20); R_(Math.floor(now / 400) % 2 ? '#2ce8f5' : '#0099db', p.x - 8, t + 60, 16, 8); return true; }
+    if (k === 'ridge') return true; /* the roof ridge is painted in the hall layer */
     if (k === 'stairs') return S('stairs', p.x, FLOOR, p.rise < 0);
     if (k === 'floor') { tileRow(A, l, t, w); cracks(); return true; }
     if (k === 'leaf' || k === 'beam' || k === 'sign') { if (k === 'beam') { R_('#3e2731', l + 8, t + 24, 8, h - 24); R_('#3e2731', l + w - 16, t + 24, 8, h - 24); } tileRow(A, l, t, w, k === 'leaf' && 'roof'); cracks(); return true; }
@@ -2410,7 +2413,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const sp = A.win && !reduce ? sfx.spectrum(24) : null;
     LS.forEach(([n, f]) => { if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
       const bx0 = off + k * IW; if (bx0 >= AW || bx0 <= -IW) continue;
-      g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH);
+      { const tl = f !== 1 && A.ok(n + '_tall'); if (tl) g.drawImage(tl, bx0, AH - tl.naturalHeight + clamp(Math.round(camY() / PX), 0, tl.naturalHeight - AH), IW, tl.naturalHeight); else g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH); }
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
         const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
         for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; g.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) g.fillRect(bx0 + b.x + c * b.pitch[0], b.y + row * b.pitch[1], b.cell[0], b.cell[1]); }

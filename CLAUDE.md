@@ -262,6 +262,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   switched off (`mixOf(n, 4, 211)`; its code stays). The DRILL screen starts with a `drum`. The set paints a roof ridge to stand on
   at art y 48, but Daniel had the stairs and ladders removed for now, so the roof is not reachable.
   No crates in the dojo (Daniel questioned the crate in the art mock, 2026-11-15): `FIT.dojo` turns every dojo `box` into a `drum`.
+  Dojo roof (Daniel, 2026-11-15: "when character goes up to the roof, the camera will go up with him. the sky background will need
+  to extend"): `fitProps` marks every dojo room `tall` and adds a `ridge` (one-way roof line at 640, `thru`: `surfAt` ignores it for
+  fists unless 我 stands on it) and a `stalk` at x 170 with `boost: 1900` that flings 我 onto the roof (the way up is Claude's proposal;
+  Daniel removed stairs and ladders). ↓ drops back through. In `tall` rooms `camFollow` raises the view with 我 (up to 896), and
+  `artBack` draws a set's `T` layers from `<name>_tall.png` (448 high, bottom-aligned, moving with the camera). Dojo `bg_far` scrolls at 0.06.
   Tower climb stairs stay the original `stair_step` (Daniel rejected the station-style stairs; never wired).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
