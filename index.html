@@ -1211,7 +1211,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props, deco };
   }
   function genDojo(n) {
-    const r = rngOf(211 + n * 13), props = [], t = mixOf(n, 5, 211);
+    const r = rngOf(211 + n * 13), props = [], t = mixOf(n, 4, 211); /* the GALLERY screen (t === 4) is off: the dojo is one tall hall again and has no stairs sprite (Daniel, via the art thread, 2026-11-15) */
     const decor = [['scroll', 230, n % 3], ['lamp', 560], ['rack', 760], ['lamp', 1080], ['scroll', 1320, (n + 1) % 3]];
     const dm = x => props.push({ k: 'dummy', x, w: 60, h: 110 });
     if (t === 0) { for (let x = 380 + pk(r, 0, 60, 20); x < 1350; x += pk(r, 240, 320, 40)) dm(x); props.push({ k: 'box', x: 250, w: 90, h: 80 }); }
@@ -1222,7 +1222,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     else if (t === 3) { /* a raised training stage (from Daniel's dojo references), a beam roof over it, a dummy guarding the way off */
       const sw = pk(r, 384, 512, 64), sx = pk(r, 520, 600, 40); props.push({ k: 'box', x: sx - 120, w: 90, h: 80 }, { k: 'crate', x: sx + sw / 2, w: sw, h: 96 });
       for (let i = 0; i < 2; i++) props.push({ k: 'beam', plat: 1, x: sx + sw / 2 - 50 + i * 100, w: 100, h: 96 + 150, hp: 2 }); dm(sx + sw + pk(r, 160, 220, 30)); }
-    else { props.push({ k: 'crate', x: pk(r, 360, 440, 40), w: 90, h: 90 }); dm(600); props.push({ k: 'box', x: 720, w: 90, h: 80 }); for (let i = 0; i < 3; i++) props.push({ k: 'beam', plat: 1, x: 820 + i * 100, w: 100, h: 160, hp: 2 }); dm(1240); }
+    else { props.push({ k: 'drum', x: pk(r, 360, 440, 40), w: 104, h: 136 }); dm(600); props.push({ k: 'box', x: 720, w: 90, h: 80 }); for (let i = 0; i < 3; i++) props.push({ k: 'beam', plat: 1, x: 820 + i * 100, w: 100, h: 160, hp: 2 }); dm(1240); }
     return { name: 'DOJO ' + ['DUMMY ROW', 'HIGH BEAM', 'DRILL', 'STAGE', 'GALLERY'][t] + ' ' + (Math.floor(n / 3) + 1), sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor, props };
   }
   // Bamboo (Claude places these from Daniel's bamboo references: mossy stone terraces, groves, a canopy above). Three kinds of
@@ -2288,7 +2288,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock'] },
-    dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum', 'stairs'], V: ['bg_mid'] },
+    dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum'], V: ['bg_mid'] },
     house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },

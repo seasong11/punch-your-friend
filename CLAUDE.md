@@ -258,6 +258,9 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   Dojo at human scale (art thread, after Daniel signed off the house art): a two-level hall, gallery beam at 320. `genDojo` has a
   fifth screen, GALLERY (`stairs` up, five `floor` planks at 320, `stairs` down, dummies and a `drum` underneath). The dummy is drawn
   184 tall but blocks only up to 150 (`FIT.dojo`), so one jump clears it. Not placed: `rack`, `bag`, `cushion`, ladders.
+  Dojo again (art thread, 2026-11-15, later the same day): ONE tall hall, no gallery and no stairs sprite. The GALLERY screen is
+  switched off (`mixOf(n, 4, 211)`; its code stays). The DRILL screen starts with a `drum`. The set paints a roof ridge to stand on
+  at art y 48, but Daniel had the stairs and ladders removed for now, so the roof is not reachable.
   Tower climb stairs stay the original `stair_step` (Daniel rejected the station-style stairs; never wired).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
