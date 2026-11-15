@@ -233,6 +233,13 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   Dojo: `genDojo` has a fourth screen, STAGE (a raised wooden stage 96 high as a wide `crate` block, two beams over it, a dummy
   after it); `chunkList` skips dojo too. `mixOf(n, m, salt)` picks the screen kind for dojo and bamboo, because `modOf` picks
   repeat in runs (neighbouring `rngOf` seeds give alike first draws); other sections still use `modOf`.
+  Lake: `genLake` rotates rock pillars with turtles, a sunken ruin (a stepped broken wall, then an arch of two columns under a
+  turtle) and a row of columns; the dive and lake screens skip the chunks too.
+  House (Daniel asked the art thread for more household objects): `genHouse` fills three spots per room from `HOUSE_SETS[name]`
+  with furniture groups (`G`: dining set, desk, reading corner, sofa, bed, crates, plant, stove, fridge, tv, shelf, wardrobe,
+  grandfather clock `gclock`). Wardrobe and clock are 160 high and get a crate as a step. Solid kinds are sized by `FIT.house`;
+  `lamp`, `vase`, `candle_table` and `rug` are `deco` (the lamp only behind an armchair, vases and candles on furniture), because
+  anything that stands free on the floor has to be solid. The house skips the chunks, so rooms keep their names.
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other

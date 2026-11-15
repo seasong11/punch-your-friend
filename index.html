@@ -1183,18 +1183,29 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const mixOf = (n, m, salt) => { if (!SEED) return n % m; let x = (SEED + Math.imul(n, 0x9E3779B9) + salt) | 0; x ^= x >>> 16; x = Math.imul(x, 0x7feb352d); x ^= x >>> 15; x = Math.imul(x, 0x846ca68b); x ^= x >>> 16; return (x >>> 0) % m; }; // like modOf, but well mixed: modOf's picks repeat in runs
   const modOf = (r, n, m) => SEED ? Math.floor(r() * m) : n % m; // which layout a generated screen uses
   const pk = (r, a, b, st) => a + Math.floor(r() * (Math.floor((b - a) / st) + 1)) * st;
+  // House (Claude places these from the art thread's furniture set, by the room's name). Three spots per room; each takes one
+  // furniture group. Anything taller than one jump (wardrobe, grandfather clock) gets a crate in front as a step.
+  const HOUSE_SETS = { 'DINING ROOM': ['dine', 'stove', 'plant', 'gclock'], PANTRY: ['fridge', 'crates', 'stove', 'table'], STUDY: ['read', 'desk', 'gclock', 'shelf'], 'GUEST ROOM': ['bed', 'wardrobe', 'plant', 'read'],
+    PLAYROOM: ['tv', 'sofa', 'crates', 'plant'], LAUNDRY: ['crates', 'wardrobe', 'table', 'plant'], WORKSHOP: ['desk', 'crates', 'shelf', 'fridge'], STOREROOM: ['crates', 'wardrobe', 'fridge', 'shelf'] };
   function genHouse(name, n) {
     const r = rngOf(101 + n * 17), sty = [['plank', ['#733e39', '#b86f50', '#3e2731']], [0, ['#265c42', '#3e8948', '#193c3e']], [0, ['#e4a672', '#ead4aa', '#b86f50']], [0, ['#5a6988', '#8b9bb4', '#3a4466']], ['block', ['#5a6988', '#8b9bb4', '#3a4466']]][n % 5];
-    const decor = [], props = [], kinds = ['pic', 'lamp', 'win', 'clock', 'lamp', 'books', 'pic'];
+    const decor = [], props = [], deco = [], kinds = ['pic', 'lamp', 'win', 'clock', 'lamp', 'books', 'pic'], P = (k, x, w, h, o) => props.push({ k, x, w, h, ...(o || {}) });
     [220, 480, 740, 1010, 1290].forEach((x, k) => { if (r() < 0.8) decor.push([kinds[(k + n) % kinds.length], x]); });
-    if (r() < 0.5) decor.push(['rug', pk(r, 400, 900, 100)]);
-    const low = [['table', 150, 64], ['side', 90, 92], ['crate', 90, 90], ['desk', 150, 64], ['box', 110, 96], ['counter', 240, 80]], tall = [['tv', 170, 196, 2, 1], ['fridge', 130, 205, 2, 1], ['wardrobe', 150, 215, 3, 0]];
-    [430, 810, 1190].forEach(x => {
-      const t = r(); x += pk(r, -40, 40, 20);
-      if (t < 0.45) { const [k, w, h] = low[Math.floor(r() * low.length)]; props.push({ k, x, w, h }); }
-      else if (t < 0.85) { const [k, w, h, hp, el] = tall[Math.floor(r() * 3)]; props.push({ k: 'side', x: x - 80, w: 90, h: 92 }, { k, x: x + 50, w, h, hp, ...(el ? { elec: 1 } : {}) }); }
-    });
-    return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props };
+    if (r() < 0.5) { const rx = pk(r, 400, 900, 100); decor.push(['rug', rx]); deco.push(['rug', rx, 0]); }
+    const G = {
+      dine: x => { P('chair', x - 100, 48, 80); P('table', x, 128, 64); P('chair', x + 100, 48, 80); deco.push(['vase', x, 64]); },
+      table: x => { P('table', x, 128, 64); deco.push(['candle_table', x - 20, 64]); },
+      desk: x => { P('desk', x, 128, 64); P('chair', x + 96, 48, 80); deco.push(['candle_table', x - 30, 64]); },
+      read: x => { deco.push(['lamp', x - 70, 0]); P('armchair', x, 96, 96); },
+      sofa: x => P('counter', x, 192, 96), bed: x => P('bed', x, 192, 56), crates: x => { P('crate', x - 32, 64, 64); P('crate', x + 32, 64, 64); if (r() < 0.5) P('box', x + 96, 64, 64); },
+      plant: x => P('plant', x, 96, 128, { hp: 1 }), stove: x => P('stove', x, 80, 112), fridge: x => P('fridge', x, 64, 128, { hp: 2, elec: 1 }), tv: x => P('tv', x, 160, 128, { hp: 2, elec: 1 }),
+      shelf: x => { P('shelf', x, 128, 128); deco.push(['vase', x + 24, 128]); },
+      wardrobe: x => { P('crate', x - 80, 64, 64); P('wardrobe', x, 96, 160, { hp: 3 }); P('crate', x + 80, 64, 64); },
+      gclock: x => { P('crate', x - 60, 64, 64); P('gclock', x, 56, 160); }
+    };
+    const set = (HOUSE_SETS[name] || HOUSE_SETS.STOREROOM).slice(); let skip = mixOf(n, 4, 101);
+    [430, 810, 1190].forEach((x, q) => { const k = set[(q + skip) % set.length]; G[k](x + pk(r, -40, 40, 20)); });
+    return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props, deco };
   }
   function genDojo(n) {
     const r = rngOf(211 + n * 13), props = [], t = mixOf(n, 4, 211);
@@ -1245,9 +1256,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return { name: 'ROOFTOP RUN ' + n, sec: 'rooftop-jumps', scene: 'roofs', void: 1, fast: 1.2, props };
   }
   function genLake(n) {
-    const r = rngOf(401 + n * 7), props = [];
+    const r = rngOf(401 + n * 7), props = [], deco = [], m = mixOf(n, 3, 401), blk = (x0, w, h) => props.push({ k: 'rock', x: x0 + w / 2, w, h });
+    if (m === 1) { /* a sunken ruin (Daniel's underwater references): a broken wall with a stepped top to swim over, then an arch that is cover */
+      let x = pk(r, 380, 460, 40); for (const h of r() < 0.5 ? [160, 288, 224] : [224, 288, 160]) { blk(x, 128, h); x += 128; }
+      const ax = pk(r, 1000, 1120, 40); blk(ax - 150, 64, 256); blk(ax + 86, 64, 256); props.push({ k: 'turtle', plat: 1, x: ax, w: 200, h: 300 }); deco.push(['statue', ax, 0]);
+    } else if (m === 2) { /* a row of columns of different heights with turtles drifting between them */
+      for (let x = pk(r, 400, 460, 30), q = 0; x < 1400; x += pk(r, 300, 360, 30), q++) { blk(x, 64, pk(r, 200, 340, 70)); if (q % 2 === 0) props.push({ k: 'turtle', plat: 1, x: x + 180, w: 200, h: pk(r, 260, 320, 30), drift: [pk(r, 40, 70, 30), +(0.6 + r() * 0.4).toFixed(2), +(r() * 6).toFixed(1)] }); }
+    } else
     for (let x = pk(r, 380, 460, 40); x < 1400; x += pk(r, 380, 520, 70)) { props.push({ k: 'rock', x, w: pk(r, 150, 190, 20), h: pk(r, 150, 300, 50) }); if (r() < 0.7) props.push({ k: 'turtle', plat: 1, x: x + 220, w: 200, h: pk(r, 230, 320, 30), drift: [pk(r, 60, 120, 30), +(0.6 + r() * 0.4).toFixed(2), +(r() * 6).toFixed(1)] }); }
-    return { name: 'LAKE ' + n, sec: 'lake', scene: 'lake', enterY: 330, water: { x0: -1, top: 470 }, props };
+    return { name: 'LAKE ' + n, sec: 'lake', scene: 'lake', enterY: 330, water: { x0: -1, top: 470 }, props, deco };
   }
   function genVolcano(n) {
     const r = rngOf(503 + n * 19), props = [], lava = [];
@@ -1374,7 +1391,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     for (let i = 0; i < gl.length;) {
       let j = i; while (j < gl.length && sk(gl[j]) === sk(gl[i])) j++;
       const sec = secOfSk[sk(gl[i])], all = sec && CHUNKS[sec] || [], pool = all.filter(c => !c.sp), fin = sec === 'Space' ? all.filter(c => c.sp && c.beats.includes('Finale')) : [];
-      if (!pool.length || sk(gl[i]) === 'bamboo' || sk(gl[i]) === 'dojo') { for (let k = i; k < j; k++) out.push(gl[k]); i = j; continue; } // bamboo, dojo: Claude's own layouts, not LDtk blocks
+      if (!pool.length || sk(gl[i]) === 'bamboo' || sk(gl[i]) === 'dojo' || sk(gl[i]) === 'lake' || sk(gl[i]) === 'house') { for (let k = i; k < j; k++) out.push(gl[k]); i = j; continue; } // house, bamboo, dojo, lake: Claude's own layouts, not LDtk blocks
       const r = rngOf(9001 + i * 37), label = sec.toUpperCase(); let last = null;
       for (let k = i; k < j; k++) {
         const n = k - i, f = fin[fin.length - (j - k)];
@@ -1391,7 +1408,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   const SEC_ART = { house: 'house', dojo: 'dojo', bamboo: 'bamboo', 'rooftop-jumps': 'rooftop', 'lake-dive': 'lake', lake: 'lake', volcano: 'volcano', snow: 'snow', space: 'space' };
   const FIT = { // props take the size of their drawn sprite (world px), so what you see is what blocks you
-    house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [128, 128, 'shelf'], wardrobe: [128, 128, 'shelf'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
+    house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [160, 128, 'tv'], wardrobe: [96, 160, 'wardrobe'], shelf: [128, 128, 'shelf'], armchair: [96, 96, 'armchair'], chair: [48, 80, 'chair'], stove: [80, 112, 'stove'], gclock: [56, 160, 'clock'], plant: [96, 128, 'plant'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
     dojo: { box: [64, 64, 'crate'], dummy: [56, 136, 'dummy'] }, bamboo: { shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
   function fitProps(list) { for (const rm of list) { if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
@@ -2250,7 +2267,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock'] },
     dojo: { L: [['bg_sky', 0], ['bg_far', 0.8], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate'], V: ['bg_mid'] },
-    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate'], V: ['bg_far'] },
+    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
     climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
