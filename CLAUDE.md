@@ -253,8 +253,8 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   Tower scale (Daniel, 2026-11-15: "change the skyscraper floor height to match the player's height"): `FH = 320` (80 art px, the
   same storey as the house; it was 200) and the tower has 18 floors (`buildClimb(18)`, was 28) so the climb is about as long as
   before. Stairs are 640 wide and zigzag on the right (`a` = 600/680 going right, 200/280 going left), the left stays free for the
-  other ways up. Ledges come in two steps (`off` 110 and 215), wall kicks allow 3. Only stairs, ladders and hooks are bot-tested at
-  this height; ropes, pipes, the lift and the elevator are not re-tested. Older notes that say `FH` apart = 200 or 28 floors are stale.
+  other ways up. Ledges come in two steps (`off` 110 and 215), wall kicks allow 3. All ways up were re-tested at
+  this height with scripted input (ropes, pipes, lift, elevator, both ledge steps, wall kicks). Older notes that say `FH` apart = 200 or 28 floors are stale.
   Dojo at human scale (art thread, after Daniel signed off the house art): a two-level hall, gallery beam at 320. `genDojo` has a
   fifth screen, GALLERY (`stairs` up, five `floor` planks at 320, `stairs` down, dummies and a `drum` underneath). The dummy is drawn
   184 tall but blocks only up to 150 (`FIT.dojo`), so one jump clears it. Not placed: `rack`, `bag`, `cushion`, ladders.
