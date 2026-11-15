@@ -2226,7 +2226,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // layers: [name, factor]. 0 = fixed to the screen, 1 = part of the room, between = parallax. S = sprites to load.
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
-    rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign'] },
+    rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign'] },
     bamboo: { L: OUT_L, S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot'] },
     lake: { L: OUT_L, S: ['turtle', 'weed', 'rock'] },
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
@@ -2316,7 +2316,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (sc === 'lift') { const left = rideLeft(); if (left > 0) for (let k = 0; k < 14; k++) { const x = 120 + k * 104, y = ((R.t - R.t0) * 900 + rnd(k + 4) * 900) % (FLOOR + 80) - 80; bx(x, y, 4, 56, '#8b9bb4'); }
       bx(W / 2 - 200, 60, 400, 28, '#181425'); bx(W / 2 - 196, 64, Math.round(392 * (1 - left / rm.ride) / 8) * 8, 20, left > 0 ? '#feae34' : '#63c74d');
       ctx.fillStyle = '#ffffff'; ctx.font = '16px ' + PF; ctx.textAlign = 'center'; ctx.fillText(left > 0 ? `GOING UP · ${Math.ceil(left)}s` : 'TOP FLOOR · GO', W / 2, 110); }
-    if (R.i === ROOMS.length - 1 || rm.gate) drawDoor(W - 110, Math.max(0, surfAt(W - 110)), true, true);
+    if (R.i === ROOMS.length - 1 || rm.gate) { // the way out: a signpost with a blinking arrow, in place of the old door
+      const x = W - 110, b = FLOOR - Math.max(0, surfAt(x)), on = Math.floor(now / 350) % 2;
+      bx(x - 4, b - 136, 8, 136, '#3e2731'); bx(x - 4, b - 136, 4, 136, '#733e39'); bx(x - 52, b - 148, 104, 48, '#181425'); bx(x - 48, b - 144, 96, 40, '#f77622'); bx(x - 48, b - 144, 96, 4, '#feae34'); bx(x - 48, b - 108, 96, 4, '#be4a2f');
+      bx(x - 28, b - 128, 36, 8, on ? '#ffffff' : '#181425'); for (let q = 0; q < 4; q++) bx(x + 8 + q * 4, b - 140 + q * 4, 4, 32 - q * 8, on ? '#ffffff' : '#181425');
+      if (R.i === ROOMS.length - 1) { ctx.fillStyle = '#fee761'; ctx.font = '16px ' + PF; ctx.textAlign = 'center'; ctx.fillText('EXIT', x, b - 160); }
+    }
     drawProps();
     if (sc === 'snow') for (let k = 0; k < 50; k++) bx((rnd(k + 3) * W + Math.sin(now / 900 + k) * 20) | 0, (now / (16 + (k % 4) * 4) + rnd(k + 7) * H) % H, 4, 4, '#ffffff');
     plate(rm); return true;
@@ -2364,7 +2369,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const l = p.x - p.w / 2, t = FLOOR - p.h, w = p.w, h = p.h, R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(ww), Math.round(hh)); };
     const hurt = p.hp != null && p.hp < p.hp0, fried = p.sparkT > 0;
     if (p.k === 'roof') { // a building top; the jump sections are made of these
-      const RA = artTiles('rooftop'); if (RA) { roofArt(RA, p, t); return; }
+      const RA = artTiles('rooftop'); if (RA) { roofArt(RA, p, t);
+        const hs = rnd(Math.round(p.x0 == null ? p.x : p.x0) * 3 + w), AN = RA.ok('antenna'), NS = RA.ok('neon_sign'); // decoration that cannot be mistaken for something to stand on or hide behind
+        if (AN && hs < 0.35 && w >= 240) spr(AN, l + 28, t - AN.naturalHeight * PX);
+        if (NS && hs > 0.7 && w >= 300 && h >= 200) spr(NS, l + w - 130, t + 36);
+        return; }
       R_('#262b44', l, t, w, H - t + 40); R_('#3a4466', l, t, 8, H - t + 40); R_('#181425', l + w - 8, t, 8, H - t + 40);
       R_('#5a6988', l - 4, t, w + 8, 8); R_('#8b9bb4', l - 4, t, w + 8, 4); R_('#2ce8f5', l + 8, t + 20, w - 16, 4); R_('#0099db', l + 8, t + 24, w - 16, 4);
       for (let y = t + 44, r = 0; y < H; y += 28, r++) for (let x = l + 20, q = 0; x < l + w - 24; x += 24, q++) R_(rnd(q * 7 + r * 13 + p.x) < 0.14 ? '#fee761' : rnd(q + r * 5 + p.x) < 0.4 ? '#3a4466' : '#181425', x, y, 12, 16);

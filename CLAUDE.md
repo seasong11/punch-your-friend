@@ -219,6 +219,9 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   `aster` platforms, half gravity), SPACEWALK x6 (`vac: 1` uses the water physics as a jetpack, drifting `ufo` plats), LASER
   DECK x8 (`laser` gates, `laserOn`: on 1.6 s of every 3 s, a touch costs a heart), MOTHERSHIP GATE and CORE (the core's
   door ends the journey). No boss or unique finale mechanic yet.
+- Daniel (2026-11-15): "the art directions of prototypes look good"; he keeps refining art in the art thread, this thread moves on.
+  In art rooms the way out is an orange signpost with a blinking arrow (in `artScene`), not `drawDoor`. Rooftops get an antenna or a
+  neon sign on the wall face by a hash of the roof (decoration must not look like something to stand on or hide behind).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
