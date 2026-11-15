@@ -1981,6 +1981,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     });
     return CITY.L;
   }
+  const BAY_ORDER = { lobby: [4, 0, 1, 'd', 4, 2, 3, 4, 0], office: [0, 4, 'd', 1, 4, 3, 2, 4, 0], site: [4, 0, 4, 'd', 1, 4, 2, 4, 3] };
   function drawClimb() {
     const cl = climbOf(), top = cl.top, yOf = h => FLOOR - h, cam = camY(), vis = (y, h) => y + h > -cam - 8 && y < H - cam + 8;
     const CA = (() => { const A = ART.climb; return A && !cl.space && SETS.climb.S.every(n => A.ok(n)) ? A : null; })();
@@ -2014,8 +2015,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         for (let x = WALL + 40; x < W - WALL - 60; x += 190) { box(x + (k % 3) * 28, y + 28, 8, 60, '#3a4466'); box(x + 16 + (k % 3) * 28, y + 44, 4, 32, '#3a4466'); }
       } else { // inside: a solid back wall in bays, with windows, doors and recesses for depth; open bays in the side walls where fists come in
         const yb = y + FH, BW = 190;
-        if (CA) { ctx.save(); ctx.beginPath(); ctx.rect(WALL, y, W - WALL * 2, FH); ctx.clip(); for (let x = WALL - 16, q = 0; x < W - WALL; x += 192, q++) { const kd = k < 2 ? 'lobby' : k < 13 ? 'office' : 'site', dr = (q * 7 + k * 13 + (k >> 1)) % 8 < 2; /* each part of the tower is its own place: lobby, offices, unfinished top; q * 3 never repeats a bay side by side */
-          spr(CA.ok(dr ? 'door_' + kd : 'bay_' + kd + '_' + (q * 3 + k) % 4) || CA.ok(dr ? 'wall_opening' : ['wall_bay', 'wall_bay_b', 'wall_bay', 'wall_bay_c', 'wall_bay_b'][(q * 3 + k * 5 + (k >> 2)) % 5]) || CA.ok('wall_bay'), x + 96, y); }; ctx.restore(); }
+        if (CA) { ctx.save(); ctx.beginPath(); ctx.rect(WALL, y, W - WALL * 2, FH); ctx.clip(); const kd = k < 2 ? 'lobby' : k < 13 ? 'office' : 'site'; /* each part of the tower is its own place: lobby, offices, unfinished top */
+          BAY_ORDER[kd].forEach((b, q) => { const x = (-8 + 48 * q) * PX; /* the art thread's bay order per floor kind, 48 art px bays from art x -8 */
+            spr(CA.ok(b === 'd' ? 'door_' + kd : 'bay_' + kd + '_' + b) || CA.ok(b === 'd' ? 'wall_opening' : ['wall_bay', 'wall_bay_b', 'wall_bay_c'][q % 3]) || CA.ok('wall_bay'), x + 96, y); }); ctx.restore(); }
         else {
         for (let x = WALL, q = 0; x < W - WALL; x += BW, q++) {
           const t = (q * 7 + k * 13 + (k >> 1)) % 8, w = Math.min(BW, W - WALL - x);
@@ -2334,7 +2336,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
     temple: { L: [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.15]], S: ['pavilion', 'arch_bridge', 'koi_pond', 'pine', 'cherry_tree', 'stone_lantern', 'hall_end', 'maple'] },
-    climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', ...['lobby', 'office', 'site'].flatMap(k => ['door_' + k, ...[0, 1, 2, 3].map(i => 'bay_' + k + '_' + i)]), 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
+    climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', ...['lobby', 'office', 'site'].flatMap(k => ['door_' + k, ...[0, 1, 2, 3, 4].map(i => 'bay_' + k + '_' + i)]), 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
   };
   const artOf = i => { const rm = ROOMS[i]; if (!rm) return null; const n = rm.climb ? 'climb' : rm.scene === 'lift' ? 'elevator' : rm.court ? 'temple' : rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']; return n && artTiles(n) ? n : null; };
   function loadArt(sec, sprites) {

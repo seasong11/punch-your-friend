@@ -282,7 +282,8 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   `mossy` rock to hop, then `raft` decks (one-way, 3 hp, 220 wide; A at 224, B at 448, C at 224, stilts drawn from `trunk`) joined by `ladder`
   props (ghost, `base`, 224 high; ↑ at the foot climbs in one go via `P.pl` in `movePlayer`, ← → lets go). Not placed: `soil_block` (now a low
   bank, would be a `hill`), `bamboo_clump`, `bamboo_fence`, `bamboo_shoot`, `stone_lantern_b`, `rabbit`, `bird`.
-  Tower wall kit v2: floors 0-1 use `bay_lobby_*` / `door_lobby`, 2-12 `bay_office_*`, 13+ `bay_site_*` (old `wall_bay*` are the fallback).
+  Tower wall kit v2: floors 0-1 use `bay_lobby_*` / `door_lobby`, 2-12 `bay_office_*`, 13+ `bay_site_*` (old `wall_bay*` are the fallback),
+  in the art thread's fixed order per kind (`BAY_ORDER`, nine 48 art px bays from art x -8, `d` = door, bay 4 = a quiet plate).
   The kit's floor props (vending, desk, lockers, cone ...) and `stair_flight` are not placed: free-standing things would have to be solid.
 - Temple compound (Daniel, 2026-11-15: "separate an entire dojo into different buildings. people enter the garden and can go to the
   rooftop by (you create)"; references: a red-walled courtyard with a zen garden, a torii with pines and a pavilion, a koi pond with an
