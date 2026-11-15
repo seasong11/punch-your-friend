@@ -190,7 +190,9 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   snow, lift progress) and is called from `drawScene` and `drawRoom`; `artProp(p)` draws props from sprites or tiles (`tileRow` for
   one-way platforms, `tileBlock` for solid blocks) and returns false for kinds it does not cover, which then use the old `drawProp`.
   `FIT` + `fitProps` (run in `buildRooms`, before the rooms are used) resize props to their sprite so what is drawn is what blocks.
-  The lake shows the rooftop night sky above the surface; the dive room is a brick roof over the lake set. `drawClimb` uses the climb
+  The lake shows the rooftop night sky above the surface; the dive room is a brick roof over the lake set. Daniel (2026-11-15): water never rises up a
+  building; the dive is a jump from the last roof (560 high) into a pond whose surface is at ground level (200 above its bed), with the
+  building standing on a bank. `fitProps` sets that hill and water on the dive room in both map modes. `drawClimb` uses the climb
   sprites (`CA`): wall bays and openings, floor slabs, pillars, stair steps. The house draws only `bg_sky` + `bg_far` (its painted furniture sits in `bg_mid`, which the game skips, because anything that
   looks like an object must be one).
   A set's `V` lists layers with a second look (`<name>_b.png`: house `bg_far_b` kitchen wall, dojo `bg_mid_b`), used on odd screens.

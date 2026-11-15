@@ -1167,7 +1167,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       { k: 'dummy', x: 600, w: 60, h: 110 }, { k: 'dummy', x: 880, w: 60, h: 110 }, { k: 'dummy', x: 1140, w: 60, h: 110 }] },
     // Everything below is a rough first pass of the remaining sections (rules are placeholders to be revised).
     { name: 'ROOFTOP CLIMB', wall: ['#181425', '#262b44', '#181425'], floor: ['#3a4466', '#262b44'], ...buildClimb(28) },
-    { name: 'LAKE DIVE', sec: 'lake-dive', scene: 'dive', hill: [[0, 420], [330, 420], [334, 0], [1600, 0]], water: { x0: 334, top: 260 }, props: [
+    { name: 'LAKE DIVE', sec: 'lake-dive', scene: 'dive', hill: [[0, 560], [330, 560], [334, 0], [1600, 0]], water: { x0: 334, top: 200 }, props: [
       { k: 'rock', x: 760, w: 150, h: 120 }, { k: 'rock', x: 1220, w: 170, h: 170 }] },
     { name: 'TOWER LIFT', sec: 'space', music: 'elevator', scene: 'lift', ride: 14, props: [
       { k: 'crate', x: 380, w: 110, h: 120, hp: 2 }, { k: 'crate', x: 800, w: 130, h: 150, hp: 3 }, { k: 'crate', x: 1220, w: 110, h: 120, hp: 2 }] },
@@ -1376,7 +1376,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [128, 128, 'shelf'], wardrobe: [128, 128, 'shelf'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
     dojo: { box: [64, 64, 'crate'], dummy: [56, 136, 'dummy'] }, bamboo: { shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
-  function fitProps(list) { for (const rm of list) { const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
+  function fitProps(list) { for (const rm of list) { if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
     SEED = (seed >>> 0) % 1000000; MODE = mode ? 1 : 0;
     let list = [
@@ -2554,8 +2554,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         ctx.save(); ctx.beginPath(); ctx.rect(wt.x0, wy, W - wt.x0, H + 400); ctx.clip(); artBack('lake'); ctx.restore();
         bx(wt.x0, wy, W - wt.x0, 4, '#ffffff'); for (let x = wt.x0 + 8; x < W; x += 48) bx(x + Math.floor(now / 300 + x) % 3 * 8, wy + 8, 24, 4, '#2ce8f5');
         ctx.save(); ctx.beginPath(); ctx.rect(wt.x0, FLOOR, W - wt.x0, H); ctx.clip(); groundArt(LA, rm); ctx.restore();
-        roofArt(RA2, { x: 165, w: 340, h: 420 }, FLOOR - 420);
-        bx(250, FLOOR - 440, 84, 8, '#f77622'); bx(326, FLOOR - 440, 8, 20, '#f77622'); // the diving board
+        const rh = rampAt(100, rm); // the last building stands on the bank; the pond's surface is at ground level
+        ctx.save(); ctx.beginPath(); ctx.rect(-80, FLOOR - rh - 400, 500, rh + 400 - wt.top); ctx.clip(); roofArt(RA2, { x: 165, w: 340, h: rh }, FLOOR - rh); ctx.restore();
+        tileBlock(LA, -960, wy, wt.x0 + 960, FLOOR - wy + 128);
+        bx(250, FLOOR - rh - 20, 84, 8, '#f77622'); bx(326, FLOOR - rh - 20, 8, 20, '#f77622'); // the diving board
       } else if (sc === 'dive') {
         const wt = rm.water, wy = FLOOR - wt.top;
         bx(wt.x0, wy, W - wt.x0, H - wy, '#124e89'); bx(wt.x0, wy + 150, W - wt.x0, H, '#262b44');
@@ -2564,7 +2566,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         bx(wt.x0, FLOOR, W - wt.x0, H - FLOOR, '#3a4466'); bx(wt.x0, FLOOR, W - wt.x0, 4, '#5a6988');
         bx(0, FLOOR - 420, 334, H, '#262b44'); bx(0, FLOOR - 420, 8, H, '#3a4466'); bx(-4, FLOOR - 420, 342, 8, '#8b9bb4'); bx(8, FLOOR - 400, 318, 4, '#2ce8f5'); bx(8, FLOOR - 396, 318, 4, '#0099db');
         for (let y = FLOOR - 372, r = 0; y < H; y += 28, r++) for (let x = 24, q = 0; x < 310; x += 24, q++) bx(x, y, 12, 16, rnd(q * 7 + r * 13) < 0.14 ? '#fee761' : rnd(q + r * 5) < 0.4 ? '#3a4466' : '#181425');
-        bx(250, FLOOR - 440, 84, 8, '#f77622'); bx(326, FLOOR - 440, 8, 20, '#f77622'); // the diving board
+        bx(250, FLOOR - 440, 84, 8, '#f77622'); bx(326, FLOOR - 440, 8, 20, '#f77622'); // the diving board (old look)
       }
     } else if (sc === 'lake') { // under water: lighter near the surface, light shafts, bubbles, weeds on the bed
       const wy = FLOOR - rm.water.top;
