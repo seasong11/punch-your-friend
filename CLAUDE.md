@@ -299,6 +299,15 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   petals only lie on edges that show. On the ground the
   `arch` bridge is a hump in `rampAt` (physics only; `rampAt0` is the drawn ground). In a tall room, layers with no `_tall` picture sink
   as the camera rises (`artBack`, factor ≥ 0.1 fully, else 0.6). The earlier bamboo scaffold in the gardens is gone.
+- Volcano and snow screens (Claude's proposals, 2026-11-15, started while Daniel picks the next task): `genVolcano` picks from five
+  screens (`mixOf(n, 5, 503)`), new: m 3 GEYSER FIELD (`geyser` props, ghost: bubble 0.8 s, erupt 1 s as a `GEY_H` 300 column, quiet
+  1.4 s, `geyserPh`; offsets 1.05 s apart; a touch while erupting costs a heart and throws 我 clear; two rocks to wait on) and m 4 CRUST
+  LAKE (`crust` one-way plates on the lava, `h0` 24; `tickCrust` sinks one over 1.4 s while 我 stands on it and floats it back over 2 s,
+  also on the 兄弟 side from 我's position; a rock in the middle). `genSnow` picks from five (`mixOf(n, 5, 601)`), new: m 3 FROZEN POND
+  (`ice` panels, one-way h 2, 1 hp: slippery while 我 stands on them (`onIce`, slow to start, slow to stop); a fist breaks a panel into a
+  hole of cold water (BRR!, one heart) that freezes over after 6 s) and m 4 LIGHT LINE (a `cable` with `lights`: the string of lights
+  from the art thread's snow mock on two `light_pole` sprites, ridden like a rooftop zip line across a valley). The art thread took the
+  light strings out of the snow backgrounds so only the real one shows. The test bot (no hazard timing) still reaches the end of snow.
 - Catch and throw back (Daniel picked option A for 我's combat, 2026-11-15; the details are Claude's): a perfect block on a normal fist (not
   如来神掌, 黄泉指 or a side fist) also catches it (`S.held`, 2 s, drawn over 我's head by `drawCaught`). ↑ (`tryJump` → `throwHeld(true)`)
   throws it up: after ~0.5 s it reaches the 兄弟 whose `aim` is nearest 我 (the practice bot when alone), whose fists lock for 3 s

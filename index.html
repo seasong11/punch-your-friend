@@ -1291,7 +1291,16 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function genVolcano(n) {
     const r = rngOf(503 + n * 19), props = [], lava = [];
-    const vm = mixOf(n, 3, 503);
+    const vm = mixOf(n, 5, 503);
+    if (vm === 3) { /* geyser field (Claude's proposal): firm ground, three geysers on a rhythm, two rocks to wait on between them */
+      const a = pk(r, 380, 440, 20); [0, 1, 2].forEach(q => props.push({ k: 'geyser', ghost: 1, raw: 1, x: a + q * 340, w: 64, h: 0, off: q * 1.05 })); /* each one erupts about a second after the one before */
+      props.push({ k: 'rock', x: a + 170, w: 96, h: 64 }, { k: 'rock', x: a + 510, w: 96, h: 64 });
+      if (r() < 0.5) { lava.push([a + 860, a + 1020]); props.push({ k: 'slab', x: a + 940, w: 80, h: 60, hp: 2 }); }
+    } else
+    if (vm === 4) { /* crust lake (Claude's proposal): cooled crusts float on the lava and sink while 我 stands on one; a rock in the middle is the only safe rest */
+      const a = pk(r, 280, 320, 20), b = a + 1040; lava.push([a, b]);
+      for (let q = 0; q < 6; q++) { const x = a + 90 + q * 172; if (q === 3) props.push({ k: 'rock', x, w: 96, h: 96 }); else props.push({ k: 'crust', plat: 1, raw: 1, x, w: 112, h: 24, h0: 24 }); }
+    } else
     if (vm === 2) { /* pillar hop (Daniel's lava references): one long lava lake, stone pillars of different heights, a floating shelf as cover */
       const a = pk(r, 300, 360, 30); let x = a + 90, h = 64, q = 0; for (; x < 1300; x += 208, q++) { props.push({ k: 'box', x, w: 96, h }); if (q === 2) props.push({ k: 'sign', plat: 1, x: x + 104, w: 192, h: h + 170 }); h = Math.max(64, Math.min(112, h + [32, -48, 32, 16, -48, 32][q % 6])); } /* low enough, and far enough apart, to get out of the lava between two of them */
       lava.push([a, x - 208 + 90]);
@@ -1302,7 +1311,19 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function genSnow(n) {
     const r = rngOf(601 + n * 23), a = pk(r, 160, 280, 40), props = []; let hill;
-    const sm = mixOf(n, 3, 601);
+    const sm = mixOf(n, 5, 601);
+    if (sm === 3) { /* frozen pond (Claude's proposal): flat, slippery ice; a fist breaks a panel into a hole of cold water that freezes over again after 6 s */
+      const a = pk(r, 260, 320, 20); hill = [[0, 0], [1180, 0], [1380, 200], [1600, 200]];
+      for (let x = a; x < 1100; x += 80) props.push({ k: 'ice', plat: 1, raw: 1, x: x + 40, w: 80, h: 2, hp: 1 });
+      props.push({ k: 'rock', snow: 1, x: a + 420, w: 96, h: 64 });
+      return { name: 'FROZEN POND ' + n, sec: 'snow', scene: 'snow', slide: 1, hill, props };
+    }
+    if (sm === 4) { /* light line (the art thread's snow mock has a string of lights on a pole; Claude's proposal: ride it down like a zip line) */
+      const a = pk(r, 160, 220, 20); hill = [[0, 0], [a, 0], [a + 260, 260], [a + 420, 260], [a + 470, 40], [a + 900, 40], [a + 1100, 240], [1600, 240]];
+      props.push({ k: 'cable', ghost: 1, raw: 1, lights: 1, x: 0, w: 0, h: 0, cx0: a + 380, cy0: 260 + 152, cx1: a + 980, cy1: 240 + 152 });
+      { const c = props[props.length - 1]; c.x = (c.cx0 + c.cx1) / 2; c.w = c.cx1 - c.cx0; }
+      return { name: 'LIGHT LINE ' + n, sec: 'snow', scene: 'snow', slide: 1, hill, props };
+    }
     if (sm === 2) { /* a gully: up, down into a sheltered dip under a snow ledge, then the long slope out */
       const g = Math.min(a, 160); /* the top must start before the big rock at 1100+ */ hill = [[0, 0], [g, 0], [g + 200, 200], [g + 320, 200], [g + 400, 120], [g + 560, 120], [g + 700, 260], [g + 760, 260], [g + 880, 380], [1600, 380]];
       props.push({ k: 'leaf', plat: 1, x: g + 440, w: 100, h: 120 + 200, hp: 2 }, { k: 'leaf', plat: 1, x: g + 540, w: 100, h: 120 + 200, hp: 2 });
@@ -1545,6 +1566,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const inWater = () => { const w = ROOMS[R.i].water; return !!w && P.x > w.x0 && P.y < w.top; };
   const lavaAt = x => (ROOMS[R.i].lava || []).some(z => x > z[0] && x < z[1]);
   const rideLeft = () => ROOMS[R.i].ride ? Math.max(0, ROOMS[R.i].ride - (R.t - R.t0)) : 0;
+  const GEY_H = 300, geyserPh = p => { const t = (R.t + p.off) % 3.2; return t < 0.8 ? 1 : t < 1.8 ? 2 : 0; }; // volcano geysers: bubble 0.8 s (1), erupt 1 s (2), quiet 1.4 s (0)
+  const onIce = () => !P.air && P.y < 6 && R.props.some(p => p.k === 'ice' && !p.dead && Math.abs(P.x - p.x) <= p.w / 2);
   const laserOn = p => p.lock ? R.props.some(q => q.k === 'cell' && !q.dead) : ((R.t + p.off) % 3) < 1.6; // laser gates: on 1.6s, off 1.4s
   function fallBoard(p) { p.fallen = 1; p.ghost = 0; p.plat = 1; p.x = p.bx; p.w = p.bw; p.h = p.bh; p.hp = null; } // a billboard drops across the gap as a bridge
   function driftProps() { for (const p of R.props) if (p.drift) p.x = p.x0 + Math.sin(R.t * p.drift[1] + p.drift[2]) * p.drift[0]; }
@@ -1642,6 +1665,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (S.st === 'play') {
       if (P.y < -220) { // fell between the buildings: one heart, back to the last safe spot
         P.x = P.sx == null ? 70 : P.sx; P.y = P.sy || 0; P.vx = 0; P.vy = 0; P.air = false; P.zip = null; P.mom = 0; loseHeart('FELL!', '#2ce8f5');
+      } else if (!P.air && P.y < 6 && R.props.some(p => p.k === 'ice' && p.dead && Math.abs(P.x - p.x) < p.w / 2 - 8) && !onIce()) { // a hole in the ice: cold water, one heart, and out again
+        P.vy = 820; P.air = true; if (!reduce) burst(P.x, FLOOR - 4, 12, ['#ffffff', '#0099db', '#c0cbdc'], 300, 1, 700, 5);
+        if (S.hurt <= 0) loseHeart('BRR!', '#2ce8f5'); else sfx.dash();
+      } else if (S.hurt <= 0 && R.props.some(p => p.k === 'geyser' && geyserPh(p) === 2 && Math.abs(P.x - p.x) < 44 && P.y < Math.max(0, rampAt(p.x)) + GEY_H)) { // a geyser: one heart, thrown clear
+        const gp = R.props.find(p => p.k === 'geyser' && Math.abs(P.x - p.x) < 44); P.vy = 700; P.air = true; P.vx = (P.x < gp.x ? -1 : 1) * 380; loseHeart('HOT!', '#f77622');
       } else if (!P.air && P.y < 2 && lavaAt(P.x)) { // lava: burns once, and always throws 我 back up
         P.vy = 820; P.air = true; if (!reduce) burst(P.x, FLOOR - 4, 12, ['#fee761', '#f77622', '#e43b44'], 300, 1, 700, 5);
         if (S.hurt <= 0) loseHeart('HOT!', '#f77622'); else sfx.dash();
@@ -1702,11 +1730,16 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (p.hp <= 0) { if (p.k === 'board') fallBoard(p); else if (p.elec) p.sparkT = 1; else p.dead = true; }
     }
   }
+  function tickCrust(dt) { const mx = role === 'me' ? P.x : B.tx, my = role === 'me' ? P.y : (B.ty || 0), ma = role === 'me' ? P.air : my > 4 && !R.props.some(p => p.k === 'crust' && Math.abs(my - p.h) < 8);
+      for (const p of R.props) if (p.k === 'crust') { /* sinks over 1.4 s while stood on, floats back up over 2 s */
+        const on = mx != null && !ma && Math.abs(mx - p.x) < p.w / 2 + 6 && Math.abs(my - p.h) < 8; p.sk = clamp((p.sk || 0) + (on ? dt / 1.4 : -dt / 2), 0, 1); p.h = Math.round(p.h0 - p.sk * (p.h0 + 8)); } }
   function tickProps(dt) { driftProps();
     if (role === 'me' && ROOMS[R.i] && ROOMS[R.i].core) { /* the core: cells burn out slowly by themselves, and the shield falls with the last one */
       for (const p of R.props) if (p.k === 'cell' && !p.dead && !(p.sparkT > 0)) { p.ct = (p.ct || 0) + dt; if (p.ct >= 10) { p.ct = 0; p.hp -= 1; propFx(p, p.hp <= 0); if (p.hp <= 0) p.sparkT = 1; } }
       const lk = R.props.find(p => p.lock); if (lk && !lk.down && !laserOn(lk)) { lk.down = 1; banner('SHIELD DOWN!', 'Run for the exit', '#63c74d'); sfx.levelup(); }
-    } for (const p of R.props) { if (p.spinT > 0) p.spinT -= dt; if (p.sparkT > 0) { p.sparkT -= dt; if (p.sparkT <= 0) p.dead = true; } } }
+    } tickCrust(dt); {
+      if (role === 'me') for (const p of R.props) if (p.k === 'ice' && p.dead) { p.it = (p.it || 0) + dt; if (p.it > 6) { p.it = 0; p.dead = false; p.hp = 1; } } } /* a hole freezes over after 6 s */
+    for (const p of R.props) { if (p.spinT > 0) p.spinT -= dt; if (p.sparkT > 0) { p.sparkT -= dt; if (p.sparkT <= 0) p.dead = true; } } }
   const propCode = p => p.dead ? 0 : p.fallen ? 5 : p.sparkT > 0 ? -1 : p.open ? 7 : p.spinT > 0 ? 6 : p.hp == null ? 9 : p.hp;
   // 兄弟 side: follow 我's room and prop state.
   function syncRoom(tp, dt) {
@@ -1727,7 +1760,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (fresh) for (let row = 0; row < 31; row++) if (fresh & (1 << row)) glassFx(k ? -1 : 1, row);
       R.gl[k] = v;
     }
-    driftProps();
+    driftProps(); tickCrust(dt);
     if (Array.isArray(tp.ey)) tp.ey.forEach((v, k) => { if (R.el[k]) R.el[k].y = +v || 0; });
     if (typeof tp.gt === 'number') R.t = Math.abs(tp.gt - R.t) > 0.5 ? tp.gt : R.t + dt;
     B.ty = (B.ty || 0) + ((+tp.y || 0) - (B.ty || 0)) * Math.min(1, dt * 18);
@@ -2330,7 +2363,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue', 'mossy_rock', 'raft', 'bamboo_ladder', 'stone_lantern_b', 'trunk'] },
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
-    snow: { L: OUT_L, S: ['pine', 'rock'] },
+    snow: { L: OUT_L, S: ['pine', 'rock', 'light_pole'] },
     dojo: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum'], V: ['bg_mid'], T: ['bg_sky', 'bg_far'] /* T: layers with a `_tall` file, one more screen of picture above for when the view rises */ },
     house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
@@ -2390,6 +2423,22 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         const fx = l + w * (i + 0.5) / n + Math.sin(ph * 9 + i) * 16 - (1 - ph) * 30, fy = FLOOR - hy(fx) - 4 - (1 - ph) * 150; /* sways down and settles on the edge */
         if (ph < 0.96) R_(PET[i % 2], fx, fy, 4, 4); }
       return true; }
+    if (k === 'geyser') { /* volcano: a vent in the ground that bubbles, then throws up a column of lava (geyserPh) */
+      const ph = geyserPh(p), base = FLOOR - Math.max(0, rampAt(p.x));
+      R_('#3e2731', p.x - 28, base - 8, 56, 8); R_(ph > 0 ? '#feae34' : '#e43b44', p.x - 16, base - 8, 32, 4);
+      if (ph === 1) for (let i = 0; i < 3; i++) { const bt = (now / 300 + i / 3) % 1; R_(i % 2 ? '#feae34' : '#f77622', p.x - 16 + i * 12, base - 12 - bt * 40, 8, 8); } /* warning: bubbles */
+      if (ph === 2) { const top = base - GEY_H; R_('#e43b44', p.x - 28, top, 56, GEY_H); R_('#f77622', p.x - 20, top, 40, GEY_H); R_('#feae34', p.x - 8, top + 8, 16, GEY_H - 8); R_('#fee761', p.x - 4, top + (Math.floor(now / 60) % 4) * 16, 8, 24);
+        for (let i = 0; i < 4; i++) R_(i % 2 ? '#feae34' : '#f77622', p.x - 36 + i * 20 + (Math.floor(now / 90 + i) % 2) * 4, top - 8 - (i % 2) * 8, 12, 12); }
+      return true; }
+    if (k === 'crust') { /* volcano: a cooled crust floating on the lava; it sinks while 我 stands on it */
+      ctx.save(); ctx.beginPath(); ctx.rect(l - 8, 0, w + 16, FLOOR); ctx.clip();
+      const n = Math.max(1, Math.round(w / 96)); for (let q = 0; q < n; q++) S(p.sk > 0.45 ? 'slab_cracked' : 'slab', l + w * (q + 0.5) / n, t + 32) || R_('#3e2731', l, t, w, 32);
+      ctx.restore(); if (p.sk > 0.2) for (let x = l + 8; x < l + w - 8; x += 24) R_('#f77622', x + (Math.floor(now / 120) % 2) * 4, FLOOR - 12, 8, 4); /* lava licks up around it */
+      return true; }
+    if (k === 'ice') { /* snow: a frozen pond panel, slippery; a fist breaks it into a hole that freezes over again */
+      if (p.dead) { R_('#124e89', l, FLOOR - 12, w, 16); R_('#0099db', l + 8 + (Math.floor(now / 300) % 3) * 12, FLOOR - 4, 16, 4); R_('#ffffff', l, FLOOR - 8, 4, 4); R_('#ffffff', l + w - 4, FLOOR - 8, 4, 4); return true; }
+      R_('#5a6988', l, FLOOR - 12, w, 16); R_('#8b9bb4', l + 4, FLOOR - 12, w - 8, 4); R_('#0099db', l + 4, FLOOR - 8, w - 8, 4); R_('#2ce8f5', l + 12 + (p.x * 7 % 40), FLOOR - 8, 16, 4); R_('#ffffff', l + 8 + (p.x * 3 % 32), FLOOR - 12, 8, 4); /* blue-grey ice, darker than the snow, with glints */
+      return true; }
     if (k === 'ladder') { const im = A.ok('bamboo_ladder'); if (!im) return false; for (let y = FLOOR - (p.base || 0); y > FLOOR - (p.base || 0) - p.h + 4; y -= im.naturalHeight * PX) spr(im, p.x, y - im.naturalHeight * PX); return true; }
     if (k === 'raft') { const im = A.ok('raft'), tr = A.ok('trunk'); if (!im) return false;
       if (tr) for (const sx of [l + 28, l + w - 28]) for (let y = t + 40; y < FLOOR; y += tr.naturalHeight * PX) { const hh = Math.min(tr.naturalHeight * PX, FLOOR - y); ctx.drawImage(tr, 0, 0, tr.naturalWidth, hh / PX, sx - tr.naturalWidth * PX / 2, y, tr.naturalWidth * PX, hh); } /* stilts down to the ground */
@@ -2419,7 +2468,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return false;
   }
   function plate(rm) { if (VIEW.nb) return; bx(248 + viewX(), 16 - camY(), 412, 28, '#181425'); ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left'; ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
-  const drawProps = () => R.props.forEach(p => { if (p.dead && p.k === 'floor') { bx(p.x - p.w / 2, FLOOR - p.h, p.w, 32, '#181425'); return; } if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
+  const drawProps = () => R.props.forEach(p => { if (p.dead && p.k === 'ice') { artProp(p); return; } if (p.dead && p.k === 'floor') { bx(p.x - p.w / 2, FLOOR - p.h, p.w, 32, '#181425'); return; } if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
   function artScene(rm, sec) { // a whole room from its level set: backdrop, ground, the moving bits, props
     const A = ART[sec], sc = rm.scene, now = performance.now(), open = rm.void || rm.vac;
     if (!artBack(sec, null, open ? 'bg_near' : null)) return false;
@@ -2512,6 +2561,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       else {
       R_('#5a6988', l, t - 12, w, 12); R_('#8b9bb4', l, t - 12, w, 4); R_('#181425', l + 8, t - 8, w - 16, 4); R_(on ? '#c0cbdc' : '#3a4466', l + 12, t - 8, 16, 4); R_(on ? '#3a4466' : '#c0cbdc', l + 36, t - 8, 16, 4); }
       for (let q = 0; q < 3; q++) { const yy = t - (VA ? 64 : 36) - q * 20 - (Math.floor(performance.now() / 150) % 3) * 4; R_('#f77622', p.x - 12, yy, 8, 4); R_('#f77622', p.x + 4, yy, 8, 4); R_('#f77622', p.x - 4, yy - 4, 8, 4); }
+      return;
+    }
+    if (p.k === 'cable' && p.lights) { // snow: a string of lights between two poles, ridden like a zip cable
+      const cyAt = x => p.cy0 + (p.cy1 - p.cy0) * (x - p.cx0) / (p.cx1 - p.cx0), sag = x => Math.sin(Math.PI * (x - p.cx0) / (p.cx1 - p.cx0)) * 0;
+      const LP = ART.snow && ART.snow.ok('light_pole'); for (const [cx, cy] of [[p.cx0, p.cy0], [p.cx1, p.cy1]]) { const g = Math.max(0, rampAt(cx)); if (LP) spr(LP, cx, FLOOR - g - LP.naturalHeight * PX); else { R_('#262b44', cx - 4, FLOOR - cy - 8, 8, cy - g + 8); R_('#181425', cx - 8, FLOOR - cy - 12, 16, 8); } } /* the art thread's light_pole (40 art px), standing on the ground; the wire hangs from its cap, 152 above the ground */
+      for (let x = p.cx0, i = 0; x < p.cx1; x += 8, i++) { const y = FLOOR - cyAt(x) - sag(x); R_('#181425', x, y, 8, 4); if (i % 4 === 2) R_(['#e43b44', '#feae34', '#ffffff', '#feae34'][(i >> 2) % 4], x, y + 4, 8, 8); }
       return;
     }
     if (p.k === 'cable') { // a zip cable between two roofs, with a post at each end
@@ -3208,9 +3263,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     { const fr = ROOMS[R.i].fast, hit = S.hurt > 0.6; // rooftop run: running on without stopping builds speed; a hit, a stop or a turn loses it
       if (dir && dir !== P.momD) P.mom = 0; if (dir) P.momD = dir;
       if (fr && dir && !hit) P.mom = Math.min(1, (P.mom || 0) + dt / 1.2); else P.mom = Math.max(0, (P.mom || 0) - dt * (hit || !fr ? 9 : P.air ? 0.5 : 4)); }
-    const max = moveMax() * bk * (1 + 0.45 * (P.mom || 0));
+    const ice = role === 'me' && onIce(), max = moveMax() * bk * (1 + 0.45 * (P.mom || 0)) * (ice ? 1.25 : 1);
     if (dir) P.face = dir;
-    if (dir) P.vx += dir * acc * dt; else P.vx *= Math.pow(0.0005, dt);
+    if (dir) P.vx += dir * acc * dt * (ice ? 0.35 : 1); else P.vx *= Math.pow(ice ? 0.6 : 0.0005, dt); /* on ice 我 is slow to start and slow to stop */
     P.vx = clamp(P.vx, -max, max);
     movePlayer(dt);
     if (S.st !== 'play') return;
