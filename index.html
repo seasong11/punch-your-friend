@@ -1212,9 +1212,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function genCourt(b) { /* the dojo as a temple compound (Daniel, 2026-11-15: "separate an entire dojo into different buildings. people enter the garden and can go to the rooftop by (you create)"; references: a red-walled courtyard, a torii with pines and a pavilion, a koi pond with an arched bridge). The way up is Claude's proposal: a stone step, the pavilion's two roof tiers, a cherry tree, a pine on a stone terrace, then the end of the next hall, whose eave is the hall roof (640). Each hop is at most 144. On the ground 我 goes over the bridge and on into the hall */
     const props = [], inv = (x, w, h, h2) => props.push({ k: 'inv', plat: 1, raw: 1, x, w, h, h2 }); /* invisible one-way walk lines on drawn scenery; h2 = height at the right end (a sloping roof) */
-    props.push({ k: 'rock', x: 570, w: 100, h: 112 }, { k: 'rock', x: 1080, w: 200, h: 80 });
-    inv(836, 560, 236); inv(836, 380, 288); inv(836, 120, 336); inv(1080, 220, 466); inv(1190, 100, 484); inv(1284, 88, 484, 532); inv(1364, 72, 532, 640); inv(1504, 208, 640);
-    const deco = [['koi_pond', 280, -36], ['arch_bridge', 280, 0], ['cherry_tree', 120 + (b % 2) * 300, 0], ['pavilion', 836, 0], ['stone_lantern', 1240, 0], ['pine', 1080, 80], ['hall_end', 1392, 0, 1]];
+    props.push({ k: 'rock', x: 600, w: 80, h: 96 }, { k: 'rock', x: 700, w: 80, h: 176 }, { k: 'rock', x: 980, w: 440, h: 64 }); /* two stone steps and a podium under the pavilion; the trees are decoration only (art thread: still under review), so no step depends on one */
+    inv(736, 104, 296); inv(1224, 104, 296); inv(868, 136, 348); inv(1096, 128, 348); inv(984, 64, 376); /* pavilion: eave tips, upper tier, the peak; split so petals lie only on edges that show */ inv(1190, 100, 484); inv(1284, 88, 484, 532); inv(1364, 72, 532, 640); inv(1504, 208, 640);
+    const deco = [['koi_pond', 280, -36], ['arch_bridge', 280, 0], ['cherry_tree', 120 + (b % 2) * 300, 0], [b % 2 ? 'pine' : 'maple', 420 - (b % 2) * 300, 0], ['pavilion', 980, 64], ['hall_end', 1392, 0, 1]];
     return { name: 'TEMPLE GARDEN ' + b, sec: 'dojo', outdoor: 1, court: 1, tall: 1, arch: [40, 480], props, deco };
   }
   function genDojo(n, hall) {
@@ -2333,7 +2333,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
-    temple: { L: [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.15]], S: ['pavilion', 'arch_bridge', 'koi_pond', 'pine', 'cherry_tree', 'stone_lantern', 'hall_end'] },
+    temple: { L: [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.15]], S: ['pavilion', 'arch_bridge', 'koi_pond', 'pine', 'cherry_tree', 'stone_lantern', 'hall_end', 'maple'] },
     climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', ...['lobby', 'office', 'site'].flatMap(k => ['door_' + k, ...[0, 1, 2, 3].map(i => 'bay_' + k + '_' + i)]), 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
   };
   const artOf = i => { const rm = ROOMS[i]; if (!rm) return null; const n = rm.climb ? 'climb' : rm.scene === 'lift' ? 'elevator' : rm.court ? 'temple' : rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']; return n && artTiles(n) ? n : null; };
@@ -2379,9 +2379,14 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x / PX) * PX, Math.round(y / PX) * PX, Math.round(ww), Math.round(hh)); };
     const S = (n, cx, bottom, flip) => { const im = A.ok(n); if (!im) return false; if (flip) { ctx.save(); ctx.translate(Math.round(cx / PX) * PX * 2, 0); ctx.scale(-1, 1); } spr(im, cx, bottom - im.naturalHeight * PX); if (flip) ctx.restore(); return true; };
     const cracks = () => { if (hurt) { R_('#181425', p.x - 12, t + 4, 4, 12); R_('#181425', p.x + 16, t, 4, 16); R_('#181425', p.x - 4, t + 12, 4, 8); } };
-    if (k === 'inv') { /* a walk line on scenery that is already drawn (temple garden). Daniel: the route should be highlighted, but not so bold that it feels out of place: a faint dotted warm edge, with a soft glint sweeping along it now and then */
-      const sw = ((now / 1000 + p.x / 700) % 3.2) / 1.2, hx = l + w * sw;
-      for (let x = l + 8; x < l + w - 4; x += 16) { const hh = p.h2 != null ? p.h + (p.h2 - p.h) * (x - l) / w : p.h, near = sw < 1 && Math.abs(x - hx) < 28; R_(near ? '#fee761' : '#feae34', x, FLOOR - hh - 4, 4, 4); }
+    if (k === 'inv') { /* a walk line on scenery that is already drawn (temple garden). Daniel: highlight the route but not too bold; then "instead of the yellow dot, use a cover of falling leaves or snows": fallen cherry petals lie along each walkable edge and a few drift down onto it */
+      const hy = x => p.h2 != null ? p.h + (p.h2 - p.h) * clamp((x - l) / w, 0, 1) : p.h, hs = q => { let v = (q * 374761393 + p.x * 668265263) | 0; v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967296; };
+      const PET = ['#fca790', '#fdcbb0', '#f6757a'];
+      for (let x = l + 4, q = 0; x < l + w - 4; x += 4, q++) { const r = hs(q); if (r < 0.22) continue; const y = FLOOR - hy(x) - 4;
+        R_(PET[(r * 97 | 0) % 3], x, y, 4, 4); if (r > 0.75) R_(PET[(r * 31 | 0) % 2], x, y - 4, 4, 4); } /* an uneven petal cover, a petal piled on now and then */
+      for (let i = 0, n = Math.max(1, Math.round(w / 140)); i < n; i++) { const T = 4.2 + hs(i + 50) * 2, ph = ((now / 1000 + hs(i + 90) * T) % T) / T;
+        const fx = l + w * (i + 0.5) / n + Math.sin(ph * 9 + i) * 16 - (1 - ph) * 30, fy = FLOOR - hy(fx) - 4 - (1 - ph) * 150; /* sways down and settles on the edge */
+        if (ph < 0.96) R_(PET[i % 2], fx, fy, 4, 4); }
       return true; }
     if (k === 'ladder') { const im = A.ok('bamboo_ladder'); if (!im) return false; for (let y = FLOOR - (p.base || 0); y > FLOOR - (p.base || 0) - p.h + 4; y -= im.naturalHeight * PX) spr(im, p.x, y - im.naturalHeight * PX); return true; }
     if (k === 'raft') { const im = A.ok('raft'), tr = A.ok('trunk'); if (!im) return false;
