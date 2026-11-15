@@ -1210,13 +1210,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     (two ? [720, 1040] : [430, 810, 1190]).forEach((x, q) => { const k = set[(q + skip) % set.length]; G[k](x + pk(r, -40, 40, 20)); });
     return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props, deco };
   }
-  function genCourt(b) { /* the dojo as a temple compound (Daniel, 2026-11-15: "separate an entire dojo into different buildings. people enter the garden and can go to the rooftop by (you create)"). Between halls lies a garden; the way to the roof is Claude's proposal: a bamboo scaffold against the next hall, three decks up to the roof line (640). The ground path goes on into the hall */
-    const r = rngOf(911 + b * 17), props = [], deco = [['torii', 230, 0], ['stone_lantern', 600, 0]];
-    props.push({ k: 'hedge', x: pk(r, 440, 480, 20), w: 160, h: 72 }, { k: 'pot', x: pk(r, 700, 740, 20), w: 64, h: 56 });
-    const raft = (x, w, h) => props.push({ k: 'raft', plat: 1, raw: 1, x: x + w / 2, w, h, hp: 3 }), lad = (x, base, h) => props.push({ k: 'ladder', ghost: 1, raw: 1, x, w: 48, h, base });
-    raft(880, 220, 224); raft(1040, 220, 448); raft(1200, 400, 640); /* each ladder stands on the deck below and comes out on the next one */
-    lad(916, 0, 224); lad(1070, 224, 224); lad(1230, 448, 192);
-    return { name: 'TEMPLE GARDEN ' + b, sec: 'dojo', outdoor: 1, court: 1, tall: 1, props, deco };
+  function genCourt(b) { /* the dojo as a temple compound (Daniel, 2026-11-15: "separate an entire dojo into different buildings. people enter the garden and can go to the rooftop by (you create)"; references: a red-walled courtyard, a torii with pines and a pavilion, a koi pond with an arched bridge). The way up is Claude's proposal: a stone step, the pavilion's two roof tiers, a cherry tree, a pine on a stone terrace, then the end of the next hall, whose eave is the hall roof (640). Each hop is at most 144. On the ground 我 goes over the bridge and on into the hall */
+    const props = [], inv = (x, w, h) => props.push({ k: 'inv', plat: 1, raw: 1, x, w, h }); /* invisible one-way walk lines on drawn scenery */
+    props.push({ k: 'rock', x: 570, w: 100, h: 112 }, { k: 'rock', x: 1300, w: 200, h: 112 });
+    inv(836, 432, 224); inv(836, 160, 320); inv(1120, 200, 360); inv(1300, 220, 500); inv(1456, 304, 640);
+    const deco = [['koi_pond', 280, -36], ['arch_bridge', 280, 0], ['pavilion', 836, 0], ['cherry_tree', 1120, 0], ['stone_lantern', 160 + (b % 2) * 1020, 0], ['pine', 1300, 112], ['hall_end', 1456, 0]];
+    return { name: 'TEMPLE GARDEN ' + b, sec: 'dojo', outdoor: 1, court: 1, tall: 1, arch: [40, 480], props, deco };
   }
   function genDojo(n, hall) {
     const r = rngOf(211 + n * 13), props = [], t = mixOf(n, 4, 211); /* the GALLERY screen (t === 4) is off: the dojo is one tall hall again and has no stairs sprite (Daniel, via the art thread, 2026-11-15) */
@@ -1517,7 +1516,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     P.grip = null; P.el = null; P.kt = 0;
     FX.holes = [];
   }
-  function rampAt(x, rm) {
+  function rampAt(x, rm) { /* physics calls (no rm) also walk over a room's arched bridge; the ground art does not draw it */
+    const a = !rm && ROOMS[R.i] && ROOMS[R.i].arch, g0 = rampAt0(x, rm); if (!a) return g0;
+    const u = (x - a[0]) / a[1]; if (u <= 0 || u >= 1) return g0;
+    return Math.max(g0, Math.min(6 + 22 * (1 - (2 * u - 1) ** 2), u * 240, (1 - u) * 240) * PX);
+  }
+  function rampAt0(x, rm) {
     rm = rm || ROOMS[R.i];
     const hl = rm.hill;
     if (hl) { // a polyline of [x, height] points
@@ -2329,9 +2333,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
+    temple: { L: [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.15]], S: ['pavilion', 'arch_bridge', 'koi_pond', 'pine', 'cherry_tree', 'stone_lantern', 'hall_end'] },
     climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', ...['lobby', 'office', 'site'].flatMap(k => ['door_' + k, ...[0, 1, 2, 3].map(i => 'bay_' + k + '_' + i)]), 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
   };
-  const artOf = i => { const rm = ROOMS[i]; if (!rm) return null; const n = rm.climb ? 'climb' : rm.scene === 'lift' ? 'elevator' : rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']; return n && artTiles(n) ? n : null; };
+  const artOf = i => { const rm = ROOMS[i]; if (!rm) return null; const n = rm.climb ? 'climb' : rm.scene === 'lift' ? 'elevator' : rm.court ? 'temple' : rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']; return n && artTiles(n) ? n : null; };
   function loadArt(sec, sprites) {
     const A = ART[sec] = { img: {}, frames: null, ok: n => { const im = A.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } };
     if (location.protocol === 'file:' || /[?&]art=0/.test(location.search)) return;
@@ -2374,6 +2379,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x / PX) * PX, Math.round(y / PX) * PX, Math.round(ww), Math.round(hh)); };
     const S = (n, cx, bottom, flip) => { const im = A.ok(n); if (!im) return false; if (flip) { ctx.save(); ctx.translate(Math.round(cx / PX) * PX * 2, 0); ctx.scale(-1, 1); } spr(im, cx, bottom - im.naturalHeight * PX); if (flip) ctx.restore(); return true; };
     const cracks = () => { if (hurt) { R_('#181425', p.x - 12, t + 4, 4, 12); R_('#181425', p.x + 16, t, 4, 16); R_('#181425', p.x - 4, t + 12, 4, 8); } };
+    if (k === 'inv') return true; /* a walk line on scenery that is already drawn (temple garden) */
     if (k === 'ladder') { const im = A.ok('bamboo_ladder'); if (!im) return false; for (let y = FLOOR - (p.base || 0); y > FLOOR - (p.base || 0) - p.h + 4; y -= im.naturalHeight * PX) spr(im, p.x, y - im.naturalHeight * PX); return true; }
     if (k === 'raft') { const im = A.ok('raft'), tr = A.ok('trunk'); if (!im) return false;
       if (tr) for (const sx of [l + 28, l + w - 28]) for (let y = t + 40; y < FLOOR; y += tr.naturalHeight * PX) { const hh = Math.min(tr.naturalHeight * PX, FLOOR - y); ctx.drawImage(tr, 0, 0, tr.naturalWidth, hh / PX, sx - tr.naturalWidth * PX / 2, y, tr.naturalWidth * PX, hh); } /* stilts down to the ground */
@@ -2458,7 +2464,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!NIGHT) { NIGHT = document.createElement('canvas'); NIGHT.width = AW; NIGHT.height = AH; }
     const g = NIGHT.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, AW, AH); g.imageSmoothingEnabled = false;
     const sp = A.win && !reduce ? sfx.spectrum(24) : null;
-    LS.forEach(([n, f], li) => { if (li === 1) skyBody(A, g, AW, AH); if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : 0; for (let k = -2; k < 3; k++) {
+    LS.forEach(([n, f], li) => { if (li === 1) skyBody(A, g, AW, AH); if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : f > 0 && !A.ok(n + '_tall') && (ROOMS[VIEW.gi != null ? VIEW.gi : R.i] || {}).tall ? Math.round(Math.max(0, camY()) / PX * (f >= 0.1 ? 1 : 0.6)) : 0; /* a tall room without a _tall picture: ground-anchored layers sink as the camera rises */ for (let k = -2; k < 3; k++) {
       const bx0 = off + k * IW; if (bx0 >= AW || bx0 <= -IW) continue;
       { const tl = f !== 1 && A.ok(n + '_tall'); if (tl) g.drawImage(tl, bx0, AH - tl.naturalHeight + clamp(Math.round(camY() / PX), 0, tl.naturalHeight - AH), IW, tl.naturalHeight); else g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH); }
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move

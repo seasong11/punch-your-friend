@@ -286,10 +286,13 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   The kit's floor props (vending, desk, lockers, cone ...) and `stair_flight` are not placed: free-standing things would have to be solid.
 - Temple compound (Daniel, 2026-11-15: "separate an entire dojo into different buildings. people enter the garden and can go to the
   rooftop by (you create)"; references: a red-walled courtyard with a zen garden, a torii with pines and a pavilion, a koi pond with an
-  arched bridge). The dojo section is now DOJO HALL x3, then four times a `genCourt` TEMPLE GARDEN (`outdoor`, `court`, `tall`, bamboo
-  art for now) followed by a hall of 3, 3, 3 and 2 `genDojo` screens (named HALL n · kind). The way up is Claude's proposal: a bamboo
-  scaffold of three `raft` decks (224, 448, 640) with `ladder`s standing on the deck below, ending at the hall roof line, so 我 runs on
-  along the next hall's `ridge` (640); the ground path goes on into the hall. Asked the art thread for a temple-garden set.
+  arched bridge). The dojo section is now DOJO HALL x3, then four times a `genCourt` TEMPLE GARDEN (`outdoor`, `court`, `tall`) followed
+  by a hall of 3, 3, 3 and 2 `genDojo` screens (named HALL n · kind). Gardens use the art thread's `temple` set (`artOf` → 'temple'):
+  scenery is `deco` (koi_pond, arch_bridge, pavilion, cherry_tree, stone_lantern, pine on a stone terrace, hall_end) and the walk lines
+  are invisible one-way `inv` props. The way up (Claude's proposal, every hop ≤ 144): stone step 112 → pavilion eave 224 → roof tier
+  320 → cherry crown 360 → pine crown 500 → the next hall's end eave 640, then on along that hall's `ridge`. On the ground the
+  `arch` bridge is a hump in `rampAt` (physics only; `rampAt0` is the drawn ground). In a tall room, layers with no `_tall` picture sink
+  as the camera rises (`artBack`, factor ≥ 0.1 fully, else 0.6). The earlier bamboo scaffold in the gardens is gone.
 - Catch and throw back (Daniel picked option A for 我's combat, 2026-11-15; the details are Claude's): a perfect block on a normal fist (not
   如来神掌, 黄泉指 or a side fist) also catches it (`S.held`, 2 s, drawn over 我's head by `drawCaught`). ↑ (`tryJump` → `throwHeld(true)`)
   throws it up: after ~0.5 s it reaches the 兄弟 whose `aim` is nearest 我 (the practice bot when alone), whose fists lock for 3 s
