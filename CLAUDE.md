@@ -228,6 +228,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   stone wall plus a canopy walk, and thickets plus canopy. `chunkList` skips bamboo, so it uses these and not the LDtk blocks.
   `tileBlock` uses a `wall` tile frame for a block's body when the set has one (asked the art thread for bamboo masonry).
   The climb wall mixes `wall_bay`, `wall_bay_b`, `wall_bay_c`. The house `rug` sprite is not placed yet.
+  The bamboo set has that `wall` frame now. A room's `deco: [sprite, x, base height]` is decor only, drawn in `artScene` behind the
+  props (bamboo: `torii` before a terrace, `stone_lantern` on its top, `statue` on the low wall).
+  Dojo: `genDojo` has a fourth screen, STAGE (a raised wooden stage 96 high as a wide `crate` block, two beams over it, a dummy
+  after it); `chunkList` skips dojo too. `mixOf(n, m, salt)` picks the screen kind for dojo and bamboo, because `modOf` picks
+  repeat in runs (neighbouring `rngOf` seeds give alike first draws); other sections still use `modOf`.
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other

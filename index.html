@@ -1180,6 +1180,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // rooms from it (`buildRooms`). 0 gives the fixed test layout.
   let SEED = 0;
   const rngOf = k => { let seed = SEED ? (k * 48271 + SEED * 69621) % 2147483646 + 1 : k; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647; if (SEED) { r(); r(); r(); } return r; };
+  const mixOf = (n, m, salt) => { if (!SEED) return n % m; let x = (SEED + Math.imul(n, 0x9E3779B9) + salt) | 0; x ^= x >>> 16; x = Math.imul(x, 0x7feb352d); x ^= x >>> 15; x = Math.imul(x, 0x846ca68b); x ^= x >>> 16; return (x >>> 0) % m; }; // like modOf, but well mixed: modOf's picks repeat in runs
   const modOf = (r, n, m) => SEED ? Math.floor(r() * m) : n % m; // which layout a generated screen uses
   const pk = (r, a, b, st) => a + Math.floor(r() * (Math.floor((b - a) / st) + 1)) * st;
   function genHouse(name, n) {
@@ -1196,27 +1197,30 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return { name, style: sty[0] || undefined, wall: sty[1], floor: sty[0] === 'block' ? ['#8b9bb4', '#5a6988'] : ['#b86f50', '#733e39'], decor, props };
   }
   function genDojo(n) {
-    const r = rngOf(211 + n * 13), props = [], t = modOf(r, n, 3);
+    const r = rngOf(211 + n * 13), props = [], t = mixOf(n, 4, 211);
     const decor = [['scroll', 230, n % 3], ['lamp', 560], ['rack', 760], ['lamp', 1080], ['scroll', 1320, (n + 1) % 3]];
     const dm = x => props.push({ k: 'dummy', x, w: 60, h: 110 });
     if (t === 0) { for (let x = 380 + pk(r, 0, 60, 20); x < 1350; x += pk(r, 240, 320, 40)) dm(x); props.push({ k: 'box', x: 250, w: 90, h: 80 }); }
     else if (t === 1) { const x0 = pk(r, 400, 520, 40), k = pk(r, 6, 8, 1); props.push({ k: 'box', x: x0 - 140, w: 90, h: 80 }); for (let i = 0; i < k; i++) props.push({ k: 'beam', plat: 1, x: x0 + i * 100, w: 100, h: 160, hp: 2 }); dm(x0 + 150); dm(x0 + 150 + pk(r, 260, 340, 40)); }
+    else if (t === 3) { /* a raised training stage (from Daniel's dojo references), a beam roof over it, a dummy guarding the way off */
+      const sw = pk(r, 384, 512, 64), sx = pk(r, 520, 600, 40); props.push({ k: 'box', x: sx - 120, w: 90, h: 80 }, { k: 'crate', x: sx + sw / 2, w: sw, h: 96 });
+      for (let i = 0; i < 2; i++) props.push({ k: 'beam', plat: 1, x: sx + sw / 2 - 50 + i * 100, w: 100, h: 96 + 150, hp: 2 }); dm(sx + sw + pk(r, 160, 220, 30)); }
     else { props.push({ k: 'crate', x: pk(r, 360, 440, 40), w: 90, h: 90 }); dm(600); props.push({ k: 'box', x: 720, w: 90, h: 80 }); for (let i = 0; i < 3; i++) props.push({ k: 'beam', plat: 1, x: 820 + i * 100, w: 100, h: 160, hp: 2 }); dm(1240); }
-    return { name: 'DOJO ' + ['DUMMY ROW', 'HIGH BEAM', 'DRILL'][t] + ' ' + (Math.floor(n / 3) + 1), sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor, props };
+    return { name: 'DOJO ' + ['DUMMY ROW', 'HIGH BEAM', 'DRILL', 'STAGE'][t] + ' ' + (Math.floor(n / 3) + 1), sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor, props };
   }
   // Bamboo (Claude places these from Daniel's bamboo references: mossy stone terraces, groves, a canopy above). Three kinds of
   // screen take turns. Every raised place has a way up that 我 can see: steps of one jump (112) or a springy stalk / mushroom.
   function genBamboo(n) {
-    const r = rngOf(307 + n * 11), props = [], m = modOf(r, n - 1, 3);
+    const r = rngOf(307 + n * 11), props = [], m = mixOf(n - 1, 3, 307), deco = [];
     const wall = (x, w) => { const sx = x - w / 2 - 70; props.push(r() < 0.5 ? { k: 'stalk', ghost: 1, x: sx, w: 24, h: 330 } : { k: 'shroom', ghost: 1, x: sx - 10, w: 56, h: 36 }, { k: 'thick', x, w, h: 200 }); };
     const block = (x0, w, h) => props.push({ k: 'rock', x: x0 + w / 2, w, h });
     if (m === 1) { // a stone terrace: two steps up, a wide top under a leaf roof, two steps down
       let x = pk(r, 330, 400, 35); const top = pk(r, 320, 400, 40);
-      block(x, 128, 112); x += 128; block(x, top, 224); const tx = x; x += top; block(x, 128, 112);
+      block(x, 128, 112); x += 128; block(x, top, 224); const tx = x; x += top; block(x, 128, 112); deco.push(['torii', tx - 128 - 150, 0], ['stone_lantern', tx + 28, 224], ['stone_lantern', tx + top - 28, 224]);
       for (let i = 0; i < 2; i++) props.push({ k: 'leaf', plat: 1, x: tx + top / 2 - 50 + i * 100, w: 100, h: 224 + 190, hp: 2 });
       wall(pk(r, 1260, 1340, 40), pk(r, 120, 150, 30));
     } else if (m === 2) { // a low wall of stone, then the canopy walk
-      block(pk(r, 360, 420, 30), 192, 112);
+      { const bx0 = pk(r, 360, 420, 30); block(bx0, 192, 112); deco.push(['statue', bx0 + 96, 112]); }
       const lx = pk(r, 820, 900, 40); props.push({ k: 'stalk', ghost: 1, x: lx - 90, w: 24, h: 330 }); for (let i = 0; i < 4; i++) props.push({ k: 'leaf', plat: 1, x: lx + i * 100, w: 100, h: 230, hp: 2 });
       block(pk(r, 1330, 1380, 25), 128, 112);
     } else { // thickets with a canopy between them
@@ -1224,7 +1228,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const lx = pk(r, 860, 960, 50); props.push({ k: 'stalk', ghost: 1, x: lx - 90, w: 24, h: 330 }); for (let i = 0; i < 3; i++) props.push({ k: 'leaf', plat: 1, x: lx + i * 100, w: 100, h: 230, hp: 2 });
       wall(pk(r, 1300, 1360, 30), pk(r, 120, 150, 30));
     }
-    return { name: 'BAMBOO GROVE ' + n, sec: 'bamboo', scene: 'bamboo', props };
+    return { name: 'BAMBOO GROVE ' + n, sec: 'bamboo', scene: 'bamboo', props, deco }; /* deco: [sprite, x, base height], drawn behind everything solid, never blocks */
   }
   // The high-speed rooftop run. Four kinds of screen take turns: plain jumps with a neon sign; a vent up to a tall roof
   // and a zip cable down; a wide gap with a billboard that falls into a bridge; and a mix.
@@ -1370,7 +1374,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     for (let i = 0; i < gl.length;) {
       let j = i; while (j < gl.length && sk(gl[j]) === sk(gl[i])) j++;
       const sec = secOfSk[sk(gl[i])], all = sec && CHUNKS[sec] || [], pool = all.filter(c => !c.sp), fin = sec === 'Space' ? all.filter(c => c.sp && c.beats.includes('Finale')) : [];
-      if (!pool.length || sk(gl[i]) === 'bamboo') { for (let k = i; k < j; k++) out.push(gl[k]); i = j; continue; } // bamboo: Claude's own layouts, not LDtk blocks
+      if (!pool.length || sk(gl[i]) === 'bamboo' || sk(gl[i]) === 'dojo') { for (let k = i; k < j; k++) out.push(gl[k]); i = j; continue; } // bamboo, dojo: Claude's own layouts, not LDtk blocks
       const r = rngOf(9001 + i * 37), label = sec.toUpperCase(); let last = null;
       for (let k = i; k < j; k++) {
         const n = k - i, f = fin[fin.length - (j - k)];
@@ -2241,7 +2245,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
     rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign'] },
-    bamboo: { L: OUT_L, S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot'] },
+    bamboo: { L: OUT_L, S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue'] },
     lake: { L: OUT_L, S: ['turtle', 'weed', 'rock'] },
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock'] },
@@ -2330,6 +2334,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (sc === 'lift') { const left = rideLeft(); if (left > 0) for (let k = 0; k < 14; k++) { const x = 120 + k * 104, y = ((R.t - R.t0) * 900 + rnd(k + 4) * 900) % (FLOOR + 80) - 80; bx(x, y, 4, 56, '#8b9bb4'); }
       bx(W / 2 - 200, 60, 400, 28, '#181425'); bx(W / 2 - 196, 64, Math.round(392 * (1 - left / rm.ride) / 8) * 8, 20, left > 0 ? '#feae34' : '#63c74d');
       ctx.fillStyle = '#ffffff'; ctx.font = '16px ' + PF; ctx.textAlign = 'center'; ctx.fillText(left > 0 ? `GOING UP · ${Math.ceil(left)}s` : 'TOP FLOOR · GO', W / 2, 110); }
+    for (const [n, x, bh] of rm.deco || []) { const im = A.ok(n); if (im) spr(im, x, FLOOR - bh - im.naturalHeight * PX); } // shrine pieces and the like: decor only
     if (R.i === ROOMS.length - 1 || rm.gate) { // the way out: a signpost with a blinking arrow, in place of the old door
       const x = W - 110, b = FLOOR - Math.max(0, surfAt(x)), on = Math.floor(now / 350) % 2;
       bx(x - 4, b - 136, 8, 136, '#3e2731'); bx(x - 4, b - 136, 4, 136, '#733e39'); bx(x - 52, b - 148, 104, 48, '#181425'); bx(x - 48, b - 144, 96, 40, '#f77622'); bx(x - 48, b - 144, 96, 4, '#feae34'); bx(x - 48, b - 108, 96, 4, '#be4a2f');
