@@ -284,6 +284,12 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   bank, would be a `hill`), `bamboo_clump`, `bamboo_fence`, `bamboo_shoot`, `stone_lantern_b`, `rabbit`, `bird`.
   Tower wall kit v2: floors 0-1 use `bay_lobby_*` / `door_lobby`, 2-12 `bay_office_*`, 13+ `bay_site_*` (old `wall_bay*` are the fallback).
   The kit's floor props (vending, desk, lockers, cone ...) and `stair_flight` are not placed: free-standing things would have to be solid.
+- Temple compound (Daniel, 2026-11-15: "separate an entire dojo into different buildings. people enter the garden and can go to the
+  rooftop by (you create)"; references: a red-walled courtyard with a zen garden, a torii with pines and a pavilion, a koi pond with an
+  arched bridge). The dojo section is now DOJO HALL x3, then four times a `genCourt` TEMPLE GARDEN (`outdoor`, `court`, `tall`, bamboo
+  art for now) followed by a hall of 3, 3, 3 and 2 `genDojo` screens (named HALL n · kind). The way up is Claude's proposal: a bamboo
+  scaffold of three `raft` decks (224, 448, 640) with `ladder`s standing on the deck below, ending at the hall roof line, so 我 runs on
+  along the next hall's `ridge` (640); the ground path goes on into the hall. Asked the art thread for a temple-garden set.
 - Catch and throw back (Daniel picked option A for 我's combat, 2026-11-15; the details are Claude's): a perfect block on a normal fist (not
   如来神掌, 黄泉指 or a side fist) also catches it (`S.held`, 2 s, drawn over 我's head by `drawCaught`). ↑ (`tryJump` → `throwHeld(true)`)
   throws it up: after ~0.5 s it reaches the 兄弟 whose `aim` is nearest 我 (the practice bot when alone), whose fists lock for 3 s
