@@ -222,6 +222,12 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - Daniel (2026-11-15): "the art directions of prototypes look good"; he keeps refining art in the art thread, this thread moves on.
   In art rooms the way out is an orange signpost with a blinking arrow (in `artScene`), not `drawDoor`. Rooftops get an antenna or a
   neon sign on the wall face by a hash of the roof (decoration must not look like something to stand on or hide behind).
+- Layout pass (Daniel, 2026-11-15, chose "Rework layouts per level": Claude redesigns where platforms, cover and gaps go from the
+  reference folders, bamboo first, each tested with two players; every layout is Claude's proposal). Bamboo is done: `genBamboo`
+  rotates three screens by `modOf`: stone terraces (`rock` blocks 112 / 224 / 112 high, one jump each, with a `leaf` roof), a low
+  stone wall plus a canopy walk, and thickets plus canopy. `chunkList` skips bamboo, so it uses these and not the LDtk blocks.
+  `tileBlock` uses a `wall` tile frame for a block's body when the set has one (asked the art thread for bamboo masonry).
+  The climb wall mixes `wall_bay`, `wall_bay_b`, `wall_bay_c`. The house `rug` sprite is not placed yet.
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
