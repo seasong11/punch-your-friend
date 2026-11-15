@@ -267,6 +267,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   fists unless 我 stands on it) and a `stalk` at x 170 with `boost: 1900` that flings 我 onto the roof (the way up is Claude's proposal;
   Daniel removed stairs and ladders). ↓ drops back through. In `tall` rooms `camFollow` raises the view with 我 (up to 896), and
   `artBack` draws a set's `T` layers from `<name>_tall.png` (448 high, bottom-aligned, moving with the camera). Dojo `bg_far` scrolls at 0.06.
+  Rooftop run layout pass (Claude's proposals): `roofRun` has six screens now, picked by `mixOf(n - 1, 6, 31)`. New: m 4, hurdles
+  and a water tower on one long roof (`ac` = solid air-conditioning unit 68 high to hop, `tank` = one-way top on legs, 3 hp, shelter
+  from fists underneath; both drawn by `drawProp` from `ac_unit` / `water_tower`, with 300 px of flat roof after the last hurdle);
+  m 5, three roofs stepping up 90 each, then a cable down. `rooftop-jumps` is in `OWN_`, so no section takes LDtk blocks any more
+  (the file is still fetched; `?gen=1` behaves the same as the default except for the map mode flag).
   Tower climb stairs stay the original `stair_step` (Daniel rejected the station-style stairs; never wired).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.

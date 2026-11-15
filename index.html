@@ -1250,7 +1250,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // The high-speed rooftop run. Four kinds of screen take turns: plain jumps with a neon sign; a vent up to a tall roof
   // and a zip cable down; a wide gap with a billboard that falls into a bridge; and a mix.
   function roofRun(n) {
-    const r = rngOf(31 * n + 5), props = [], m = modOf(r, n - 1, 4), h0 = pk(r, 60, 120, 30); let x = -30, h = h0;
+    const r = rngOf(31 * n + 5), props = [], m = mixOf(n - 1, 6, 31), h0 = pk(r, 60, 120, 30); let x = -30, h = h0;
     const roof = (w, hh) => { h = hh; props.push({ k: 'roof', raw: 1, x: x + w / 2, w, h }); x += w; }, end = hh => roof(W_ + 40 - x, hh);
     const vent = () => props.push({ k: 'vent', ghost: 1, raw: 1, x: x - 56, w: 64, h });
     const cable = (g, hb, wb) => { const cx0 = x - 30, cy0 = h + 150; x += g; const cx1 = x + 50; if (wb) roof(wb, hb); else end(hb); props.push({ k: 'cable', ghost: 1, raw: 1, x: (cx0 + cx1) / 2, w: cx1 - cx0, h: 0, cx0, cy0, cx1, cy1: hb + 130 }); };
@@ -1258,6 +1258,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (m === 0) { roof(Jw(280), h0); x += Jg(150); roof(Jw(240), h0 + 60); props.push({ k: 'sign', plat: 1, x: x + 100, w: 90, h: h0 + 110 }); x += Jg(200); roof(Jw(260), h0 + 30); x += Jg(160); end(h0 + 60); }
     else if (m === 1) { roof(Jw(300), h0); vent(); x += 120; roof(Jp(260), h0 + 180); cable(340, h0, 240); x += Jg(150); end(h0 + 30); }
     else if (m === 2) { roof(Jw(420), h0); props.push({ k: 'board', ghost: 1, x: x - 24, w: 28, h: h0 + 170, hp: 1, bx: x + 170, bw: 370, bh: h0 }); x += 340; roof(Jw(300), h0); x += Jg(170); end(Math.max(40, h0 - 30)); }
+    else if (m === 4) { /* hurdles and a water tower (from Daniel's rooftop references): one long roof; air-conditioning units to hop without losing speed, and a tank on legs to shelter under (3 hp) */
+      const x0 = x, w = 1060 + pk(r, 0, 80, 40); roof(w, h0); /* 300 px of flat roof after the last hurdle, so a hop at full speed does not carry 我 off the edge */ props.push({ k: 'ac', raw: 1, x: x0 + 300, w: 112, h: h0 + 68 }, { k: 'tank', plat: 1, raw: 1, hp: 3, x: x0 + 520, w: 152, h: h0 + 224 }, { k: 'ac', raw: 1, x: x0 + 720, w: 112, h: h0 + 68 }); x += Jg(160); end(h0 + 30); }
+    else if (m === 5) { /* terraces: three roofs stepping up like stacked buildings, then a cable back down */
+      roof(Jw(280), h0); x += 110; roof(Jp(240), h0 + 90); x += 110; roof(Jp(240), h0 + 180); cable(320, h0 + 30, 0); }
     else { roof(SEED ? Jw(560) : 220, h0); if (!SEED) { x += 140; roof(200, Math.max(40, h0 - 30)); } vent(); /* seeded: one long roof, because a full-speed jump over the gap overshot the short vent roof into the wall */ x += 110; roof(Jp(200), h + 190); cable(320, h0 + 30, 0); }
     return { name: 'ROOFTOP RUN ' + n, sec: 'rooftop-jumps', scene: 'roofs', void: 1, fast: 1.2, props };
   }
@@ -1406,7 +1410,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const HAZ_SIZE = { laser: [36, 0], shroom: [56, 36], crate: [90, 90], box: [90, 60], pod: [120, 150], rock: [90, 100], slab: [80, 60], dummy: [60, 110], vent: [64, 0] }; // world size of things a spawn can add
   const BEAT_LOOP = ['Challenge', 'Challenge', 'Rest', 'Challenge', 'Challenge', 'Checkpoint', 'Challenge']; // after the opening Warmup
   function chunkList(gl) { // swap the code-built screens of each section for chunks picked by the seed
-    const OWN_ = { lake: 1, house: 1, volcano: 1, snow: 1, space: 1 }; /* sections with Claude's own layouts: only the rooftop run still takes LDtk blocks */
+    const OWN_ = { lake: 1, house: 1, volcano: 1, snow: 1, space: 1, 'rooftop-jumps': 1 }; /* sections with Claude's own layouts: only the rooftop run still takes LDtk blocks */
     const sk = r => r.climb ? 'climb' : r.scene === 'lift' ? 'lift' : r.sec === 'lake-dive' ? 'lake' : r.outdoor ? 'garden' : r.sec || 'house', out = [];
     const secOfSk = {}; for (const s in SEC_SK) secOfSk[SEC_SK[s]] = s;
     for (let i = 0; i < gl.length;) {
@@ -2285,7 +2289,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // layers: [name, factor]. 0 = fixed to the screen, 1 = part of the room, between = parallax. S = sprites to load.
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
-    rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign'] },
+    rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign', 'ac_unit', 'water_tower'] },
     bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue'] },
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
@@ -2428,6 +2432,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.restore(); ctx.imageSmoothingEnabled = sm; return true;
   }
   function drawProp(p) {
+    if (p.k === 'ac' || p.k === 'tank') { const im = ART.rooftop && ART.rooftop.ok(p.k === 'ac' ? 'ac_unit' : 'water_tower'), hh = p.k === 'ac' ? 68 : 224; if (im) spr(im, p.x, FLOOR - p.h); else { ctx.fillStyle = '#5a6988'; ctx.fillRect(p.x - p.w / 2, FLOOR - p.h, p.w, p.k === 'ac' ? hh : 96); } return; } // rooftop furniture standing on a roof
     const l = p.x - p.w / 2, t = FLOOR - p.h, w = p.w, h = p.h, R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(ww), Math.round(hh)); };
     const hurt = p.hp != null && p.hp < p.hp0, fried = p.sparkT > 0;
     if (p.k === 'roof') { // a building top; the jump sections are made of these
