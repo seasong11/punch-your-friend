@@ -1228,9 +1228,15 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // Bamboo (Claude places these from Daniel's bamboo references: mossy stone terraces, groves, a canopy above). Three kinds of
   // screen take turns. Every raised place has a way up that 我 can see: steps of one jump (112) or a springy stalk / mushroom.
   function genBamboo(n) {
-    const r = rngOf(307 + n * 11), props = [], m = mixOf(n - 1, 3, 307), deco = [];
+    const r = rngOf(307 + n * 11), props = [], m = mixOf(n - 1, 4, 307), deco = [];
     const wall = (x, w) => { const sx = x - w / 2 - 70; props.push(r() < 0.5 ? { k: 'stalk', ghost: 1, x: sx, w: 24, h: 330 } : { k: 'shroom', ghost: 1, x: sx - 10, w: 56, h: 36 }, { k: 'thick', x, w, h: 200 }); };
     const block = (x0, w, h) => props.push({ k: 'rock', x: x0 + w / 2, w, h });
+    if (m === 3) { /* scaffold (decks and ladders after the art thread's mock, squeezed into one screen; placement is Claude's proposal): a mossy rock to hop, then deck A, a higher deck B and deck C, joined by bamboo ladders. Decks are one-way rafts that take three fists */
+      const x0 = pk(r, 500, 540, 20), raft = (x, h) => props.push({ k: 'raft', plat: 1, raw: 1, x: x + 110, w: 220, h, hp: 3 }), lad = (x, base) => props.push({ k: 'ladder', ghost: 1, raw: 1, x, w: 48, h: 224, base });
+      props.push({ k: 'mossy', x: x0 - 190, w: 220, h: 112 });
+      raft(x0, 224); raft(x0 + 220, 224); raft(x0 + 400, 448); raft(x0 + 620, 448); raft(x0 + 800, 224);
+      lad(x0 + 36, 0); lad(x0 + 420, 224); lad(x0 + 820, 224); lad(x0 + 984, 0);
+    } else
     if (m === 1) { // a stone terrace: two steps up, a wide top under a leaf roof, two steps down
       let x = pk(r, 330, 400, 35); const top = pk(r, 320, 400, 40);
       block(x, 128, 112); x += 128; block(x, top, 224); const tx = x; x += top; block(x, 128, 112); deco.push(['torii', tx - 128 - 150, 0], ['stone_lantern', tx + 28, 224], ['stone_lantern', tx + top - 28, 224]);
@@ -1438,7 +1444,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const SEC_ART = { house: 'house', dojo: 'dojo', bamboo: 'bamboo', 'rooftop-jumps': 'rooftop', 'lake-dive': 'lake', lake: 'lake', volcano: 'volcano', snow: 'snow', space: 'space' };
   const FIT = { // props take the size of their drawn sprite (world px), so what you see is what blocks you
     house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [160, 128, 'tv'], wardrobe: [96, 160, 'wardrobe'], shelf: [128, 128, 'shelf'], armchair: [96, 96, 'armchair'], chair: [48, 80, 'chair'], stove: [80, 112, 'stove'], gclock: [56, 160, 'clock'], plant: [96, 128, 'plant'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
-    dojo: { box: [104, 136, 'drum'] /* no crates in the dojo (Daniel questioned them, 2026-11-15): every dojo `box` is a drum */, dummy: [72, 150, 'dummy'] /* drawn 184 tall at the scale of 我, but it blocks only up to 150 so one jump clears it */, drum: [104, 136, 'drum'] }, bamboo: { shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
+    dojo: { box: [104, 136, 'drum'] /* no crates in the dojo (Daniel questioned them, 2026-11-15): every dojo `box` is a drum */, dummy: [72, 150, 'dummy'] /* drawn 184 tall at the scale of 我, but it blocks only up to 150 so one jump clears it */, drum: [104, 136, 'drum'] }, bamboo: { mossy: [220, 112, 'mossy_rock'], shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
   function fitProps(list) { for (const rm of list) { if (rm.sec === 'dojo' && !rm.tall) { rm.tall = 1; rm.props = (rm.props || []).concat([{ k: 'ridge', plat: 1, thru: 1, raw: 1, x: 800, w: 1700, h: 640 }, { k: 'stalk', ghost: 1, x: 170, w: 24, h: 330, boost: 1900 }]); } /* the dojo roof: a ridge to run along, and a bamboo stalk by the entrance that flings 我 up to it (Claude's proposal for the way up) */ if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
@@ -1567,6 +1573,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const ei = cl.els.findIndex((e, k) => Math.abs(P.x - e.x) < 50 && R.el[k].st === 'idle' && Math.abs(P.y - R.el[k].y) < 3);
       if (ei >= 0) { P.el = ei + 1; R.el[ei].st = 'up'; P.vx = 0; S.blockT = 0; sfx.warn(); return; }
     }
+    { const ld = !cl && R.props.find(p => p.k === 'ladder' && Math.abs(P.x - p.x) < 44 && Math.abs(P.y - (p.base || 0)) < 20); if (ld) { P.pl = ld; P.vx = 0; S.blockT = 0; return; } } /* ↑ at the foot of a bamboo ladder climbs it in one go */
     { const stk = !cl && R.props.find(p => p.k === 'stalk' && Math.abs(P.x - p.x) < 64); // ↑ at a bamboo stalk: it bends and flings 我 high
       if (stk) { stk.spinT = 0.5; P.vy = stk.boost || 1280; P.air = true; S.blockT = 0; sfx.dash(); if (!reduce) burst(P.x, FLOOR - P.y - 3, 8, ['#63c74d', '#ffffff'], 200, 0.8, 400, 4); return; } }
     P.vy = JUMP_V * (cl && cl.space ? 0.8 : 1); P.air = true; S.blockT = 0; P.kicks = 0;
@@ -1576,6 +1583,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function movePlayer(dt) {
     if (climbOf()) { moveClimb(dt); return; }
     const rm = ROOMS[R.i], inW = inWater();
+    if (P.pl) { /* on a bamboo ladder: ← → lets go, the top puts 我 on the raft */
+      if (keys.l || keys.r || S.st !== 'play') { P.pl = null; P.air = true; P.vy = 0; }
+      else { P.vx = 0; P.x = P.pl.x; P.vy = 0; P.y += 430 * dt; if (P.y >= P.pl.h + (P.pl.base || 0)) { P.y = P.pl.h + (P.pl.base || 0) + 2; P.pl = null; P.air = true; } return; }
+    }
     if (P.zipCd > 0) P.zipCd -= dt;
     if (P.zip) { // sliding down a zip cable
       const z = P.zip; P.x += 760 * dt; P.vx = 560; P.vy = 0; P.air = true;
@@ -1643,7 +1654,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       banner(inf[0], 'Hearts refilled · ' + inf[1], inf[2]);
     } else if (ROOMS[R.i].core) { S.startRm = R.i; banner('THE CORE!', 'A shield bars the exit · lure fists onto the 3 power cells to break it', '#f6757a');
     } else if (ROOMS[R.i].cp) { S.startRm = R.i; banner('CHECKPOINT', 'A lost turn restarts from here', '#63c74d'); }
-    spawnAt(entryX(R.i)); P.lad = null;
+    spawnAt(entryX(R.i)); P.lad = null; P.pl = null;
     { const y1 = py0 - pairD(R.i - 1); if (y1 > P.y + 2 && !climbOf()) { P.y = y1; P.air = true; P.wet = inWater(); } } // keep 我's height across the seam
     roomShift(px0, P.x, py0, P.y); P.grip = null; P.el = null; P.kt = 0;
     S.chops = []; S.queue = []; S.rainT = 0; S.spawnIn = 1.4; S.blockT = 0;
@@ -1990,7 +2001,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         for (let x = WALL + 40; x < W - WALL - 60; x += 190) { box(x + (k % 3) * 28, y + 28, 8, 60, '#3a4466'); box(x + 16 + (k % 3) * 28, y + 44, 4, 32, '#3a4466'); }
       } else { // inside: a solid back wall in bays, with windows, doors and recesses for depth; open bays in the side walls where fists come in
         const yb = y + FH, BW = 190;
-        if (CA) { ctx.save(); ctx.beginPath(); ctx.rect(WALL, y, W - WALL * 2, FH); ctx.clip(); for (let x = WALL - 16, q = 0; x < W - WALL; x += 192, q++) spr(CA.ok((q * 7 + k * 13 + (k >> 1)) % 8 < 2 ? 'wall_opening' : ['wall_bay', 'wall_bay_b', 'wall_bay', 'wall_bay_c', 'wall_bay_b'][(q * 3 + k * 5 + (k >> 2)) % 5]) || CA.ok('wall_bay'), x + 96, y); ctx.restore(); }
+        if (CA) { ctx.save(); ctx.beginPath(); ctx.rect(WALL, y, W - WALL * 2, FH); ctx.clip(); for (let x = WALL - 16, q = 0; x < W - WALL; x += 192, q++) { const kd = k < 2 ? 'lobby' : k < 13 ? 'office' : 'site', dr = (q * 7 + k * 13 + (k >> 1)) % 8 < 2; /* each part of the tower is its own place: lobby, offices, unfinished top; q * 3 never repeats a bay side by side */
+          spr(CA.ok(dr ? 'door_' + kd : 'bay_' + kd + '_' + (q * 3 + k) % 4) || CA.ok(dr ? 'wall_opening' : ['wall_bay', 'wall_bay_b', 'wall_bay', 'wall_bay_c', 'wall_bay_b'][(q * 3 + k * 5 + (k >> 2)) % 5]) || CA.ok('wall_bay'), x + 96, y); }; ctx.restore(); }
         else {
         for (let x = WALL, q = 0; x < W - WALL; x += BW, q++) {
           const t = (q * 7 + k * 13 + (k >> 1)) % 8, w = Math.min(BW, W - WALL - x);
@@ -2300,7 +2312,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
     rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign', 'ac_unit', 'water_tower'] },
-    bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue'] },
+    bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue', 'mossy_rock', 'raft', 'bamboo_ladder', 'stone_lantern_b', 'trunk'] },
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock'] },
@@ -2308,7 +2320,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
-    climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
+    climb: { L: [], S: ['wall_bay', 'wall_bay_b', 'wall_bay_c', 'wall_opening', ...['lobby', 'office', 'site'].flatMap(k => ['door_' + k, ...[0, 1, 2, 3].map(i => 'bay_' + k + '_' + i)]), 'pillar', 'ladder', 'floor_slab', 'stair_step'] }
   };
   const artOf = i => { const rm = ROOMS[i]; if (!rm) return null; const n = rm.climb ? 'climb' : rm.scene === 'lift' ? 'elevator' : rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']; return n && artTiles(n) ? n : null; };
   function loadArt(sec, sprites) {
@@ -2353,6 +2365,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x / PX) * PX, Math.round(y / PX) * PX, Math.round(ww), Math.round(hh)); };
     const S = (n, cx, bottom, flip) => { const im = A.ok(n); if (!im) return false; if (flip) { ctx.save(); ctx.translate(Math.round(cx / PX) * PX * 2, 0); ctx.scale(-1, 1); } spr(im, cx, bottom - im.naturalHeight * PX); if (flip) ctx.restore(); return true; };
     const cracks = () => { if (hurt) { R_('#181425', p.x - 12, t + 4, 4, 12); R_('#181425', p.x + 16, t, 4, 16); R_('#181425', p.x - 4, t + 12, 4, 8); } };
+    if (k === 'ladder') { const im = A.ok('bamboo_ladder'); if (!im) return false; for (let y = FLOOR - (p.base || 0); y > FLOOR - (p.base || 0) - p.h + 4; y -= im.naturalHeight * PX) spr(im, p.x, y - im.naturalHeight * PX); return true; }
+    if (k === 'raft') { const im = A.ok('raft'), tr = A.ok('trunk'); if (!im) return false;
+      if (tr) for (const sx of [l + 28, l + w - 28]) for (let y = t + 40; y < FLOOR; y += tr.naturalHeight * PX) { const hh = Math.min(tr.naturalHeight * PX, FLOOR - y); ctx.drawImage(tr, 0, 0, tr.naturalWidth, hh / PX, sx - tr.naturalWidth * PX / 2, y, tr.naturalWidth * PX, hh); } /* stilts down to the ground */
+      spr(im, p.x, t); cracks(); return true; }
     const fit = (FIT[sec] || {})[k];
     if (fit && !p.hh && sec !== 'elevator') {
       if (k === 'slab') { tileBlock(A, l + 8, t + 28, w - 16, FLOOR - t + 36); S(hurt ? 'slab_cracked' : 'slab', p.x, t + 32); return true; }

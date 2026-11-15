@@ -278,6 +278,12 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   Only fists wear a cell down, so 我 lures them onto the cells; a cell also loses a notch by itself every 10 s (`tickProps`, `p.ct`), so
   a round cannot stall. Banners THE CORE! / SHIELD DOWN!; entering the core is a checkpoint. Baiting clears it in about 20 s, waiting in 31 s.
   Bamboo sprites were resized by the art thread (torii 112x126, lantern 22x52, statue 18x34, shroom 8x7; new `rabbit`, `bird`, not placed).
+- Bamboo scaffold (art thread's mock, placement is Claude's proposal, 2026-11-15): `genBamboo` has a fourth screen (`mixOf(n - 1, 4, 307)`, m 3): a
+  `mossy` rock to hop, then `raft` decks (one-way, 3 hp, 220 wide; A at 224, B at 448, C at 224, stilts drawn from `trunk`) joined by `ladder`
+  props (ghost, `base`, 224 high; ↑ at the foot climbs in one go via `P.pl` in `movePlayer`, ← → lets go). Not placed: `soil_block` (now a low
+  bank, would be a `hill`), `bamboo_clump`, `bamboo_fence`, `bamboo_shoot`, `stone_lantern_b`, `rabbit`, `bird`.
+  Tower wall kit v2: floors 0-1 use `bay_lobby_*` / `door_lobby`, 2-12 `bay_office_*`, 13+ `bay_site_*` (old `wall_bay*` are the fallback).
+  The kit's floor props (vending, desk, lockers, cone ...) and `stair_flight` are not placed: free-standing things would have to be solid.
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
