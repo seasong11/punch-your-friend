@@ -3392,6 +3392,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.stroke();
   }
   function addHole() {
+    return; /* Daniel, 2026-11-15: the wall holes left by fists look out of place, removed from the design (a visual only, no rule) */
     if (!(FX.stageIdx <= 1)) return;
     FX.holes = FX.holes || [];
     FX.holes.push({ x: 60 + Math.random() * (W - 120), y: 110 + Math.random() * (FLOOR - 300), r: 16 + Math.random() * 16, seed: Math.random() * 1000 });
