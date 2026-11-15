@@ -284,6 +284,13 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   bank, would be a `hill`), `bamboo_clump`, `bamboo_fence`, `bamboo_shoot`, `stone_lantern_b`, `rabbit`, `bird`.
   Tower wall kit v2: floors 0-1 use `bay_lobby_*` / `door_lobby`, 2-12 `bay_office_*`, 13+ `bay_site_*` (old `wall_bay*` are the fallback).
   The kit's floor props (vending, desk, lockers, cone ...) and `stair_flight` are not placed: free-standing things would have to be solid.
+- Catch and throw back (Daniel picked option A for 我's combat, 2026-11-15; the details are Claude's): a perfect block on a normal fist (not
+  如来神掌, 黄泉指 or a side fist) also catches it (`S.held`, 2 s, drawn over 我's head by `drawCaught`). ↑ (`tryJump` → `throwHeld(true)`)
+  throws it up: after ~0.5 s it reaches the 兄弟 whose `aim` is nearest 我 (the practice bot when alone), whose fists lock for 3 s
+  (`S.stunUntil`, presence `tn` counts like `sn`), +3. Dash (`throwHeld(false)`) throws it forward at 我's height + 60: the first prop in
+  the way takes one hit (`throwHit`: billboards fall, dummies spin, `hp` props crack, power cells too), +1. Throws live in `S.throws`
+  (`tickThrows`); presence `hd` / `tw` let the 兄弟 side draw them. The existing 反震 2.5 s stun on a perfect block is unchanged.
+  New characters 接 自 己 砸 were added to the font subset. `?dbg=1` also exposes `parry`, `bro()` and `bros()`.
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
