@@ -261,6 +261,7 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   Dojo again (art thread, 2026-11-15, later the same day): ONE tall hall, no gallery and no stairs sprite. The GALLERY screen is
   switched off (`mixOf(n, 4, 211)`; its code stays). The DRILL screen starts with a `drum`. The set paints a roof ridge to stand on
   at art y 48, but Daniel had the stairs and ladders removed for now, so the roof is not reachable.
+  No crates in the dojo (Daniel questioned the crate in the art mock, 2026-11-15): `FIT.dojo` turns every dojo `box` into a `drum`.
   Tower climb stairs stay the original `stair_step` (Daniel rejected the station-style stairs; never wired).
 - No wall holes (Daniel, 2026-11-15): the holes a landed fist used to leave on the back wall (`addHole`, `FX.holes`, `wallHole`)
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
