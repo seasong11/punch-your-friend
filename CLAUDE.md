@@ -264,8 +264,8 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   No crates in the dojo (Daniel questioned the crate in the art mock, 2026-11-15): `FIT.dojo` turns every dojo `box` into a `drum`.
   Dojo roof (Daniel, 2026-11-15: "when character goes up to the roof, the camera will go up with him. the sky background will need
   to extend"): `fitProps` marks every dojo room `tall` and adds a `ridge` (one-way roof line at 640, `thru`: `surfAt` ignores it for
-  fists unless 我 stands on it) and a `stalk` at x 170 with `boost: 1900` that flings 我 onto the roof (the way up is Claude's proposal;
-  Daniel removed stairs and ladders). ↓ drops back through. In `tall` rooms `camFollow` raises the view with 我 (up to 896), and
+  fists unless 我 stands on it) (the `stalk` with `boost: 1900` that flung 我 up was removed by Daniel, 2026-11-15: "this shouldn't be there in the
+  dojo"; with stairs and ladders also gone, nothing reaches the roof for now). ↓ drops back through. In `tall` rooms `camFollow` raises the view with 我 (up to 896), and
   `artBack` draws a set's `T` layers from `<name>_tall.png` (448 high, bottom-aligned, moving with the camera). Dojo `bg_far` scrolls at 0.06.
   Rooftop run layout pass (Claude's proposals): `roofRun` has six screens now, picked by `mixOf(n - 1, 6, 31)`. New: m 4, hurdles
   and a water tower on one long roof (`ac` = solid air-conditioning unit 68 high to hop, `tank` = one-way top on legs, 3 hp, shelter
