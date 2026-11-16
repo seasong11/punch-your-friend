@@ -308,6 +308,12 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   hole of cold water (BRR!, one heart) that freezes over after 6 s) and m 4 LIGHT LINE (a `cable` with `lights`: the string of lights
   from the art thread's snow mock on two `light_pole` sprites, ridden like a rooftop zip line across a valley). The art thread took the
   light strings out of the snow backgrounds so only the real one shows. The test bot (no hazard timing) still reaches the end of snow.
+- Daniel's generated items (2026-11-16; the art thread recoloured the usable ones to Endesga, `pxl-art/levels/*/sprites` and
+  `rooftop_items`): house `flower_pot_a/b/c` stand on shelves and tables, `pan` / `pan_small` on stoves (all `deco`); bamboo `shroom_b/c/d`
+  are three more looks for the bounce mushroom (picked by x); rooftop `trash_can_a..d` are solid `bin` props (44-52 wide, 60-84 high, one
+  hop) on about half of the roofs 400+ wide, kept 200 px from other roof props (`roofRun`). Not placed: `bed_b` (needs its own collision
+  size), `ac_unit_a/b` (taller than the 68 px hurdle), `extinguisher_*` (meant for the tower), `clothesline` (laundry reads as cover to hide
+  behind, against the rooftop decoration rule).
 - Catch and throw back (Daniel picked option A for 我's combat, 2026-11-15; the details are Claude's): a perfect block on a normal fist (not
   如来神掌, 黄泉指 or a side fist) also catches it (`S.held`, 2 s, drawn over 我's head by `drawCaught`). ↑ (`tryJump` → `throwHeld(true)`)
   throws it up: after ~0.5 s it reaches the 兄弟 whose `aim` is nearest 我 (the practice bot when alone), whose fists lock for 3 s

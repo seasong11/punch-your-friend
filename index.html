@@ -1195,12 +1195,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (r() < 0.5) { const rx = pk(r, 400, 900, 100); decor.push(['rug', rx]); deco.push(['rug', rx, 0]); }
     const G = {
       dine: x => { P('chair', x - 100, 48, 80); P('table', x, 128, 64); P('chair', x + 100, 48, 80); deco.push(['vase', x, 64]); },
-      table: x => { P('table', x, 128, 64); deco.push(['candle_table', x - 20, 64]); },
+      table: x => { P('table', x, 128, 64); deco.push(['candle_table', x - 20, 64], ['flower_pot_c', x + 34, 64]); },
       desk: x => { P('desk', x, 128, 64); P('chair', x + 96, 48, 80); deco.push(['candle_table', x - 30, 64]); },
       read: x => { deco.push(['lamp', x - 70, 0]); P('armchair', x, 96, 96); },
       sofa: x => P('counter', x, 192, 96), bed: x => P('bed', x, 192, 56), crates: x => { P('crate', x - 32, 64, 64); P('crate', x + 32, 64, 64); if (r() < 0.5) P('box', x + 96, 64, 64); },
-      plant: x => P('plant', x, 96, 128, { hp: 1 }), stove: x => P('stove', x, 80, 112), fridge: x => P('fridge', x, 64, 128, { hp: 2, elec: 1 }), tv: x => P('tv', x, 160, 128, { hp: 2, elec: 1 }),
-      shelf: x => { P('shelf', x, 128, 128); deco.push(['vase', x + 24, 128]); },
+      plant: x => P('plant', x, 96, 128, { hp: 1 }), stove: x => { P('stove', x, 80, 112); deco.push([r() < 0.5 ? 'pan' : 'pan_small', x - 10, 108]); }, fridge: x => P('fridge', x, 64, 128, { hp: 2, elec: 1 }), tv: x => P('tv', x, 160, 128, { hp: 2, elec: 1 }),
+      shelf: x => { P('shelf', x, 128, 128); deco.push(['vase', x + 24, 128], [r() < 0.5 ? 'flower_pot_a' : 'flower_pot_b', x - 32, 128]); },
       wardrobe: x => { P('crate', x - 80, 64, 64); P('wardrobe', x, 96, 160, { hp: 3 }); P('crate', x + 80, 64, 64); },
       gclock: x => { P('crate', x - 60, 64, 64); P('gclock', x, 56, 160); }
     };
@@ -1276,6 +1276,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     else if (m === 5) { /* terraces: three roofs stepping up like stacked buildings, then a cable back down */
       roof(Jw(280), h0); x += 110; roof(Jp(240), h0 + 90); x += 110; roof(Jp(240), h0 + 180); cable(320, h0 + 30, 0); }
     else { roof(SEED ? Jw(560) : 220, h0); if (!SEED) { x += 140; roof(200, Math.max(40, h0 - 30)); } vent(); /* seeded: one long roof, because a full-speed jump over the gap overshot the short vent roof into the wall */ x += 110; roof(Jp(200), h + 190); cable(320, h0 + 30, 0); }
+    for (const rf of props.filter(q => q.k === 'roof' && q.w >= 400)) { /* a trash can to hop on long, empty stretches of roof (Daniel's generated items, recoloured by the art thread); solid, so what looks like an object is one */
+      const bx = rf.x + rf.w * 0.1; if (r() < 0.4 || bx > W_ - 120 || props.some(q => q !== rf && q.k !== 'roof' && Math.abs((q.cx0 != null ? Math.min(Math.abs(q.cx0 - bx), Math.abs(q.cx1 - bx)) + bx : q.x) - bx) < 200)) continue;
+      const v = Math.floor(r() * 4), [bw, bh] = [[11, 15], [13, 20], [12, 20], [12, 21]][v]; props.push({ k: 'bin', raw: 1, x: bx, w: bw * 4, h: rf.h + bh * 4, v: 'abcd'[v] }); }
     return { name: 'ROOFTOP RUN ' + n, sec: 'rooftop-jumps', scene: 'roofs', void: 1, fast: 1.2, props };
   }
   function genLake(n) {
@@ -2359,13 +2362,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // layers: [name, factor]. 0 = fixed to the screen, 1 = part of the room, between = parallax. S = sprites to load.
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
-    rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign', 'ac_unit', 'water_tower'] },
-    bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue', 'mossy_rock', 'raft', 'bamboo_ladder', 'stone_lantern_b', 'trunk'] },
+    rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign', 'ac_unit', 'water_tower', 'trash_can_a', 'trash_can_b', 'trash_can_c', 'trash_can_d'] },
+    bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue', 'mossy_rock', 'raft', 'bamboo_ladder', 'stone_lantern_b', 'trunk', 'shroom_b', 'shroom_c', 'shroom_d'] },
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
     snow: { L: OUT_L, S: ['pine', 'rock', 'light_pole'] },
     dojo: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum'], V: ['bg_mid'], T: ['bg_sky', 'bg_far'] /* T: layers with a `_tall` file, one more screen of picture above for when the view rises */ },
-    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs'], V: ['bg_far'] },
+    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs', 'flower_pot_a', 'flower_pot_b', 'flower_pot_c', 'pan', 'pan_small'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
     temple: { L: [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.15]], S: ['pavilion', 'arch_bridge', 'koi_pond', 'pine', 'cherry_tree', 'stone_lantern', 'hall_end', 'maple'] },
@@ -2447,7 +2450,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (fit && !p.hh && sec !== 'elevator') {
       if (k === 'slab') { tileBlock(A, l + 8, t + 28, w - 16, FLOOR - t + 36); S(hurt ? 'slab_cracked' : 'slab', p.x, t + 32); return true; }
       const sq = k === 'shroom' && p.spinT > 0 ? 8 : 0, fl = k === 'dummy' && p.spinT > 0 && Math.floor(now / 70) % 2;
-      if (!S(fit[2], p.x, t + h + sq, fl)) return false;
+      if (!S(k === 'shroom' ? ['shroom', 'shroom_b', 'shroom_c', 'shroom_d'][Math.round(p.x / 8) % 4] : fit[2], p.x, t + h + sq, fl) && !S(fit[2], p.x, t + h + sq, fl)) return false; /* bounce mushrooms come in four looks */
       if (p.sparkT > 0 && Math.floor(now / 80) % 2) { R_('#fee761', p.x - 20, t + 8, 8, 8); R_('#ffffff', p.x + 8, t + 20, 8, 8); R_('#fee761', p.x, t - 8, 4, 12); }
       cracks(); return true;
     }
@@ -2540,6 +2543,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     ctx.restore(); ctx.imageSmoothingEnabled = sm; return true;
   }
   function drawProp(p) {
+    if (p.k === 'bin') { const im = ART.rooftop && ART.rooftop.ok('trash_can_' + p.v); if (im) spr(im, p.x, FLOOR - p.h); else { ctx.fillStyle = '#5a6988'; ctx.fillRect(p.x - p.w / 2, FLOOR - p.h, p.w, 60); } return; }
     if (p.k === 'ac' || p.k === 'tank') { const im = ART.rooftop && ART.rooftop.ok(p.k === 'ac' ? 'ac_unit' : 'water_tower'), hh = p.k === 'ac' ? 68 : 224; if (im) spr(im, p.x, FLOOR - p.h); else { ctx.fillStyle = '#5a6988'; ctx.fillRect(p.x - p.w / 2, FLOOR - p.h, p.w, p.k === 'ac' ? hh : 96); } return; } // rooftop furniture standing on a roof
     const l = p.x - p.w / 2, t = FLOOR - p.h, w = p.w, h = p.h, R_ = (c, x, y, ww, hh) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(ww), Math.round(hh)); };
     const hurt = p.hp != null && p.hp < p.hp0, fried = p.sparkT > 0;
