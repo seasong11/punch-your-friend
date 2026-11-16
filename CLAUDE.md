@@ -313,9 +313,14 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
 - Daniel's generated items (2026-11-16; the art thread recoloured the usable ones to Endesga, `pxl-art/levels/*/sprites` and
   `rooftop_items`): house `flower_pot_a/b/c` stand on shelves and tables, `pan` / `pan_small` on stoves (all `deco`); bamboo `shroom_b/c/d`
   are three more looks for the bounce mushroom (picked by x); rooftop `trash_can_a..d` are solid `bin` props (44-52 wide, 60-84 high, one
-  hop) on about half of the roofs 400+ wide, kept 200 px from other roof props (`roofRun`). Not placed: `bed_b` (needs its own collision
-  size), `ac_unit_a/b` (taller than the 68 px hurdle), `extinguisher_*` (meant for the tower), `clothesline` (laundry reads as cover to hide
+  hop) on about half of the roofs 400+ wide, kept 200 px from other roof props (`roofRun`). `bed_b` is the guest room's bed (`bed2`, solid 240x120, always the
+  first spot there). Not placed: `ac_unit_a/b` (taller than the 68 px hurdle), `extinguisher_*` (meant for the tower), `clothesline` (laundry reads as cover to hide
   behind, against the rooftop decoration rule).
+- Unused art placed (Claude's proposals, 2026-11-16): dojo `rack` (weapon rack, solid 144x128 with 3 hp, right after a `drum` in
+  the DUMMY ROW, one hop each), `cushion` as `deco` on the STAGE; bamboo `soil` bank (`soil_block`, drawn 312 wide, blocks 240x112) as
+  the scaffold's hop rock half the time, a `bird` on every torii's top beam, a `rabbit` by the path on every third grove (`deco`).
+  Still not placed: dojo `bag` (hangs, would need a floating solid), `bamboo_fence` / `bamboo_clump` (196 / 248 tall, taller than a
+  jump), `bamboo_shoot`, `stone_lantern_b`.
 - Catch and throw back (Daniel picked option A for 我's combat, 2026-11-15; the details are Claude's): a perfect block on a normal fist (not
   如来神掌, 黄泉指 or a side fist) also catches it (`S.held`, 2 s, drawn over 我's head by `drawCaught`). ↑ (`tryJump` → `throwHeld(true)`)
   throws it up: after ~0.5 s it reaches the 兄弟 whose `aim` is nearest 我 (the practice bot when alone), whose fists lock for 3 s

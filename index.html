@@ -1204,7 +1204,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const pk = (r, a, b, st) => a + Math.floor(r() * (Math.floor((b - a) / st) + 1)) * st;
   // House (Claude places these from the art thread's furniture set, by the room's name). Three spots per room; each takes one
   // furniture group. Anything taller than one jump (wardrobe, grandfather clock) gets a crate in front as a step.
-  const HOUSE_SETS = { 'DINING ROOM': ['dine', 'stove', 'plant', 'gclock'], PANTRY: ['fridge', 'crates', 'stove', 'table'], STUDY: ['read', 'desk', 'gclock', 'shelf'], 'GUEST ROOM': ['bed', 'wardrobe', 'plant', 'read'],
+  const HOUSE_SETS = { 'DINING ROOM': ['dine', 'stove', 'plant', 'gclock'], PANTRY: ['fridge', 'crates', 'stove', 'table'], STUDY: ['read', 'desk', 'gclock', 'shelf'], 'GUEST ROOM': ['bed2', 'wardrobe', 'plant', 'read'],
     PLAYROOM: ['tv', 'sofa', 'crates', 'plant'], LAUNDRY: ['crates', 'wardrobe', 'table', 'plant'], WORKSHOP: ['desk', 'crates', 'shelf', 'fridge'], STOREROOM: ['crates', 'wardrobe', 'fridge', 'shelf'] };
   function genHouse(name, n) {
     const r = rngOf(101 + n * 17), sty = [['plank', ['#733e39', '#b86f50', '#3e2731']], [0, ['#265c42', '#3e8948', '#193c3e']], [0, ['#e4a672', '#ead4aa', '#b86f50']], [0, ['#5a6988', '#8b9bb4', '#3a4466']], ['block', ['#5a6988', '#8b9bb4', '#3a4466']]][n % 5];
@@ -1216,13 +1216,13 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       table: x => { P('table', x, 128, 64); deco.push(['candle_table', x - 20, 64], ['flower_pot_c', x + 34, 64]); },
       desk: x => { P('desk', x, 128, 64); P('chair', x + 96, 48, 80); deco.push(['candle_table', x - 30, 64]); },
       read: x => { deco.push(['lamp', x - 70, 0]); P('armchair', x, 96, 96); },
-      sofa: x => P('counter', x, 192, 96), bed: x => P('bed', x, 192, 56), crates: x => { P('crate', x - 32, 64, 64); P('crate', x + 32, 64, 64); if (r() < 0.5) P('box', x + 96, 64, 64); },
+      sofa: x => P('counter', x, 192, 96), bed: x => P('bed', x, 192, 56), bed2: x => P('bed2', x, 240, 120) /* Daniel's generated bed with a quilt, one hop */, crates: x => { P('crate', x - 32, 64, 64); P('crate', x + 32, 64, 64); if (r() < 0.5) P('box', x + 96, 64, 64); },
       plant: x => P('plant', x, 96, 128, { hp: 1 }), stove: x => { P('stove', x, 80, 112); deco.push([r() < 0.5 ? 'pan' : 'pan_small', x - 10, 108]); }, fridge: x => P('fridge', x, 64, 128, { hp: 2, elec: 1 }), tv: x => P('tv', x, 160, 128, { hp: 2, elec: 1 }),
       shelf: x => { P('shelf', x, 128, 128); deco.push(['vase', x + 24, 128], [r() < 0.5 ? 'flower_pot_a' : 'flower_pot_b', x - 32, 128]); },
       wardrobe: x => { P('crate', x - 80, 64, 64); P('wardrobe', x, 96, 160, { hp: 3 }); P('crate', x + 80, 64, 64); },
       gclock: x => { P('crate', x - 60, 64, 64); P('gclock', x, 56, 160); }
     };
-    const set = (HOUSE_SETS[name] || HOUSE_SETS.STOREROOM).slice(); let skip = mixOf(n, 4, 101);
+    const set = (HOUSE_SETS[name] || HOUSE_SETS.STOREROOM).slice(); let skip = name === 'GUEST ROOM' ? 0 : mixOf(n, 4, 101); /* the guest room always shows its bed */
     const two = n % 2 === 0; /* every other room has a second floor (Daniel: stairs to guide players up and down). Stairs up, five planks at the painted floor line (320), stairs down; a fist breaks a plank in two hits */
     if (two) { P('stairs', 440, 320, 320, { plat: 1, rise: 1, raw: 1 }); for (let q = 0; q < 5; q++) P('floor', 656 + q * 112, 112, 320, { plat: 1, hp: 2, raw: 1 }); P('stairs', 1316, 320, 320, { plat: 1, rise: -1, raw: 1 }); }
     (two ? [720, 1040] : [430, 810, 1190]).forEach((x, q) => { const k = set[(q + skip) % set.length]; G[k](x + pk(r, -40, 40, 20)); });
@@ -1236,19 +1236,19 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     return { name: 'TEMPLE GARDEN ' + b, sec: 'dojo', outdoor: 1, court: 1, tall: 1, arch: [40, 480], props, deco };
   }
   function genDojo(n, hall) {
-    const r = rngOf(211 + n * 13), props = [], t = mixOf(n, 4, 211); /* the GALLERY screen (t === 4) is off: the dojo is one tall hall again and has no stairs sprite (Daniel, via the art thread, 2026-11-15) */
+    const r = rngOf(211 + n * 13), props = [], deco = [], t = mixOf(n, 4, 211); /* the GALLERY screen (t === 4) is off: the dojo is one tall hall again and has no stairs sprite (Daniel, via the art thread, 2026-11-15) */
     const decor = [['scroll', 230, n % 3], ['lamp', 560], ['rack', 760], ['lamp', 1080], ['scroll', 1320, (n + 1) % 3]];
     const dm = x => props.push({ k: 'dummy', x, w: 60, h: 110 });
-    if (t === 0) { for (let x = 380 + pk(r, 0, 60, 20); x < 1350; x += pk(r, 240, 320, 40)) dm(x); }
+    if (t === 0) { let x = 380 + pk(r, 0, 60, 20), q = 0; for (; x < 1350; x += pk(r, 240, 320, 40), q++) { if (q === 1 && x < 1100) { /* a drum, then a weapon rack (128) on from it: one hop each */ props.push({ k: 'drum', x, w: 104, h: 136 }, { k: 'rack', x: x + 150, w: 144, h: 128, hp: 3 }); x += 160; } else dm(x); } }
     else if (t === 1) { const x0 = pk(r, 400, 520, 40), k = pk(r, 6, 8, 1); props.push({ k: 'box', x: x0 - 140, w: 90, h: 80 }); for (let i = 0; i < k; i++) props.push({ k: 'beam', plat: 1, x: x0 + i * 100, w: 100, h: 160, hp: 2 }); dm(x0 + 150); dm(x0 + 150 + pk(r, 260, 340, 40)); }
     else if (t === 4) { /* the gallery (Daniel: two levels need stairs): stairs up, the gallery floor at the painted beam (320), stairs down; dummies and a drum underneath */
       props.push({ k: 'stairs', plat: 1, rise: 1, raw: 1, x: 440, w: 320, h: 320 }); for (let q = 0; q < 5; q++) props.push({ k: 'floor', plat: 1, raw: 1, hp: 2, x: 656 + q * 112, w: 112, h: 320 }); props.push({ k: 'stairs', plat: 1, rise: -1, raw: 1, x: 1316, w: 320, h: 320 });
       dm(pk(r, 700, 760, 30)); props.push({ k: 'drum', x: pk(r, 900, 960, 30), w: 104, h: 136 }); dm(pk(r, 1080, 1120, 20)); }
     else if (t === 3) { /* a raised training stage (from Daniel's dojo references), a beam roof over it, a dummy guarding the way off */
-      const sw = pk(r, 384, 512, 64), sx = pk(r, 520, 600, 40); props.push({ k: 'crate', x: sx + sw / 2, w: sw, h: 96 });
+      const sw = pk(r, 384, 512, 64), sx = pk(r, 520, 600, 40); props.push({ k: 'crate', x: sx + sw / 2, w: sw, h: 96 }); for (const cx of [sx + 60, sx + sw - 60]) deco.push(['cushion', cx, 96]); /* kneeling cushions on the stage: decoration, they lie on it */
       for (let i = 0; i < 2; i++) props.push({ k: 'beam', plat: 1, x: sx + sw / 2 - 50 + i * 100, w: 100, h: 96 + 150, hp: 2 }); dm(sx + sw + pk(r, 160, 220, 30)); }
     else { props.push({ k: 'drum', x: pk(r, 360, 440, 40), w: 104, h: 136 }); dm(600); props.push({ k: 'box', x: 720, w: 90, h: 80 }); for (let i = 0; i < 3; i++) props.push({ k: 'beam', plat: 1, x: 820 + i * 100, w: 100, h: 160, hp: 2 }); dm(1240); }
-    return { name: 'HALL ' + (hall || Math.floor(n / 3) + 1) + ' · ' + ['DUMMY ROW', 'HIGH BEAM', 'DRILL', 'STAGE', 'GALLERY'][t], sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor, props };
+    return { name: 'HALL ' + (hall || Math.floor(n / 3) + 1) + ' · ' + ['DUMMY ROW', 'HIGH BEAM', 'DRILL', 'STAGE', 'GALLERY'][t], sec: 'dojo', style: 'shoji', wall: ['#ead4aa', '#e4a672', '#733e39'], floor: ['#e4a672', '#b86f50'], decor, props, deco };
   }
   // Bamboo (Claude places these from Daniel's bamboo references: mossy stone terraces, groves, a canopy above). Three kinds of
   // screen take turns. Every raised place has a way up that 我 can see: steps of one jump (112) or a springy stalk / mushroom.
@@ -1258,7 +1258,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const block = (x0, w, h) => props.push({ k: 'rock', x: x0 + w / 2, w, h });
     if (m === 3) { /* scaffold (decks and ladders after the art thread's mock, squeezed into one screen; placement is Claude's proposal): a mossy rock to hop, then deck A, a higher deck B and deck C, joined by bamboo ladders. Decks are one-way rafts that take three fists */
       const x0 = pk(r, 500, 540, 20), raft = (x, h) => props.push({ k: 'raft', plat: 1, raw: 1, x: x + 110, w: 220, h, hp: 3 }), lad = (x, base) => props.push({ k: 'ladder', ghost: 1, raw: 1, x, w: 48, h: 224, base });
-      props.push({ k: 'mossy', x: x0 - 190, w: 220, h: 112 });
+      props.push(r() < 0.5 ? { k: 'mossy', x: x0 - 190, w: 220, h: 112 } : { k: 'soil', x: x0 - 190, w: 240, h: 112 });
       raft(x0, 224); raft(x0 + 220, 224); raft(x0 + 400, 448); raft(x0 + 620, 448); raft(x0 + 800, 224);
       lad(x0 + 36, 0); lad(x0 + 420, 224); lad(x0 + 820, 224); lad(x0 + 984, 0);
     } else
@@ -1276,6 +1276,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const lx = pk(r, 860, 960, 50); props.push({ k: 'stalk', ghost: 1, x: lx - 90, w: 24, h: 330 }); for (let i = 0; i < 3; i++) props.push({ k: 'leaf', plat: 1, x: lx + i * 100, w: 100, h: 230, hp: 2 });
       wall(pk(r, 1300, 1360, 30), pk(r, 120, 150, 30));
     }
+    { const tor = deco.find(d => d[0] === 'torii'); if (tor) deco.push(['bird', tor[1] + 40, (126 - 7) * PX]); } /* a bird on the torii's top beam (art row 7 of 126) */
+    if (n % 3 === 1) { const rx = 220 + pk(r, 0, 80, 20); if (!props.some(q => Math.abs(q.x - rx) < q.w / 2 + 60)) deco.push(['rabbit', rx, 0, rx % 40 < 20 ? 1 : 0]); } /* now and then a rabbit sits by the path (too small to read as cover) */
     return { name: 'BAMBOO GROVE ' + n, sec: 'bamboo', scene: 'bamboo', props, deco }; /* deco: [sprite, x, base height], drawn behind everything solid, never blocks */
   }
   // The high-speed rooftop run. Four kinds of screen take turns: plain jumps with a neon sign; a vent up to a tall roof
@@ -1492,8 +1494,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   const SEC_ART = { house: 'house', dojo: 'dojo', bamboo: 'bamboo', 'rooftop-jumps': 'rooftop', 'lake-dive': 'lake', lake: 'lake', volcano: 'volcano', snow: 'snow', space: 'space' };
   const FIT = { // props take the size of their drawn sprite (world px), so what you see is what blocks you
-    house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [160, 128, 'tv'], wardrobe: [96, 160, 'wardrobe'], shelf: [128, 128, 'shelf'], armchair: [96, 96, 'armchair'], chair: [48, 80, 'chair'], stove: [80, 112, 'stove'], gclock: [56, 160, 'clock'], plant: [96, 128, 'plant'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], counter: [192, 96, 'sofa'] },
-    dojo: { box: [104, 136, 'drum'] /* no crates in the dojo (Daniel questioned them, 2026-11-15): every dojo `box` is a drum */, dummy: [72, 150, 'dummy'] /* drawn 184 tall at the scale of 我, but it blocks only up to 150 so one jump clears it */, drum: [104, 136, 'drum'] }, bamboo: { mossy: [220, 112, 'mossy_rock'], shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
+    house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [160, 128, 'tv'], wardrobe: [96, 160, 'wardrobe'], shelf: [128, 128, 'shelf'], armchair: [96, 96, 'armchair'], chair: [48, 80, 'chair'], stove: [80, 112, 'stove'], gclock: [56, 160, 'clock'], plant: [96, 128, 'plant'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], bed2: [240, 120, 'bed_b'] /* the quilt is the top; the headboard pokes up 16 more */, counter: [192, 96, 'sofa'] },
+    dojo: { box: [104, 136, 'drum'] /* no crates in the dojo (Daniel questioned them, 2026-11-15): every dojo `box` is a drum */, dummy: [72, 150, 'dummy'] /* drawn 184 tall at the scale of 我, but it blocks only up to 150 so one jump clears it */, drum: [104, 136, 'drum'], rack: [144, 128, 'rack'] /* a weapon rack: blocks up to its frame (128); the spear tips above are thin */ }, bamboo: { mossy: [220, 112, 'mossy_rock'], soil: [240, 112, 'soil_block'] /* a mossy bank drawn 312 wide: only its flat middle blocks */, shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
   function fitProps(list) { for (const rm of list) { if (rm.sec === 'dojo' && !rm.tall && !rm.court) { rm.tall = 1; rm.props = (rm.props || []).concat([{ k: 'ridge', plat: 1, thru: 1, raw: 1, x: 800, w: 1700, h: 640 }]); } /* the dojo roof: a ridge to run along. Daniel had the bamboo stalk that flung 我 up removed (2026-11-15), so for now nothing reaches it */ if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
@@ -2381,12 +2383,12 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const OUT_L = [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]];
   const SETS = {
     rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign', 'ac_unit', 'water_tower', 'trash_can_a', 'trash_can_b', 'trash_can_c', 'trash_can_d'] },
-    bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue', 'mossy_rock', 'raft', 'bamboo_ladder', 'stone_lantern_b', 'trunk', 'shroom_b', 'shroom_c', 'shroom_d'] },
+    bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue', 'mossy_rock', 'raft', 'bamboo_ladder', 'stone_lantern_b', 'trunk', 'shroom_b', 'shroom_c', 'shroom_d', 'soil_block', 'rabbit', 'bird'] },
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
     volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock', 'lava_heap', 'obsidian'] },
     snow: { L: OUT_L, S: ['pine', 'rock', 'light_pole'] },
-    dojo: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum'], V: ['bg_mid'], T: ['bg_sky', 'bg_far'] /* T: layers with a `_tall` file, one more screen of picture above for when the view rises */ },
-    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs', 'flower_pot_a', 'flower_pot_b', 'flower_pot_c', 'pan', 'pan_small'], V: ['bg_far'] },
+    dojo: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum', 'rack', 'cushion'], V: ['bg_mid'], T: ['bg_sky', 'bg_far'] /* T: layers with a `_tall` file, one more screen of picture above for when the view rises */ },
+    house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs', 'bed_b', 'flower_pot_a', 'flower_pot_b', 'flower_pot_c', 'pan', 'pan_small'], V: ['bg_far'] },
     elevator: { L: [['bg_sky', 0], ['bg_far', 1], ['bg_mid', 1], ['bg_near', 1]], S: [] },
     space: { L: [['bg_sky', 0], ['bg_far', 0.03], ['bg_mid', 0.1], ['bg_near', 1]], S: ['pod', 'aster_s', 'aster_m', 'aster_l', 'ufo', 'laser'] },
     temple: { L: [['bg_sky', 0], ['bg_far', 0.05], ['bg_mid', 0.15]], S: ['pavilion', 'arch_bridge', 'koi_pond', 'pine', 'cherry_tree', 'stone_lantern', 'hall_end', 'maple'] },
