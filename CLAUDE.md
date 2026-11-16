@@ -372,6 +372,13 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   drawn by `drawPond` (volcano sky above the lip, volcano top/fill tiles, `pond_tiles` shaft, `pond_top`, `shaft_mouth`). ↑ at a water
   surface beside a bank no higher than the surface + 64 is a climb-out hop (`tryJump`, `P.out`). The first volcano screen loses lava and
   slabs in its first 480 px. `end_lake_volcano` is no longer used. A raised scene neighbour gets dark rock under it (`drawNb`).
+- Rooftop to lake (Daniel, 2026-11-16: "roof top to lake transition"): the dive screen keeps the rooftop night sky above its pond and shows
+  the lake picture only under the surface (before, the lake's own backdrop replaced the sky). The lake set's layers are pinned to the
+  room's water surface (`artBack`: painted waterline 22 art px from the top; the sky's top row / the water's bottom row stretch into the
+  gap), so the dive pond, the lake screens and the shaft show one continuous lake. The dive now takes part in the seam crossfade (city sky
+  into the lake's night); its under-surface lake goes to the `BG` layer through `VIEW.bgClip`, on across the band. `drawPond` now draws the
+  art thread's single painted `pond_rock` (432x284, local x 0 = art x -10, row r = 284 - r above the bed) over the volcano sky; the
+  lake's surface line skips the shaft. `pond_top`, `shaft_mouth`, `pond_tiles` stay in `art/seams` unused.
 - Climb top (Daniel, 2026-11-16: "Player reaches rooftop after climbing up the building"): the top floor's EXIT door is replaced by the
   art thread's `roof_access` hut at the last stair's top end (`drawClimb`), so 我 comes out of it onto the roof.
 - Stage design document for Daniel: https://claude.ai/artifact/YUAeoRmNTQtoG3Hc4erU4G (labels every rule Daniel / Agreed /

@@ -2502,22 +2502,16 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function plate(rm) { if (VIEW.nb) return; onUI(() => { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425'); ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left'; ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }); }
   const drawProps = () => R.props.forEach(p => { if (p.dead && p.k === 'ice') { artProp(p); return; } if (p.dead && p.k === 'floor') { bx(p.x - p.w / 2, FLOOR - p.h, p.w, 32, '#181425'); return; } if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
-  function drawPond(rm) { // the lake's last screen: basalt over the lake, the shaft, the pond in the volcano floor, the volcano sky above
-    const Q = rm.pond, T = SEAMA.ok('pond'), F = SEAMA.pf, AV = artTiles('volcano'), L = Q.lip, ws = FLOOR - rm.water.top, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-    ctx.save(); ctx.beginPath(); ctx.rect(Q.rock, FLOOR - L - 2000, W + 80 - Q.rock, 2000); ctx.clip(); const nb = VIEW.nb; VIEW.nb = 1; VIEW.band = null; artBack('volcano'); VIEW.nb = nb; ctx.restore(); /* the volcano sky over the rock */
-    const t = (n, x, y) => { const f = F && F[n]; if (T && f) ctx.drawImage(T, f.x, f.y, f.w, f.h, x, y, f.w * PX, f.h * PX); };
-    for (const [a, b, down] of [[Q.rock, Q.x0, 0], [Q.x1, W + 80, 1]]) { const bot = down ? FLOOR + 64 : ws; bx(a, FLOOR - L, b - a, bot - (FLOOR - L), '#0e071b'); /* the right bank goes down to the lake bed: the lake's end wall */
-      if (AV) { for (let x = a; x < b; x += 64) wt(AV, (x / 64) % 2 ? 'top_b' : 'top_a', x, FLOOR - L); for (let y = FLOOR - L + 64; y < bot; y += 64) for (let x = a; x < b; x += 64) wt(AV, 'fill', x, y); }
-      if (!down) for (let x = a; x < b; x += 64) t('ceiling', x, ws - 64); }
-    for (let y = FLOOR - L + 160; y < ws; y += 64) { t('shaft_l', Q.x0 - 32, y); for (const lx of [32, 48, 64]) t(lx === 48 ? 'water_ray' : 'water', Q.x0 - 96 + lx * PX, y); t('shaft_r', Q.x0 - 96 + 80 * PX, y); }
-    const top = SEAMA.ok('pond_top'); if (top) ctx.drawImage(top, Q.x0 - 96, FLOOR - L - 32 * PX, top.naturalWidth * PX, top.naturalHeight * PX);
-    const mo = SEAMA.ok('shaft_mouth'); if (mo) ctx.drawImage(mo, Q.x0 - 128, ws, mo.naturalWidth * PX, mo.naturalHeight * PX);
+  function drawPond(rm) { // the lake's last screen: the volcano sky above the lip, then the art thread's painted basalt piece (shelf, shaft, pond, right bank)
+    const Q = rm.pond, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    ctx.save(); ctx.beginPath(); ctx.rect(Q.rock, FLOOR - Q.lip - 2000, W + 80 - Q.rock, 2000); ctx.clip(); const nb = VIEW.nb; VIEW.nb = 1; VIEW.band = null; artBack('volcano'); VIEW.nb = nb; ctx.restore();
+    const im = SEAMA.ok('pond_rock'); if (im) ctx.drawImage(im, -10 * PX, FLOOR - 284 * PX, im.naturalWidth * PX, im.naturalHeight * PX); /* local x 0 = art x -10, local row r = (284 - r) art px above the bed */
     ctx.imageSmoothingEnabled = sm;
   }
   function artScene(rm, sec) { // a whole room from its level set: backdrop, ground, the moving bits, props
     const A = ART[sec], sc = rm.scene, now = performance.now(), open = rm.void || rm.vac;
     if (!artBack(sec, null, open ? 'bg_near' : null)) return false;
-    if (sc === 'lake') { const wy = FLOOR - rm.water.top; bx(0, wy, W, 4, '#ffffff'); for (let x = 8; x < W; x += 48) bx(x + Math.floor(now / 300 + x) % 3 * 8, wy + 8, 24, 4, '#2ce8f5');
+    if (sc === 'lake') { const wy = FLOOR - rm.water.top, Q = rm.pond; if (Q) { bx(0, wy, Q.x0, 4, '#ffffff'); bx(Q.x1, wy, W - Q.x1, 4, '#ffffff'); } else bx(0, wy, W, 4, '#ffffff'); for (let x = 8; x < W; x += 48) if (!Q || x + 32 < Q.x0 || x > Q.x1) bx(x + Math.floor(now / 300 + x) % 3 * 8, wy + 8, 24, 4, '#2ce8f5');
       for (let k = 0; k < 26; k++) { const by = FLOOR - ((now / 14 + rnd(k + 2) * 2000) % (rm.water.top - 10)); bx(Math.floor(rnd(k + 31) * W / 8) * 8 + Math.round(Math.sin(now / 500 + k)) * 4, by, k % 4 ? 4 : 8, k % 4 ? 4 : 8, '#c0cbdc'); } }
     if (sc === 'volcano') for (let k = 0; k < 24; k++) bx(Math.floor(rnd(k + 5) * W / 8) * 8, FLOOR - ((now / 22 + rnd(k + 6) * 900) % 520), 4, 4, k % 3 ? '#f77622' : '#fee761'); // embers
     if (!rm.void) groundArt(A, rm);
@@ -2567,7 +2561,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // dusk fade): the right-hand room's share of the pixels grows from 0 to 1 across the band. Both rooms build their mask from the same
   // screen pixels, so together they cover every pixel once, whichever of the two is the current room.
   const BAND = 96 * PX, SEAM = { m: document.createElement('canvas'), t: document.createElement('canvas'), n: document.createElement('canvas'), d: null };
-  const seamOk = j => { const rm = ROOMS[j], a = rm && !rm.climb && artOf(j); return !!(SUBON && a && a !== 'house' && rm.scene !== 'dive'); }; /* the house is all interior: its walls hide its sky, so it keeps the hard edge; the dive screen draws two sets (city above, lake below) and keeps it too */
+  const seamOk = j => { const rm = ROOMS[j], a = rm && !rm.climb && artOf(j); return !!(SUBON && a && a !== 'house'); }; /* the house is all interior: its walls hide its sky, so it keeps the hard edge */
   function seamBand(j) { const b = {}; if (j > 0 && seamOk(j) && seamOk(j - 1)) b.L = 0; if (j < ROOMS.length - 1 && seamOk(j) && seamOk(j + 1)) b.R = Math.round((exitX(j) - entryX(j + 1)) / PX) * PX; return b.L != null || b.R != null ? b : null; }
   function seamMask(AW, AH, x0, s0, rise) { // opaque where this room shows inside the band [s0, s0 + BAND) (room coordinates); null if the band is off screen
     const c0 = Math.max(0, Math.round((s0 - x0) / PX)), c1 = Math.min(AW, Math.round((s0 + BAND - x0) / PX)); if (c1 <= c0) return null;
@@ -2586,9 +2580,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const g = NIGHT.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, AW, AH); g.imageSmoothingEnabled = false;
     const sp = A.win && !reduce ? sfx.spectrum(24) : null, bdq = SUBON && my == null && ctx !== ucx && VIEW.band; /* at a seam, layers that are part of the room (factor 1: the house walls, the dojo hall) go to their own canvas, cut hard at the seam, and only the sky and the far layers crossfade */
     if (bdq) { if (SEAM.n.width !== AW || SEAM.n.height !== AH) { SEAM.n.width = AW; SEAM.n.height = AH; } SEAM.ng = SEAM.n.getContext('2d'); SEAM.ng.clearRect(0, 0, AW, AH); SEAM.ng.imageSmoothingEnabled = false; SEAM.nu = 0; }
-    LS.forEach(([n, f], li) => { if (li === 1) skyBody(A, g, AW, AH); if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : f > 0 && !A.ok(n + '_tall') && (ROOMS[VIEW.gi != null ? VIEW.gi : R.i] || {}).tall ? Math.round(Math.max(0, camY()) / PX * (f >= 0.1 ? 1 : 0.6)) : 0; /* a tall room without a _tall picture: ground-anchored layers sink as the camera rises */ for (let k = -2; k < 3; k++) {
+    LS.forEach(([n, f], li) => { if (li === 1) skyBody(A, g, AW, AH); if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : sec === 'lake' && (ROOMS[R.i] || {}).water ? Math.round((FLOOR - ROOMS[R.i].water.top - y0) / PX) - 22 /* the lake picture is pinned to the room's water surface (its painted waterline is 22 art px from its top), so the dive pond, the lake screens and the pond shaft show one lake */ : f > 0 && !A.ok(n + '_tall') && (ROOMS[VIEW.gi != null ? VIEW.gi : R.i] || {}).tall ? Math.round(Math.max(0, camY()) / PX * (f >= 0.1 ? 1 : 0.6)) : 0; /* a tall room without a _tall picture: ground-anchored layers sink as the camera rises */ for (let k = -2; k < 3; k++) {
       const bx0 = off + k * IW; if (bx0 >= AW || bx0 <= -IW) continue;
-      { const tl = f !== 1 && A.ok(n + '_tall'); const gq = bdq && f === 1 ? (SEAM.nu = 1, SEAM.ng) : g; if (tl) gq.drawImage(tl, bx0, AH - tl.naturalHeight + clamp(Math.round(camY() / PX), 0, tl.naturalHeight - AH), IW, tl.naturalHeight); else gq.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH); }
+      { const tl = f !== 1 && A.ok(n + '_tall'); const gq = bdq && f === 1 ? (SEAM.nu = 1, SEAM.ng) : g; if (sec === 'lake' && li === 0 && oy) { const im0 = A.img[n]; if (oy > 0) gq.drawImage(im0, 0, 0, im0.naturalWidth, 1, bx0, 0, IW, oy); else gq.drawImage(im0, 0, im0.naturalHeight - 1, im0.naturalWidth, 1, bx0, AH + oy, IW, -oy); } /* stretch the sky's top row (or the deep water's bottom row) into the space the shift opens */ if (tl) gq.drawImage(tl, bx0, AH - tl.naturalHeight + clamp(Math.round(camY() / PX), 0, tl.naturalHeight - AH), IW, tl.naturalHeight); else gq.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH); }
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
         const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
         for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; g.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) g.fillRect(bx0 + b.x + c * b.pitch[0], b.y + row * b.pitch[1], b.cell[0], b.cell[1]); }
@@ -2611,6 +2605,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, AW, AH); tg.drawImage(NIGHT, 0, 0); tg.globalCompositeOperation = 'destination-in'; tg.drawImage(mk, 0, 0); tg.globalCompositeOperation = 'source-over'; bg.drawImage(SEAM.t, 0, 0); }
       ctx.imageSmoothingEnabled = sm; return true;
     }
+    if (VIEW.bgClip && BG.on) { const [cx, cy, cr] = VIEW.bgClip, bg = BG.c.getContext('2d'), c0 = clamp(Math.round((cx - x0) / PX), 0, AW), r0 = clamp(Math.round((cy - y0) / PX), 0, AH), c1 = clamp(Math.round((cr - x0) / PX), 0, AW);
+      if (c1 > c0 && r0 < AH) { bg.save(); bg.beginPath(); bg.rect(c0, r0, c1 - c0, AH - r0); bg.clip(); bg.imageSmoothingEnabled = false; bg.drawImage(NIGHT, 0, 0); bg.restore(); } ctx.imageSmoothingEnabled = sm; return true; }
     ctx.save(); ctx.beginPath(); ctx.rect(0, st, W, H); ctx.clip(); ctx.imageSmoothingEnabled = false;
     if (SUBON && my == null && ctx !== ucx && !VIEW.nb) { /* the backdrop goes under the world as its own layer (not shifted by the smooth camera); punch it out of the world canvas */
       const M = ctx.getTransform(); if (BG.c.width !== AW || BG.c.height !== AH) { BG.c.width = AW; BG.c.height = AH; } const bg = BG.c.getContext('2d'); bg.clearRect(0, 0, AW, AH); bg.drawImage(NIGHT, 0, 0);
@@ -2827,7 +2823,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       const LA = sc === 'dive' && NB && artTiles('lake'), RA2 = LA && artTiles('rooftop');
       if (LA && RA2) { // the dive: the last roof, then the lake seen through its surface
         const wt = rm.water, wy = FLOOR - wt.top;
-        ctx.save(); ctx.beginPath(); ctx.rect(wt.x0, wy, W - wt.x0, H + 400); ctx.clip(); artBack('lake'); ctx.restore();
+        ctx.save(); ctx.beginPath(); ctx.rect(wt.x0, wy, W - wt.x0, H + 400); ctx.clip(); { const nb = VIEW.nb; VIEW.nb = 1; VIEW.bgClip = BG.on ? [wt.x0, wy, W + BAND] : null; artBack('lake'); VIEW.bgClip = null; VIEW.nb = nb; } ctx.restore(); /* under the surface only, so the rooftop sky stays above it; with the seam band on, into the BG layer and on across the band, where the next lake screen shows the same picture */
         bx(wt.x0, wy, W - wt.x0, 4, '#ffffff'); for (let x = wt.x0 + 8; x < W; x += 48) bx(x + Math.floor(now / 300 + x) % 3 * 8, wy + 8, 24, 4, '#2ce8f5');
         ctx.save(); ctx.beginPath(); ctx.rect(wt.x0, FLOOR, W - wt.x0, H); ctx.clip(); groundArt(LA, rm); ctx.restore();
         const rh = rampAt(100, rm); // the last building stands on the bank; the pond's surface is at ground level
@@ -2909,7 +2905,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   if (location.protocol !== 'file:' && !/[?&]art=0/.test(location.search)) {
     for (const n of ['bamboo_climb', 'house_garden', 'garden_dojo', 'temple_dojo', 'dojo_bamboo', 'lake_volcano', 'volcano_snow', 'snow_elevator', 'elevator_space']) { const im = new Image(); im.src = 'art/seams/sprites/end_' + n + '.png'; SEAMA.img['end_' + n] = im; }
     { const im = new Image(); im.src = 'art/seams/seam_tiles.png'; SEAMA.img.tiles = im; }
-    for (const [n, f] of [['pond', 'pond_tiles.png'], ['pond_top', 'sprites/pond_top.png'], ['shaft_mouth', 'sprites/shaft_mouth.png'], ['roof_access', 'sprites/roof_access.png']]) { const im = new Image(); im.src = 'art/seams/' + f; SEAMA.img[n] = im; }
+    for (const [n, f] of [['pond', 'pond_tiles.png'], ['pond_top', 'sprites/pond_top.png'], ['shaft_mouth', 'sprites/shaft_mouth.png'], ['roof_access', 'sprites/roof_access.png'], ['pond_rock', 'sprites/pond_rock.png']]) { const im = new Image(); im.src = 'art/seams/' + f; SEAMA.img[n] = im; }
     fetch('art/seams/pond_tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { SEAMA.pf = {}; for (const k in d.frames) SEAMA.pf[k] = d.frames[k].frame; } }).catch(() => {});
     fetch('art/seams/seam_tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { SEAMA.fr = {}; for (const k in d.frames) SEAMA.fr[k] = d.frames[k].frame; } }).catch(() => {});
   }
