@@ -308,6 +308,8 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   hole of cold water (BRR!, one heart) that freezes over after 6 s) and m 4 LIGHT LINE (a `cable` with `lights`: the string of lights
   from the art thread's snow mock on two `light_pole` sprites, ridden like a rooftop zip line across a valley). The art thread took the
   light strings out of the snow backgrounds so only the real one shows. The test bot (no hazard timing) still reaches the end of snow.
+  Geyser field hop props (art thread, 2026-11-16): `heap` (`lava_heap`, 100x80) and `obs` (`obsidian`, 140x144), both solid. The art
+  thread paints `dead_tree`, `warning_sign` and `sulfur` into the reworked volcano `bg_mid`, so those stay off the playfield.
 - Daniel's generated items (2026-11-16; the art thread recoloured the usable ones to Endesga, `pxl-art/levels/*/sprites` and
   `rooftop_items`): house `flower_pot_a/b/c` stand on shelves and tables, `pan` / `pan_small` on stoves (all `deco`); bamboo `shroom_b/c/d`
   are three more looks for the bounce mushroom (picked by x); rooftop `trash_can_a..d` are solid `bin` props (44-52 wide, 60-84 high, one

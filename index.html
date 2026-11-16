@@ -1315,7 +1315,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const vm = mixOf(n, 5, 503);
     if (vm === 3) { /* geyser field (Claude's proposal): firm ground, three geysers on a rhythm, two rocks to wait on between them */
       const a = pk(r, 380, 440, 20); [0, 1, 2].forEach(q => props.push({ k: 'geyser', ghost: 1, raw: 1, x: a + q * 340, w: 64, h: 0, off: q * 1.05 })); /* each one erupts about a second after the one before */
-      props.push({ k: 'rock', x: a + 170, w: 96, h: 64 }, { k: 'rock', x: a + 510, w: 96, h: 64 });
+      props.push({ k: 'heap', x: a + 170, w: 100, h: 80 }, { k: 'obs', x: a + 510, w: 140, h: 144 }); /* the art thread's lava_heap and obsidian (solid, one jump each) */
       if (r() < 0.5) { lava.push([a + 860, a + 1020]); props.push({ k: 'slab', x: a + 940, w: 80, h: 60, hp: 2 }); }
     } else
     if (vm === 4) { /* crust lake (Claude's proposal): cooled crusts float on the lava and sink while 我 stands on one; a rock in the middle is the only safe rest */
@@ -2383,7 +2383,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     rooftop: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 0.16]], S: ['RoofVent', 'Billboard', 'billboard_plank_m', 'ZipPost', 'Sign', 'antenna', 'neon_sign', 'ac_unit', 'water_tower', 'trash_can_a', 'trash_can_b', 'trash_can_c', 'trash_can_d'] },
     bamboo: { L: [['bg_sky', 0], ['bg_far_long', 0.05], ['bg_mid_long', 0.12], ['bg_near_long', 0.3]], S: ['stalk', 'shroom', 'thick', 'rock', 'hedge', 'pot', 'torii', 'stone_lantern', 'statue', 'mossy_rock', 'raft', 'bamboo_ladder', 'stone_lantern_b', 'trunk', 'shroom_b', 'shroom_c', 'shroom_d'] },
     lake: { L: [['bg_sky_b', 0], ['bg_far_b', 0.05], ['bg_mid', 0.12], ['bg_near', 0.3]], S: ['turtle', 'weed', 'rock', 'statue', 'column_top'] } /* the _b layers have the waterline 22 art px from the top, a night sky and boats above it (Daniel: no city over the lake, 90% under water) */,
-    volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock'] },
+    volcano: { L: OUT_L, S: ['slab', 'slab_cracked', 'rock', 'lava_heap', 'obsidian'] },
     snow: { L: OUT_L, S: ['pine', 'rock', 'light_pole'] },
     dojo: { L: [['bg_sky', 0], ['bg_far', 0.06], ['bg_mid', 1], ['bg_near', 1]], S: ['dummy', 'crate', 'drum'], V: ['bg_mid'], T: ['bg_sky', 'bg_far'] /* T: layers with a `_tall` file, one more screen of picture above for when the view rises */ },
     house: { L: [['bg_sky', 0], ['bg_far', 1]], S: ['sofa', 'table', 'shelf', 'fridge', 'bed', 'crate', 'armchair', 'lamp', 'plant', 'tv', 'wardrobe', 'clock', 'stove', 'chair', 'candle_table', 'vase', 'rug', 'stairs', 'flower_pot_a', 'flower_pot_b', 'flower_pot_c', 'pan', 'pan_small'], V: ['bg_far'] },
@@ -2460,6 +2460,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (p.dead) { R_('#124e89', l, FLOOR - 12, w, 16); R_('#0099db', l + 8 + (Math.floor(now / 300) % 3) * 12, FLOOR - 4, 16, 4); R_('#ffffff', l, FLOOR - 8, 4, 4); R_('#ffffff', l + w - 4, FLOOR - 8, 4, 4); return true; }
       R_('#5a6988', l, FLOOR - 12, w, 16); R_('#8b9bb4', l + 4, FLOOR - 12, w - 8, 4); R_('#0099db', l + 4, FLOOR - 8, w - 8, 4); R_('#2ce8f5', l + 12 + (p.x * 7 % 40), FLOOR - 8, 16, 4); R_('#ffffff', l + 8 + (p.x * 3 % 32), FLOOR - 12, 8, 4); /* blue-grey ice, darker than the snow, with glints */
       return true; }
+    if (k === 'heap' || k === 'obs') return S(k === 'heap' ? 'lava_heap' : 'obsidian', p.x, t + h);
     if (k === 'ladder') { const im = A.ok('bamboo_ladder'); if (!im) return false; for (let y = FLOOR - (p.base || 0); y > FLOOR - (p.base || 0) - p.h + 4; y -= im.naturalHeight * PX) spr(im, p.x, y - im.naturalHeight * PX); return true; }
     if (k === 'raft') { const im = A.ok('raft'), tr = A.ok('trunk'); if (!im) return false;
       if (tr) for (const sx of [l + 28, l + w - 28]) for (let y = t + 40; y < FLOOR; y += tr.naturalHeight * PX) { const hh = Math.min(tr.naturalHeight * PX, FLOOR - y); ctx.drawImage(tr, 0, 0, tr.naturalWidth, hh / PX, sx - tr.naturalWidth * PX / 2, y, tr.naturalWidth * PX, hh); } /* stilts down to the ground */
