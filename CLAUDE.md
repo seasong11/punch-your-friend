@@ -364,6 +364,16 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   lake>volcano, volcano>snow, snow>elevator, elevator>space), draws the 32x16 `edge_<pair>` ground tile centred on the seam on the
   right-hand room's ground, and `seamFront` draws `end_<pair>` bottom-centred there after 我 (both views), before the fists. Decoration only.
   The art thread will regenerate `edge_lake_volcano` / `edge_volcano_snow` under the same names if the volcano repaint is approved.
+  Also `bamboo>climb` uses `end_bamboo_climb` (the tower's street entrance; `seamKey` gives 'climb' for the climb room).
+- Lake to volcano is vertical (Daniel, 2026-11-16: "swim up to a pond and then it is volcano"; art thread's pond set in `art/seams`):
+  `fitProps` makes the last lake screen `tall` with `rm.pond = { x0: 1280, x1: 1536, lip: 1088, top: 1072, rock }`: basalt (`pondrock`
+  props: a one-way roof at the lip over the lake, a solid right bank down to the bed) from the lake surface (744) up to the volcano
+  floor, a shaft whose water stands higher (`wTop(rm, x)`, used by `inWater` and the swimmer's cap; the rock walls hold 我 inside it),
+  drawn by `drawPond` (volcano sky above the lip, volcano top/fill tiles, `pond_tiles` shaft, `pond_top`, `shaft_mouth`). ↑ at a water
+  surface beside a bank no higher than the surface + 64 is a climb-out hop (`tryJump`, `P.out`). The first volcano screen loses lava and
+  slabs in its first 480 px. `end_lake_volcano` is no longer used. A raised scene neighbour gets dark rock under it (`drawNb`).
+- Climb top (Daniel, 2026-11-16: "Player reaches rooftop after climbing up the building"): the top floor's EXIT door is replaced by the
+  art thread's `roof_access` hut at the last stair's top end (`drawClimb`), so 我 comes out of it onto the roof.
 - Stage design document for Daniel: https://claude.ai/artifact/YUAeoRmNTQtoG3Hc4erU4G (labels every rule Daniel / Agreed /
   Proposal; keep it in step with the prototype).
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom, VIEW, surfAt, seed, mode, chunks }`.

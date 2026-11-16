@@ -46,5 +46,29 @@
   "h": 120,
   "anchor": "bottom centre on the seam, bottom row on floor y 208",
   "layer": "front, decoration only"
+ },
+ "pond_top": {
+  "w": 112,
+  "h": 72,
+  "anchor": "row 32 = volcano floor line (art y 208); the water opening is x 24..88 (64 px); shaft below: shaft_l at x 16, water tiles at x 32..80, shaft_r at x 80",
+  "layer": "front, the banks are ground"
+ },
+ "shaft_mouth": {
+  "w": 128,
+  "h": 40,
+  "anchor": "top row at the lake ceiling, centred on the shaft (local x 32..96 = shaft opening, so x = pond_top x - 8)",
+  "layer": "front"
+ },
+ "end_bamboo_climb": {
+  "w": 96,
+  "h": 112,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "roof_access": {
+  "w": 64,
+  "h": 72,
+  "anchor": "bottom centre where the climb comes out on the roof, bottom row on the roof floor",
+  "layer": "behind the player (the player steps out of the doorway, x 20..44)"
  }
 }

@@ -1,0 +1,61 @@
+{
+ "frames": {
+  "shaft_l": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   }
+  },
+  "shaft_r": {
+   "frame": {
+    "x": 16,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   }
+  },
+  "water": {
+   "frame": {
+    "x": 32,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   }
+  },
+  "water_ray": {
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   }
+  },
+  "ceiling": {
+   "frame": {
+    "x": 64,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   }
+  },
+  "lip_l": {
+   "frame": {
+    "x": 80,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   }
+  },
+  "lip_r": {
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   }
+  }
+ },
+ "note": "shaft from the lake up to pond_top: shaft_l / shaft_r walls (rock on the outside, water inside), water fill"
+}

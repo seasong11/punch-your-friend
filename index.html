@@ -1497,7 +1497,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [160, 128, 'tv'], wardrobe: [96, 160, 'wardrobe'], shelf: [128, 128, 'shelf'], armchair: [96, 96, 'armchair'], chair: [48, 80, 'chair'], stove: [80, 112, 'stove'], gclock: [56, 160, 'clock'], plant: [96, 128, 'plant'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], bed2: [240, 120, 'bed_b'] /* the quilt is the top; the headboard pokes up 16 more */, counter: [192, 96, 'sofa'] },
     dojo: { box: [104, 136, 'drum'] /* no crates in the dojo (Daniel questioned them, 2026-11-15): every dojo `box` is a drum */, dummy: [72, 150, 'dummy'] /* drawn 184 tall at the scale of 我, but it blocks only up to 150 so one jump clears it */, drum: [104, 136, 'drum'], rack: [144, 128, 'rack'] /* a weapon rack: blocks up to its frame (128); the spear tips above are thin */ }, bamboo: { mossy: [220, 112, 'mossy_rock'], soil: [240, 112, 'soil_block'] /* a mossy bank drawn 312 wide: only its flat middle blocks */, shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
-  function fitProps(list) { for (const rm of list) { if (rm.sec === 'dojo' && !rm.tall && !rm.court) { rm.tall = 1; rm.props = (rm.props || []).concat([{ k: 'ridge', plat: 1, thru: 1, raw: 1, x: 800, w: 1700, h: 640 }]); } /* the dojo roof: a ridge to run along. Daniel had the bamboo stalk that flung 我 up removed (2026-11-15), so for now nothing reaches it */ if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ if (rm.scene === 'lake' && list[list.indexOf(rm) - 1] && list[list.indexOf(rm) - 1].scene === 'dive') { const d = (rm.water.top - 200); rm.hill = [[0, d], [160, d], [600, 0], [1600, 0]]; rm.props = (rm.props || []).filter(p => p.x - p.w / 2 > 640); } /* the pond's bed slopes down into the deep lake, so the two screens meet without a step in the bed (seam pass, 2026-11-16) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
+  function fitProps(list) { for (const rm of list) { if (rm.sec === 'dojo' && !rm.tall && !rm.court) { rm.tall = 1; rm.props = (rm.props || []).concat([{ k: 'ridge', plat: 1, thru: 1, raw: 1, x: 800, w: 1700, h: 640 }]); } /* the dojo roof: a ridge to run along. Daniel had the bamboo stalk that flung 我 up removed (2026-11-15), so for now nothing reaches it */ if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ if (rm.scene === 'lake' && list[list.indexOf(rm) - 1] && list[list.indexOf(rm) - 1].scene === 'dive') { const d = (rm.water.top - 200); rm.hill = [[0, d], [160, d], [600, 0], [1600, 0]]; rm.props = (rm.props || []).filter(p => p.x - p.w / 2 > 640); }
+      if (rm.scene === 'lake' && list[list.indexOf(rm) + 1] && list[list.indexOf(rm) + 1].sec === 'volcano') { const L = 272 * PX, x0 = 1280, x1 = 1536; rm.tall = 1; rm.pond = { x0, x1, lip: L, top: L - 4 * PX, rock: -40 };
+        { const v = list[list.indexOf(rm) + 1]; v.lava = (v.lava || []).filter(([a]) => a > 480); v.props = (v.props || []).filter(p => !(p.k === 'slab' && p.x < 480)); } /* the volcano starts on solid ground beside the pond */
+        rm.props = (rm.props || []).filter(p => p.x + p.w / 2 < 1180).concat([{ k: 'pondrock', plat: 1, raw: 1, x: x0 / 2, w: x0, h: L }, { k: 'pondrock', raw: 1, x: (x1 + W_ + 40) / 2, w: W_ + 40 - x1, h: L }]); } /* the lake's last screen: a shaft rises from the lake (surface 186 art px above the bed) through basalt to a pond in the volcano floor (272); 我 swims up it and climbs out, and the volcano starts on the bank (Daniel, 2026-11-16: "swim up to a pond and then it is volcano"; pond art from the art thread) */ /* the pond's bed slopes down into the deep lake, so the two screens meet without a step in the bed (seam pass, 2026-11-16) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
     SEED = (seed >>> 0) % 1000000; MODE = mode ? 1 : 0;
     let list = [
@@ -1586,7 +1589,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   // ----- rough sections: helpers -----
   const slopeAt = x => { const d = rampAt(x + 6) - rampAt(x - 6); return Math.abs(d) > 4 ? Math.sign(d) : 0; };
-  const inWater = () => { const w = ROOMS[R.i].water; return !!w && P.x > w.x0 && P.y < w.top; };
+  const wTop = (rm, x) => rm.pond && x >= rm.pond.x0 && x <= rm.pond.x1 ? rm.pond.top : rm.water.top; // the pond shaft holds water higher than the lake
+  const inWater = () => { const rm = ROOMS[R.i], w = rm.water; return !!w && P.x > w.x0 && P.y < wTop(rm, P.x); };
   const lavaAt = x => (ROOMS[R.i].lava || []).some(z => x > z[0] && x < z[1]);
   const rideLeft = () => ROOMS[R.i].ride ? Math.max(0, ROOMS[R.i].ride - (R.t - R.t0)) : 0;
   const GEY_H = 300, geyserPh = p => { const t = (R.t + p.off) % 3.2; return t < 0.8 ? 1 : t < 1.8 ? 2 : 0; }; // volcano geysers: bubble 0.8 s (1), erupt 1 s (2), quiet 1.4 s (0)
@@ -1611,6 +1615,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const cl = climbOf();
     if (P.zip) { P.zip = null; P.zipCd = 0.4; P.vy = 700; P.air = true; sfx.whoosh(); return; } // let go of a zip cable with a hop
     if (inWater()) { // a swim stroke (or a jetpack burst on a spacewalk)
+      { const rm = ROOMS[R.i], top = wTop(rm, P.x), hAt = x => Math.max(rampAt(x, rm), ...rm.props.filter(p => !p.ghost && !p.dead && Math.abs(x - p.x) < p.w / 2).map(p => p.h)); /* at the surface beside a bank no higher than the surface + 64: climb out with a hop (the pond at the lake's end, Daniel: "swim up to a pond and then it is volcano") */
+        if (!rm.vac && P.y > top - 120 && [1, -1].some(d => { const g = hAt(P.x + d * 90); return g >= top - 40 && g <= top + 64; })) { P.vy = 940; P.air = true; P.out = 0.5; S.blockT = 0; sfx.whoosh(); return; } }
       P.vy = 430; P.air = true; S.blockT = 0; sfx.whoosh();
       if (!reduce) burst(P.x, FLOOR - P.y - 60, 4, ['#ffffff', '#2ce8f5'], 90, 0.6, -200, 4);
       return;
@@ -1641,7 +1647,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function movePlayer(dt) {
     if (climbOf()) { moveClimb(dt); return; }
-    const rm = ROOMS[R.i], inW = inWater();
+    const rm = ROOMS[R.i], inW = inWater() && !(P.out > 0); if (P.out > 0) P.out -= dt; /* P.out: climbing out of the water, normal gravity */
+    if (rm.pond && P.y > rm.water.top - 80 && P.y < rm.pond.lip - 8 && P.x > rm.pond.rock) P.x = clamp(P.x, rm.pond.x0 + P.w / 2, rm.pond.x1 - P.w / 2); /* inside the shaft its rock walls hold 我 */
     if (P.pl) { /* on a bamboo ladder: ← → lets go, the top puts 我 on the raft */
       if (keys.l || keys.r || S.st !== 'play') { P.pl = null; P.air = true; P.vy = 0; }
       else { P.vx = 0; P.x = P.pl.x; P.vy = 0; P.y += 430 * dt; if (P.y >= P.pl.h + (P.pl.base || 0)) { P.y = P.pl.h + (P.pl.base || 0) + 2; P.pl = null; P.air = true; } return; }
@@ -1665,7 +1672,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!P.air && Math.abs(P.y - g) <= STEP_UP) { P.y = g; P.vy = 0; }
     else if (inW) { // under water: a slow sink, swim strokes push up, and 我 stays below the surface
       P.vy += (-110 - P.vy) * Math.min(1, dt * 5); P.y += P.vy * dt;
-      if (P.vy > 0 && P.y > rm.water.top - 70) { P.y = rm.water.top - 70; P.vy = 0; }
+      if (P.vy > 0 && P.y > wTop(rm, P.x) - 70) { P.y = wTop(rm, P.x) - 70; P.vy = 0; }
       if (rm.vac && P.y > 400) { P.y = 400; P.vy = Math.min(0, P.vy); }
       if (P.y <= g) { P.y = g; P.vy = 0; P.air = false; } else P.air = true;
     } else {
@@ -2221,7 +2228,8 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       ctx.fillStyle = Math.floor(now / 300) % 2 ? '#feae34' : '#fee761';
       ctx.fillRect(h.x - 16, hy, 32, 8); ctx.fillRect(h.x - 16, hy, 8, 24); ctx.fillRect(h.x + 8, hy, 8, 24); ctx.fillRect(h.x - 16, hy + 16, 32, 8);
     }
-    drawDoor(W - 110, top * FH, true, true);
+    { const im = SEAMA.ok('roof_access'), st = cl.stairs.find(s => s.lv === top - 1); /* the top: 我 comes up the last stair out of a roof-access hut onto the roof (Daniel, 2026-11-16: "Player reaches rooftop after climbing up the building"; hut from the art thread) */
+      if (im) spr(im, st ? st.x1 : W - 200, yOf(top * FH) - im.naturalHeight * PX); else drawDoor(W - 110, top * FH, true, true); }
     if (!VIEW.nb) onUI(() => { box(248 + viewX(), 16 - cam, 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
     ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260 + viewX(), 36 - cam); });
@@ -2446,6 +2454,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
         const fx = l + w * (i + 0.5) / n + Math.sin(ph * 9 + i) * 16 - (1 - ph) * 30, fy = FLOOR - hy(fx) - 4 - (1 - ph) * 150; /* sways down and settles on the edge */
         if (ph < 0.96) R_(PET[i % 2], fx, fy, 4, 4); }
       return true; }
+    if (k === 'pondrock') return true; /* drawn by drawPond */
     if (k === 'geyser') { /* volcano: a vent in the ground that bubbles, then throws up a column of lava (geyserPh) */
       const ph = geyserPh(p), base = FLOOR - Math.max(0, rampAt(p.x));
       R_('#3e2731', p.x - 28, base - 8, 56, 8); R_(ph > 0 ? '#feae34' : '#e43b44', p.x - 16, base - 8, 32, 4);
@@ -2493,6 +2502,18 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   }
   function plate(rm) { if (VIEW.nb) return; onUI(() => { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425'); ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left'; ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }); }
   const drawProps = () => R.props.forEach(p => { if (p.dead && p.k === 'ice') { artProp(p); return; } if (p.dead && p.k === 'floor') { bx(p.x - p.w / 2, FLOOR - p.h, p.w, 32, '#181425'); return; } if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
+  function drawPond(rm) { // the lake's last screen: basalt over the lake, the shaft, the pond in the volcano floor, the volcano sky above
+    const Q = rm.pond, T = SEAMA.ok('pond'), F = SEAMA.pf, AV = artTiles('volcano'), L = Q.lip, ws = FLOOR - rm.water.top, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    ctx.save(); ctx.beginPath(); ctx.rect(Q.rock, FLOOR - L - 2000, W + 80 - Q.rock, 2000); ctx.clip(); const nb = VIEW.nb; VIEW.nb = 1; VIEW.band = null; artBack('volcano'); VIEW.nb = nb; ctx.restore(); /* the volcano sky over the rock */
+    const t = (n, x, y) => { const f = F && F[n]; if (T && f) ctx.drawImage(T, f.x, f.y, f.w, f.h, x, y, f.w * PX, f.h * PX); };
+    for (const [a, b, down] of [[Q.rock, Q.x0, 0], [Q.x1, W + 80, 1]]) { const bot = down ? FLOOR + 64 : ws; bx(a, FLOOR - L, b - a, bot - (FLOOR - L), '#0e071b'); /* the right bank goes down to the lake bed: the lake's end wall */
+      if (AV) { for (let x = a; x < b; x += 64) wt(AV, (x / 64) % 2 ? 'top_b' : 'top_a', x, FLOOR - L); for (let y = FLOOR - L + 64; y < bot; y += 64) for (let x = a; x < b; x += 64) wt(AV, 'fill', x, y); }
+      if (!down) for (let x = a; x < b; x += 64) t('ceiling', x, ws - 64); }
+    for (let y = FLOOR - L + 160; y < ws; y += 64) { t('shaft_l', Q.x0 - 32, y); for (const lx of [32, 48, 64]) t(lx === 48 ? 'water_ray' : 'water', Q.x0 - 96 + lx * PX, y); t('shaft_r', Q.x0 - 96 + 80 * PX, y); }
+    const top = SEAMA.ok('pond_top'); if (top) ctx.drawImage(top, Q.x0 - 96, FLOOR - L - 32 * PX, top.naturalWidth * PX, top.naturalHeight * PX);
+    const mo = SEAMA.ok('shaft_mouth'); if (mo) ctx.drawImage(mo, Q.x0 - 128, ws, mo.naturalWidth * PX, mo.naturalHeight * PX);
+    ctx.imageSmoothingEnabled = sm;
+  }
   function artScene(rm, sec) { // a whole room from its level set: backdrop, ground, the moving bits, props
     const A = ART[sec], sc = rm.scene, now = performance.now(), open = rm.void || rm.vac;
     if (!artBack(sec, null, open ? 'bg_near' : null)) return false;
@@ -2500,8 +2521,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       for (let k = 0; k < 26; k++) { const by = FLOOR - ((now / 14 + rnd(k + 2) * 2000) % (rm.water.top - 10)); bx(Math.floor(rnd(k + 31) * W / 8) * 8 + Math.round(Math.sin(now / 500 + k)) * 4, by, k % 4 ? 4 : 8, k % 4 ? 4 : 8, '#c0cbdc'); } }
     if (sc === 'volcano') for (let k = 0; k < 24; k++) bx(Math.floor(rnd(k + 5) * W / 8) * 8, FLOOR - ((now / 22 + rnd(k + 6) * 900) % 520), 4, 4, k % 3 ? '#f77622' : '#fee761'); // embers
     if (!rm.void) groundArt(A, rm);
+    if (rm.pond) drawPond(rm);
     if (sc === 'lake') { const im = A.ok('weed'); if (im) for (let k = 0; k < 7; k++) { const x = 90 + Math.floor(rnd(k + 61 + R.i) * 180) * 8; spr(im, x, FLOOR - rampAt(x) - im.naturalHeight * PX + 4); } }
-    if (sc === 'volcano') { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; for (const [a, b] of rm.lava || []) { bx(a, FLOOR, b - a, H - FLOOR + 80, '#f77622'); bx(a, FLOOR + 36, b - a, H, '#e43b44'); for (let x = a; x < b; x += 64) wt(A, Math.floor(now / 400 + x / 64) % 2 ? 'lava_a' : 'lava_b', Math.min(x, b - 64), FLOOR - 8); } ctx.imageSmoothingEnabled = sm; }
+    if (sc === 'volcano') { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; for (const [a, b] of rm.lava || []) { bx(a, FLOOR, b - a, H - FLOOR + 80, '#f77622'); bx(a, FLOOR + 36, b - a, 108, '#e43b44'); for (let x = a; x < b; x += 64) wt(A, Math.floor(now / 400 + x / 64) % 2 ? 'lava_a' : 'lava_b', Math.min(x, b - 64), FLOOR - 8); } ctx.imageSmoothingEnabled = sm; }
     if (sc === 'lift') { const left = rideLeft(); if (left > 0) for (let k = 0; k < 14; k++) { const x = 120 + k * 104, y = ((R.t - R.t0) * 900 + rnd(k + 4) * 900) % (FLOOR + 80) - 80; bx(x, y, 4, 56, '#8b9bb4'); }
       bx(W / 2 - 200, 60, 400, 28, '#181425'); bx(W / 2 - 196, 64, Math.round(392 * (1 - left / rm.ride) / 8) * 8, 20, left > 0 ? '#feae34' : '#63c74d');
       ctx.fillStyle = '#ffffff'; ctx.font = '16px ' + PF; ctx.textAlign = 'center'; ctx.fillText(left > 0 ? `GOING UP · ${Math.ceil(left)}s` : 'TOP FLOOR · GO', W / 2, 110); }
@@ -2877,7 +2899,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     R.i = j; R.props = NBP[j] || (NBP[j] = ROOMS[j].props.map(p => ({ ...p, x0: p.x, hp0: p.hp, sparkT: 0, spinT: 0, open: false, dead: false })));
     R.gl = [0, 0]; R.el = ((ROOMS[j].climb || {}).els || []).map(e => ({ y: e.lv * FH, st: 'idle', t: 0, stall: 0 }));
     dx = Math.round(dx / PX) * PX; dy = Math.round(dy / PX) * PX;
-    VIEW.nb = 1; VIEW.dy = dy; ctx.save(); ctx.translate(dx, dy); drawRoom(); if (ROOMS[j].water && dy < 0) { ctx.fillStyle = '#0e071b'; ctx.fillRect(0, H, W, -dy); } /* a shallower pond beside a deep lake: its bed goes on down as rock */ ctx.restore(); VIEW.nb = 0; VIEW.dy = 0;
+    VIEW.nb = 1; VIEW.dy = dy; ctx.save(); ctx.translate(dx, dy); drawRoom(); if ((ROOMS[j].water || ROOMS[j].scene && !ROOMS[j].void) && dy < 0) { ctx.fillStyle = '#0e071b'; ctx.fillRect(0, H, W, -dy); } /* a shallower pond beside a deep lake: its bed goes on down as rock */ ctx.restore(); VIEW.nb = 0; VIEW.dy = 0;
     Object.assign(R, sv);
   }
   // End pieces and ground tiles at the seams between sections (art thread's `seams` set, 2026-11-16, after Daniel asked for smoother
@@ -2885,12 +2907,14 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // room's left edge, on its floor), and a 32x16 ground tile blends one floor into the next. Decoration only: nothing to stand on.
   const SEAMA = { img: {}, fr: null, ok: n => { const im = SEAMA.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } }, SEAMF = [];
   if (location.protocol !== 'file:' && !/[?&]art=0/.test(location.search)) {
-    for (const n of ['house_garden', 'garden_dojo', 'temple_dojo', 'dojo_bamboo', 'lake_volcano', 'volcano_snow', 'snow_elevator', 'elevator_space']) { const im = new Image(); im.src = 'art/seams/sprites/end_' + n + '.png'; SEAMA.img['end_' + n] = im; }
+    for (const n of ['bamboo_climb', 'house_garden', 'garden_dojo', 'temple_dojo', 'dojo_bamboo', 'lake_volcano', 'volcano_snow', 'snow_elevator', 'elevator_space']) { const im = new Image(); im.src = 'art/seams/sprites/end_' + n + '.png'; SEAMA.img['end_' + n] = im; }
     { const im = new Image(); im.src = 'art/seams/seam_tiles.png'; SEAMA.img.tiles = im; }
+    for (const [n, f] of [['pond', 'pond_tiles.png'], ['pond_top', 'sprites/pond_top.png'], ['shaft_mouth', 'sprites/shaft_mouth.png'], ['roof_access', 'sprites/roof_access.png']]) { const im = new Image(); im.src = 'art/seams/' + f; SEAMA.img[n] = im; }
+    fetch('art/seams/pond_tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { SEAMA.pf = {}; for (const k in d.frames) SEAMA.pf[k] = d.frames[k].frame; } }).catch(() => {});
     fetch('art/seams/seam_tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { SEAMA.fr = {}; for (const k in d.frames) SEAMA.fr[k] = d.frames[k].frame; } }).catch(() => {});
   }
-  const seamKey = j => { const rm = ROOMS[j]; if (!rm || rm.climb) return null; if (rm.scene === 'lift') return 'elevator'; if (rm.court) return 'temple'; if (rm.sec === 'dojo') return 'dojo'; if (rm.outdoor && !rm.scene) return 'garden'; return SEC_ART[rm.sec || 'house'] || null; };
-  const SEAM_PAIR = { 'house>garden': 'house_garden', 'garden>dojo': 'garden_dojo', 'temple>dojo': 'temple_dojo', 'dojo>temple': 'dojo_bamboo' /* the hall's right end */, 'dojo>bamboo': 'dojo_bamboo', 'lake>volcano': 'lake_volcano', 'volcano>snow': 'volcano_snow', 'snow>elevator': 'snow_elevator', 'elevator>space': 'elevator_space' };
+  const seamKey = j => { const rm = ROOMS[j]; if (!rm) return null; if (rm.climb) return 'climb'; if (rm.scene === 'lift') return 'elevator'; if (rm.court) return 'temple'; if (rm.sec === 'dojo') return 'dojo'; if (rm.outdoor && !rm.scene) return 'garden'; return SEC_ART[rm.sec || 'house'] || null; };
+  const SEAM_PAIR = { 'house>garden': 'house_garden', 'garden>dojo': 'garden_dojo', 'temple>dojo': 'temple_dojo', 'dojo>temple': 'dojo_bamboo' /* the hall's right end */, 'dojo>bamboo': 'dojo_bamboo', 'bamboo>climb': 'bamboo_climb', 'volcano>snow': 'volcano_snow', 'snow>elevator': 'snow_elevator', 'elevator>space': 'elevator_space' };
   function seamPieces(i, vx, dyR) { // the seams on screen, in the current room's coordinates
     SEAMF.length = 0;
     const add = (a, x, y) => { const n = SEAM_PAIR[seamKey(a) + '>' + seamKey(a + 1)]; if (n && x > vx - 600 && x < vx + W + 600) SEAMF.push({ n, x, y }); };
