@@ -352,6 +352,14 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   `VIEW.dy`. Room title plates are screen-fixed and skipped for neighbours (`VIEW.nb`). Pointer x adds `viewX()`; the
   portrait `CAM` follows 我's screen position. Side punches in the climb come from the side of 我 that was tapped.
   我 cannot walk back into the room on the left. Scene rooms have no door boxes; only the last room has an exit door.
+- Seam crossfade (Daniel, 2026-11-16: "explore how to smooth out the transitions. follow the industrial standard"; the method is Claude's):
+  where two rooms with drawn backdrops meet, their skies and parallax layers crossfade over a band `BAND` (96 art px) starting at the
+  right-hand room's left edge, by ordered dither (`seamBand`, `seamMask`, `VIEW.band`). All backdrops then go to the `BG` layer, each over
+  its own stretch of screen; layers with factor 1 (the dojo hall) go to `BG.n`, cut hard at the seam and laid over the skies, so buildings
+  end instead of dissolving. Both rooms' masks come from the same screen pixels, so nothing pops when the current room changes. Left out
+  (hard edge as before): the house (interior), the dive screen (two sets), the climb. The first lake screen gets a bed sloping down
+  from the pond's depth (`fitProps`), and a shallower water neighbour drawn higher gets dark rock below it (`drawNb`).
+  Not done yet: ground transition tiles and a gate or end piece at each section seam (needs art).
 - Stage design document for Daniel: https://claude.ai/artifact/YUAeoRmNTQtoG3Hc4erU4G (labels every rule Daniel / Agreed /
   Proposal; keep it in step with the prototype).
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom, VIEW, surfAt, seed, mode, chunks }`.

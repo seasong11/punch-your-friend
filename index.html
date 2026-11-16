@@ -613,7 +613,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // Smooth camera (Daniel, 2026-11-16: "sure" to a sub-texel camera): the world is still drawn on the art-pixel grid, but the
   // camera's leftover fraction of an art pixel (SUB, world units) shifts the final hard-pixel upscale, so pans glide instead of
   // stepping. The backdrop layers (BG, from artBack) and screen-fixed overlays (uc, via onUI) are not shifted. ?sub=0 turns it off.
-  const SUBON = !/[?&]sub=0/.test(location.search), SUB = { x: 0, y: 0 }, BG = { c: document.createElement('canvas'), on: false, x: 0, y: 0 };
+  const SUBON = !/[?&]sub=0/.test(location.search), SUB = { x: 0, y: 0 }, BG = { c: document.createElement('canvas'), n: document.createElement('canvas'), on: false, nOn: false, x: 0, y: 0 };
   const uc = document.createElement('canvas'); uc.width = wc.width; uc.height = wc.height;
   const ucx = uc.getContext('2d', { willReadFrequently: true }); if (LOWRES) ucx.scale(1 / PX, 1 / PX);
   let UIP = false;
@@ -1497,7 +1497,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     house: { table: [128, 64, 'table'], desk: [128, 64, 'table'], side: [64, 64, 'crate'], box: [64, 64, 'crate'], crate: [64, 64, 'crate'], tv: [160, 128, 'tv'], wardrobe: [96, 160, 'wardrobe'], shelf: [128, 128, 'shelf'], armchair: [96, 96, 'armchair'], chair: [48, 80, 'chair'], stove: [80, 112, 'stove'], gclock: [56, 160, 'clock'], plant: [96, 128, 'plant'], fridge: [64, 128, 'fridge'], bed: [192, 56, 'bed'], bed2: [240, 120, 'bed_b'] /* the quilt is the top; the headboard pokes up 16 more */, counter: [192, 96, 'sofa'] },
     dojo: { box: [104, 136, 'drum'] /* no crates in the dojo (Daniel questioned them, 2026-11-15): every dojo `box` is a drum */, dummy: [72, 150, 'dummy'] /* drawn 184 tall at the scale of 我, but it blocks only up to 150 so one jump clears it */, drum: [104, 136, 'drum'], rack: [144, 128, 'rack'] /* a weapon rack: blocks up to its frame (128); the spear tips above are thin */ }, bamboo: { mossy: [220, 112, 'mossy_rock'], soil: [240, 112, 'soil_block'] /* a mossy bank drawn 312 wide: only its flat middle blocks */, shroom: [64, 48, 'shroom'], hedge: [160, 72, 'hedge'], pot: [64, 56, 'pot'] }, volcano: { rock: [96, 64, 'rock'], slab: [96, 0, 'slab'] }, space: { pod: [80, 112, 'pod'] }
   };
-  function fitProps(list) { for (const rm of list) { if (rm.sec === 'dojo' && !rm.tall && !rm.court) { rm.tall = 1; rm.props = (rm.props || []).concat([{ k: 'ridge', plat: 1, thru: 1, raw: 1, x: 800, w: 1700, h: 640 }]); } /* the dojo roof: a ridge to run along. Daniel had the bamboo stalk that flung 我 up removed (2026-11-15), so for now nothing reaches it */ if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
+  function fitProps(list) { for (const rm of list) { if (rm.sec === 'dojo' && !rm.tall && !rm.court) { rm.tall = 1; rm.props = (rm.props || []).concat([{ k: 'ridge', plat: 1, thru: 1, raw: 1, x: 800, w: 1700, h: 640 }]); } /* the dojo roof: a ridge to run along. Daniel had the bamboo stalk that flung 我 up removed (2026-11-15), so for now nothing reaches it */ if (rm.scene === 'dive') { rm.hill = [[0, 560], [330, 560], [334, 0], [1600, 0]]; rm.water = { x0: 334, top: 200 }; for (const p of rm.props || []) if (!p.plat && p.h > 88) p.h = 88; } /* the pond lies at ground level, below a tall last roof (Daniel) */ if (rm.scene === 'lake' && list[list.indexOf(rm) - 1] && list[list.indexOf(rm) - 1].scene === 'dive') { const d = (rm.water.top - 200); rm.hill = [[0, d], [160, d], [600, 0], [1600, 0]]; rm.props = (rm.props || []).filter(p => p.x - p.w / 2 > 640); } /* the pond's bed slopes down into the deep lake, so the two screens meet without a step in the bed (seam pass, 2026-11-16) */ const F = !rm.climb && rm.scene !== 'lift' && FIT[rm.outdoor ? 'bamboo' : SEC_ART[rm.sec || 'house']]; if (F) for (const p of rm.props || []) { const f = F[p.k]; if (f && !p.hh) { p.w = f[0]; if (f[1]) p.h = f[1]; } } } }
   function buildRooms(seed, mode) { // (re)build the whole journey from a seed, the same on every page
     SEED = (seed >>> 0) % 1000000; MODE = mode ? 1 : 0;
     let list = [
@@ -2539,6 +2539,22 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const x = clamp(hx + (0.5 - p) * AW * 0.3, 0, AW - im.naturalWidth); /* from a little right of its home spot to a little left of it over the section */
     g.drawImage(im, Math.round(x), Math.round(hy + (tall && A.ok('bg_sky_tall') ? clamp(camY() / PX, 0, 224) : 0)));
   }
+  // Seams between rooms (Daniel, 2026-11-16: "smooth out the transitions, follow the industrial standard"): where two rooms with drawn
+  // backdrops meet, the backdrops crossfade over a band BAND wide that starts at the right-hand room's left edge, the way continuous
+  // side-scrollers blend one area's background into the next. On a fixed palette the crossfade is an ordered dither (as in the climb's
+  // dusk fade): the right-hand room's share of the pixels grows from 0 to 1 across the band. Both rooms build their mask from the same
+  // screen pixels, so together they cover every pixel once, whichever of the two is the current room.
+  const BAND = 96 * PX, SEAM = { m: document.createElement('canvas'), t: document.createElement('canvas'), n: document.createElement('canvas'), d: null };
+  const seamOk = j => { const rm = ROOMS[j], a = rm && !rm.climb && artOf(j); return !!(SUBON && a && a !== 'house' && rm.scene !== 'dive'); }; /* the house is all interior: its walls hide its sky, so it keeps the hard edge; the dive screen draws two sets (city above, lake below) and keeps it too */
+  function seamBand(j) { const b = {}; if (j > 0 && seamOk(j) && seamOk(j - 1)) b.L = 0; if (j < ROOMS.length - 1 && seamOk(j) && seamOk(j + 1)) b.R = Math.round((exitX(j) - entryX(j + 1)) / PX) * PX; return b.L != null || b.R != null ? b : null; }
+  function seamMask(AW, AH, x0, s0, rise) { // opaque where this room shows inside the band [s0, s0 + BAND) (room coordinates); null if the band is off screen
+    const c0 = Math.max(0, Math.round((s0 - x0) / PX)), c1 = Math.min(AW, Math.round((s0 + BAND - x0) / PX)); if (c1 <= c0) return null;
+    const m = SEAM.m; if (m.width !== AW || m.height !== AH) { m.width = AW; m.height = AH; SEAM.d = null; } const g = m.getContext('2d');
+    if (!SEAM.d) SEAM.d = g.createImageData(AW, AH); const d = SEAM.d.data; d.fill(0); const n = BAND / PX;
+    for (let c = c0; c < c1; c++) { const k = Math.round((x0 - s0) / PX) + c, t = (k + 0.5) / n * 16; /* k: art column inside the band, the same for both rooms */
+      for (let r = 0; r < AH; r++) { const on = BAYER[(r & 3) * 4 + (k & 3)] < t; if (on === !!rise) d[(r * AW + c) * 4 + 3] = 255; } }
+    g.putImageData(SEAM.d, 0, 0); return m;
+  }
   function artBack(sec, dusk, skip) { // backdrop layers of a set. `dusk` = [h0, h1]: fade in by dither between those heights (the climb's last floors); `skip` = a layer to leave out
     const A = ART[sec], LS = (SETS[sec] || {}).L; if (!A || !LS || !LS.length || LS.some(([n]) => !A.ok(n))) return false;
     const m = ctx.getTransform(), sl = -m.e / m.a, st = -m.f / m.d, gx = (VIEW.gi != null ? VIEW.gi : R.i) * W_ + viewX(), sm = ctx.imageSmoothingEnabled, AW = W / PX, AH = H / PX;
@@ -2546,10 +2562,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     let my = null; if (dusk) { my = Math.round((FLOOR - dusk[1] - y0) / PX); if (my + DUSK_H <= 0) return true; if (my >= AH) my = null; } // art row where the night is full
     if (!NIGHT) { NIGHT = document.createElement('canvas'); NIGHT.width = AW; NIGHT.height = AH; }
     const g = NIGHT.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, AW, AH); g.imageSmoothingEnabled = false;
-    const sp = A.win && !reduce ? sfx.spectrum(24) : null;
+    const sp = A.win && !reduce ? sfx.spectrum(24) : null, bdq = SUBON && my == null && ctx !== ucx && VIEW.band; /* at a seam, layers that are part of the room (factor 1: the house walls, the dojo hall) go to their own canvas, cut hard at the seam, and only the sky and the far layers crossfade */
+    if (bdq) { if (SEAM.n.width !== AW || SEAM.n.height !== AH) { SEAM.n.width = AW; SEAM.n.height = AH; } SEAM.ng = SEAM.n.getContext('2d'); SEAM.ng.clearRect(0, 0, AW, AH); SEAM.ng.imageSmoothingEnabled = false; SEAM.nu = 0; }
     LS.forEach(([n, f], li) => { if (li === 1) skyBody(A, g, AW, AH); if (n === skip) return; const IW = Math.max(AW, A.img[n].naturalWidth || AW) /* a layer may be wider than the screen (bamboo: 1200), so a stage does not repeat one picture */, off = f === 1 ? Math.round(-x0 / PX) : -(Math.round(gx * f / PX) % IW), oy = f === 1 ? Math.round(-y0 / PX) : f > 0 && !A.ok(n + '_tall') && (ROOMS[VIEW.gi != null ? VIEW.gi : R.i] || {}).tall ? Math.round(Math.max(0, camY()) / PX * (f >= 0.1 ? 1 : 0.6)) : 0; /* a tall room without a _tall picture: ground-anchored layers sink as the camera rises */ for (let k = -2; k < 3; k++) {
       const bx0 = off + k * IW; if (bx0 >= AW || bx0 <= -IW) continue;
-      { const tl = f !== 1 && A.ok(n + '_tall'); if (tl) g.drawImage(tl, bx0, AH - tl.naturalHeight + clamp(Math.round(camY() / PX), 0, tl.naturalHeight - AH), IW, tl.naturalHeight); else g.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH); }
+      { const tl = f !== 1 && A.ok(n + '_tall'); const gq = bdq && f === 1 ? (SEAM.nu = 1, SEAM.ng) : g; if (tl) gq.drawImage(tl, bx0, AH - tl.naturalHeight + clamp(Math.round(camY() / PX), 0, tl.naturalHeight - AH), IW, tl.naturalHeight); else gq.drawImage(f === 1 && R.i % 2 && A.ok(n + '_b') || A.img[n], bx0, oy, IW, AH); }
       if (n === 'bg_mid' && sp) for (const b of A.win) { // each building is one band: its windows light from the bottom row up, the buildings themselves never move
         const lit = Math.round(sp[b.band] * b.rows); if (!lit) continue;
         for (let r = 0; r < lit; r++) { const row = b.rows - 1 - r; g.fillStyle = r === lit - 1 && lit > 1 ? '#fdd2ed' : r >= b.rows * 0.6 ? '#f68187' : '#ca52c9'; for (let c = 0; c < b.cols; c++) g.fillRect(bx0 + b.x + c * b.pitch[0], b.y + row * b.pitch[1], b.cell[0], b.cell[1]); }
@@ -2559,12 +2576,26 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (!DUSK) { DUSK = document.createElement('canvas'); DUSK.width = AW; DUSK.height = AH + DUSK_H; const d = DUSK.getContext('2d'); d.fillStyle = '#000'; d.fillRect(0, 0, AW, AH); d.drawImage(ditherBand(AW, DUSK_H, '#000', 1, 0), 0, AH); }
       g.globalCompositeOperation = 'destination-in'; g.drawImage(DUSK, 0, my - AH); g.globalCompositeOperation = 'source-over';
     }
+    const bd = SUBON && my == null && ctx !== ucx ? VIEW.band : null; VIEW.band = null;
+    if (bd) { /* this room meets a room beside it on screen: every backdrop goes to the BG layer, each over its own stretch of the screen, with a dithered crossfade band at the seam (seamBand) */
+      const M = ctx.getTransform(); if (BG.c.width !== AW || BG.c.height !== AH) { BG.c.width = AW; BG.c.height = AH; } const bg = BG.c.getContext('2d');
+      if (!BG.on) { bg.clearRect(0, 0, AW, AH); BG.on = true; BG.x = Math.round(x0 * M.a + M.e); BG.y = Math.round(y0 * M.d + M.f); }
+      const col = x => clamp(Math.round((x - x0) / PX), 0, AW), ca = bd.L != null ? col(BAND) : 0, cb = bd.R != null ? col(bd.R) : AW;
+      if (SEAM.nu) { const nc = BG.n.getContext('2d'); if (BG.n.width !== AW || BG.n.height !== AH) { BG.n.width = AW; BG.n.height = AH; } if (!BG.nOn) { nc.clearRect(0, 0, AW, AH); BG.nOn = true; } /* the room's own walls end hard at the seam: the left-hand room up to the right-hand room's left edge */
+        const na = bd.L != null ? col(0) : 0, nb = bd.R != null ? col(bd.R) : AW; if (nb > na) { nc.save(); nc.beginPath(); nc.rect(na, 0, nb - na, AH); nc.clip(); nc.drawImage(SEAM.n, 0, 0); nc.restore(); } }
+      bg.imageSmoothingEnabled = false; if (cb > ca) { bg.save(); bg.beginPath(); bg.rect(ca, 0, cb - ca, AH); bg.clip(); bg.drawImage(NIGHT, 0, 0); bg.restore(); }
+      for (const [s0, rise] of [[bd.L != null ? 0 : null, 1], [bd.R, 0]]) { if (s0 == null) continue; const mk = seamMask(AW, AH, x0, s0, rise); if (!mk) continue;
+        if (SEAM.t.width !== AW || SEAM.t.height !== AH) { SEAM.t.width = AW; SEAM.t.height = AH; } const tg = SEAM.t.getContext('2d');
+        tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, AW, AH); tg.drawImage(NIGHT, 0, 0); tg.globalCompositeOperation = 'destination-in'; tg.drawImage(mk, 0, 0); tg.globalCompositeOperation = 'source-over'; bg.drawImage(SEAM.t, 0, 0); }
+      ctx.imageSmoothingEnabled = sm; return true;
+    }
     ctx.save(); ctx.beginPath(); ctx.rect(0, st, W, H); ctx.clip(); ctx.imageSmoothingEnabled = false;
     if (SUBON && my == null && ctx !== ucx && !VIEW.nb) { /* the backdrop goes under the world as its own layer (not shifted by the smooth camera); punch it out of the world canvas */
       const M = ctx.getTransform(); if (BG.c.width !== AW || BG.c.height !== AH) { BG.c.width = AW; BG.c.height = AH; } const bg = BG.c.getContext('2d'); bg.clearRect(0, 0, AW, AH); bg.drawImage(NIGHT, 0, 0);
       BG.on = true; BG.x = Math.round(x0 * M.a + M.e); BG.y = Math.round(y0 * M.d + M.f); ctx.clearRect(x0, y0, W, H);
     } else ctx.drawImage(NIGHT, x0, y0, W, H);
-    ctx.restore(); ctx.imageSmoothingEnabled = sm; return true;
+    ctx.restore();
+    ctx.imageSmoothingEnabled = sm; return true;
   }
   function drawProp(p) {
     if (p.k === 'bin') { const im = ART.rooftop && ART.rooftop.ok('trash_can_' + p.v); if (im) spr(im, p.x, FLOOR - p.h); else { ctx.fillStyle = '#5a6988'; ctx.fillRect(p.x - p.w / 2, FLOOR - p.h, p.w, 60); } return; }
@@ -2846,16 +2877,18 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     R.i = j; R.props = NBP[j] || (NBP[j] = ROOMS[j].props.map(p => ({ ...p, x0: p.x, hp0: p.hp, sparkT: 0, spinT: 0, open: false, dead: false })));
     R.gl = [0, 0]; R.el = ((ROOMS[j].climb || {}).els || []).map(e => ({ y: e.lv * FH, st: 'idle', t: 0, stall: 0 }));
     dx = Math.round(dx / PX) * PX; dy = Math.round(dy / PX) * PX;
-    VIEW.nb = 1; VIEW.dy = dy; ctx.save(); ctx.translate(dx, dy); drawRoom(); ctx.restore(); VIEW.nb = 0; VIEW.dy = 0;
+    VIEW.nb = 1; VIEW.dy = dy; ctx.save(); ctx.translate(dx, dy); drawRoom(); if (ROOMS[j].water && dy < 0) { ctx.fillStyle = '#0e071b'; ctx.fillRect(0, H, W, -dy); } /* a shallower pond beside a deep lake: its bed goes on down as rock */ ctx.restore(); VIEW.nb = 0; VIEW.dy = 0;
     Object.assign(R, sv);
   }
   function drawWorld() {
     VIEW.gi = R.i;
     const i = R.i, vx = viewX(), rm = ROOMS[i], up = rm.ride ? Math.min(rm.ride, Math.max(0, R.t - R.t0)) * 220 : 0; // a lift leaves the room behind and rises to the next
     ctx.fillStyle = { bamboo: '#8b9bb4', roofs: '#8b9bb4', dive: '#8b9bb4', snow: '#8b9bb4', lake: '#c0cbdc', volcano: '#3e2731' }[rm.scene] || '#181425'; ctx.fillRect(vx, -camY(), W, H);
-    if (i > 0 && vx < 40) drawNb(i - 1, entryX(i) - exitX(i - 1), pairD(i - 1) + up);
-    if (i < ROOMS.length - 1 && vx > -40) drawNb(i + 1, exitX(i) - entryX(i + 1), -pairD(i) - rideLeft() * 220);
-    drawRoom();
+    const sb = seamBand(i); if (sb) ctx.clearRect(vx, -camY(), W, H); /* backdrops of this room and its neighbours all go to the BG layer */
+    if (i > 0 && vx < (sb && sb.L != null ? BAND : 0) + 40) { VIEW.band = sb && sb.L != null ? { R: seamBand(i - 1).R } : null; drawNb(i - 1, entryX(i) - exitX(i - 1), pairD(i - 1) + up); }
+    if (i < ROOMS.length - 1 && vx > -40) { VIEW.band = sb && sb.R != null ? { L: 0 } : null; drawNb(i + 1, exitX(i) - entryX(i + 1), -pairD(i) - rideLeft() * 220); }
+    VIEW.band = sb; drawRoom(); VIEW.band = null;
+    if (BG.nOn) { if (BG.on) BG.c.getContext('2d').drawImage(BG.n, 0, 0); BG.nOn = false; } /* the rooms' own walls over every crossfaded sky */
   }
   function drawRoom() {
     const rm = ROOMS[R.i], [w0, w1, w2] = rm.wall || [], [f0, f1] = rm.floor || [], rp = rm.ramp, last = !!rm.gate;
