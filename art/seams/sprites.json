@@ -1,0 +1,50 @@
+{
+ "end_house_garden": {
+  "w": 72,
+  "h": 104,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_garden_dojo": {
+  "w": 96,
+  "h": 132,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_dojo_bamboo": {
+  "w": 104,
+  "h": 170,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_temple_dojo": {
+  "w": 104,
+  "h": 170,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_lake_volcano": {
+  "w": 100,
+  "h": 150,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_volcano_snow": {
+  "w": 100,
+  "h": 128,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_snow_elevator": {
+  "w": 88,
+  "h": 112,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_elevator_space": {
+  "w": 96,
+  "h": 120,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ }
+}

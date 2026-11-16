@@ -1548,7 +1548,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   function roomShift(px0, px1, py0, py1) { // after stepping into the next room: keep the picture where it was
     const T = CAMV.y + VIEW.oy; VIEW.x -= px0 - px1; VIEW.rm = R.i; camFollow(py1, 0); VIEW.oy = T - (py0 - py1) - CAMV.y;
   } // gl: broken glass panels per side (bit = row), t: 我's clock
-  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom, parry: (c, p) => parry(c, p), bro: () => B, bros: () => bros(), VIEW, seed: () => SEED, mode: () => MODE, chunks: () => CHUNKS, surfAt: (x, h, y) => surfAt(x, h, y) }; // test hook
+  if (/[?&]dbg=1/.test(location.search)) window.__pyf = { S, P, R, ROOMS, loadRoom, parry: (c, p) => parry(c, p), bro: () => B, bros: () => bros(), VIEW, seed: () => SEED, mode: () => MODE, chunks: () => CHUNKS, surfAt: (x, h, y) => surfAt(x, h, y), seams: () => SEAMF.slice() }; // test hook
   function loadRoom(i) {
     i = clamp(i | 0, 0, ROOMS.length - 1);
     if (i === R.i + 1 && R.props.length) NBP[R.i] = R.props; else if (i !== R.i) NBP = {};
@@ -2880,6 +2880,26 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     VIEW.nb = 1; VIEW.dy = dy; ctx.save(); ctx.translate(dx, dy); drawRoom(); if (ROOMS[j].water && dy < 0) { ctx.fillStyle = '#0e071b'; ctx.fillRect(0, H, W, -dy); } /* a shallower pond beside a deep lake: its bed goes on down as rock */ ctx.restore(); VIEW.nb = 0; VIEW.dy = 0;
     Object.assign(R, sv);
   }
+  // End pieces and ground tiles at the seams between sections (art thread's `seams` set, 2026-11-16, after Daniel asked for smoother
+  // transitions "following the industrial standard"): a gate or end wall stands in front of the seam, centred on it (the right-hand
+  // room's left edge, on its floor), and a 32x16 ground tile blends one floor into the next. Decoration only: nothing to stand on.
+  const SEAMA = { img: {}, fr: null, ok: n => { const im = SEAMA.img[n]; return im && im.complete && im.naturalWidth > 0 ? im : null; } }, SEAMF = [];
+  if (location.protocol !== 'file:' && !/[?&]art=0/.test(location.search)) {
+    for (const n of ['house_garden', 'garden_dojo', 'temple_dojo', 'dojo_bamboo', 'lake_volcano', 'volcano_snow', 'snow_elevator', 'elevator_space']) { const im = new Image(); im.src = 'art/seams/sprites/end_' + n + '.png'; SEAMA.img['end_' + n] = im; }
+    { const im = new Image(); im.src = 'art/seams/seam_tiles.png'; SEAMA.img.tiles = im; }
+    fetch('art/seams/seam_tiles.json').then(r => r.ok ? r.json() : null).then(d => { if (d && d.frames) { SEAMA.fr = {}; for (const k in d.frames) SEAMA.fr[k] = d.frames[k].frame; } }).catch(() => {});
+  }
+  const seamKey = j => { const rm = ROOMS[j]; if (!rm || rm.climb) return null; if (rm.scene === 'lift') return 'elevator'; if (rm.court) return 'temple'; if (rm.sec === 'dojo') return 'dojo'; if (rm.outdoor && !rm.scene) return 'garden'; return SEC_ART[rm.sec || 'house'] || null; };
+  const SEAM_PAIR = { 'house>garden': 'house_garden', 'garden>dojo': 'garden_dojo', 'temple>dojo': 'temple_dojo', 'dojo>temple': 'dojo_bamboo' /* the hall's right end */, 'dojo>bamboo': 'dojo_bamboo', 'lake>volcano': 'lake_volcano', 'volcano>snow': 'volcano_snow', 'snow>elevator': 'snow_elevator', 'elevator>space': 'elevator_space' };
+  function seamPieces(i, vx, dyR) { // the seams on screen, in the current room's coordinates
+    SEAMF.length = 0;
+    const add = (a, x, y) => { const n = SEAM_PAIR[seamKey(a) + '>' + seamKey(a + 1)]; if (n && x > vx - 600 && x < vx + W + 600) SEAMF.push({ n, x, y }); };
+    const g0 = j => ROOMS[j].void ? 0 : Math.max(0, rampAt(14, ROOMS[j])); /* the ground at the room's left edge (not the props on it) */
+    if (i > 0) add(i - 1, 0, FLOOR - g0(i));
+    if (i < ROOMS.length - 1) add(i, Math.round((exitX(i) - entryX(i + 1)) / PX) * PX, FLOOR - g0(i + 1) + dyR);
+    const t = SEAMA.ok('tiles'); if (t && SEAMA.fr) { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; for (const q of SEAMF) { const f = SEAMA.fr['edge_' + q.n]; if (f) ctx.drawImage(t, f.x, f.y, f.w, f.h, q.x - 16 * PX, Math.round(q.y / PX) * PX, f.w * PX, f.h * PX); } ctx.imageSmoothingEnabled = sm; }
+  }
+  function seamFront() { for (const q of SEAMF) { const im = SEAMA.ok('end_' + q.n); if (im) spr(im, q.x, Math.round(q.y / PX) * PX - im.naturalHeight * PX); } } // in front of 我, behind the fists (they stay readable)
   function drawWorld() {
     VIEW.gi = R.i;
     const i = R.i, vx = viewX(), rm = ROOMS[i], up = rm.ride ? Math.min(rm.ride, Math.max(0, R.t - R.t0)) * 220 : 0; // a lift leaves the room behind and rises to the next
@@ -2887,7 +2907,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     const sb = seamBand(i); if (sb) ctx.clearRect(vx, -camY(), W, H); /* backdrops of this room and its neighbours all go to the BG layer */
     if (i > 0 && vx < (sb && sb.L != null ? BAND : 0) + 40) { VIEW.band = sb && sb.L != null ? { R: seamBand(i - 1).R } : null; drawNb(i - 1, entryX(i) - exitX(i - 1), pairD(i - 1) + up); }
     if (i < ROOMS.length - 1 && vx > -40) { VIEW.band = sb && sb.R != null ? { L: 0 } : null; drawNb(i + 1, exitX(i) - entryX(i + 1), -pairD(i) - rideLeft() * 220); }
-    VIEW.band = sb; drawRoom(); VIEW.band = null;
+    VIEW.band = sb; drawRoom(); VIEW.band = null; seamPieces(i, vx, Math.round((-pairD(i) - rideLeft() * 220) / PX) * PX);
     if (BG.nOn) { if (BG.on) BG.c.getContext('2d').drawImage(BG.n, 0, 0); BG.nOn = false; } /* the rooms' own walls over every crossfaded sky */
   }
   function drawRoom() {
@@ -4882,7 +4902,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!(S.iframe > 0) || Math.floor(performance.now() / 40) % 2) player(P.x, P.vx, S.hurt > 0, danger, room ? 'you' : null, !!S.taunt && !(S.blockT > 0), S.blockT > 0, curCos);
     if (S.bell > 0) drawBell(P.x);
     if (S.st === 'play') streakTag(P.x, S.fireTier || 0, S.combo || 0);
-    ctx.restore();
+    ctx.restore(); if (JOURNEY) seamFront();
     cs.forEach(hand);
     drawCaught(P.x, P.y, !!S.held, S.throws.map(q => [q.x, q.h, q.up, Math.sign(q.vx)]));
     drawRings(dt);
@@ -5035,6 +5055,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       if (tp.st === 'play') streakTag(B.tx, ftier, +tp.cb || 0);
       ctx.restore();
     }
+    if (JOURNEY) seamFront();
     cs.forEach(hand);
     if (tp) drawCaught(B.tx, B.ty || 0, !!tp.hd, (Array.isArray(tp.tw) ? tp.tw : []).slice(0, 6).filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])));
     drawRings(dt);

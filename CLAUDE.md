@@ -359,7 +359,11 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   end instead of dissolving. Both rooms' masks come from the same screen pixels, so nothing pops when the current room changes. Left out
   (hard edge as before): the house (interior), the dive screen (two sets), the climb. The first lake screen gets a bed sloping down
   from the pond's depth (`fitProps`), and a shallower water neighbour drawn higher gets dark rock below it (`drawNb`).
-  Not done yet: ground transition tiles and a gate or end piece at each section seam (needs art).
+  Seam pieces (art thread's `art/seams/`, Daniel said yes to asking for them): `seamPieces` (end of `drawWorld`) finds the seams on screen
+  (`seamKey` of the two rooms, `SEAM_PAIR`: house>garden, garden>dojo, temple>dojo, dojo>temple and dojo>bamboo use `end_dojo_bamboo`,
+  lake>volcano, volcano>snow, snow>elevator, elevator>space), draws the 32x16 `edge_<pair>` ground tile centred on the seam on the
+  right-hand room's ground, and `seamFront` draws `end_<pair>` bottom-centred there after 我 (both views), before the fists. Decoration only.
+  The art thread will regenerate `edge_lake_volcano` / `edge_volcano_snow` under the same names if the volcano repaint is approved.
 - Stage design document for Daniel: https://claude.ai/artifact/YUAeoRmNTQtoG3Hc4erU4G (labels every rule Daniel / Agreed /
   Proposal; keep it in step with the prototype).
 - Test hook: `?dbg=1` exposes `window.__pyf = { S, P, R, ROOMS, loadRoom, VIEW, surfAt, seed, mode, chunks }`.
