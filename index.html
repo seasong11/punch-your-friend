@@ -610,9 +610,20 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   const HF = '"PYF Pixel", "Press Start 2P", "PingFang SC", monospace';
   try { document.fonts.load('24px "PYF Pixel"'); } catch (e) {}
   const TXT = [];
-  ctx.fillText = function (t, x, y) {
-    TXT.push({ t: String(t), x, y, m: ctx.getTransform(), font: ctx.font, fill: ctx.fillStyle, a: ctx.globalAlpha, al: ctx.textAlign, bl: ctx.textBaseline });
-  };
+  // Smooth camera (Daniel, 2026-11-16: "sure" to a sub-texel camera): the world is still drawn on the art-pixel grid, but the
+  // camera's leftover fraction of an art pixel (SUB, world units) shifts the final hard-pixel upscale, so pans glide instead of
+  // stepping. The backdrop layers (BG, from artBack) and screen-fixed overlays (uc, via onUI) are not shifted. ?sub=0 turns it off.
+  const SUBON = !/[?&]sub=0/.test(location.search), SUB = { x: 0, y: 0 }, BG = { c: document.createElement('canvas'), on: false, x: 0, y: 0 };
+  const uc = document.createElement('canvas'); uc.width = wc.width; uc.height = wc.height;
+  const ucx = uc.getContext('2d', { willReadFrequently: true }); if (LOWRES) ucx.scale(1 / PX, 1 / PX);
+  let UIP = false;
+  const recText = c => function (t, x, y) { TXT.push({ t: String(t), x, y, m: c.getTransform(), font: c.font, fill: c.fillStyle, a: c.globalAlpha, al: c.textAlign, bl: c.textBaseline, ui: UIP }); };
+  ctx.fillText = recText(ctx); ucx.fillText = recText(ucx);
+  function onUI(fn) { // draw screen-fixed things (title plate, overlays, arrows) on their own layer, so the camera's sub-pixel shift leaves them still
+    if (!SUBON) { fn(); return; }
+    const main = ctx; ucx.setTransform(main.getTransform()); ctx = ucx; UIP = true;
+    try { fn(); } finally { ctx = main; UIP = false; }
+  }
   // Camera: the whole arena normally; on portrait phones a narrower window that follows 我,
   // so the arena can be about twice as tall. Game logic always works in full-world coordinates.
   const WORLD_W = cv.width, WORLD_H = cv.height;
@@ -670,10 +681,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (!palHex[c]) { const [r, g, b] = nearest(parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)); palHex[c] = `rgb(${r},${g},${b})`; }
     return palHex[c];
   }
-  function palettize() {
-    const img = sctx.getImageData(0, 0, sc.width, sc.height), px = new Uint32Array(img.data.buffer);
-    for (let i = 0; i < px.length; i++) { const v = px[i]; px[i] = LUT[((v & 0xf8) << 7) | ((v >> 6) & 0x3e0) | ((v >> 19) & 0x1f)]; }
-    sctx.putImageData(img, 0, 0);
+  function palettize(g, c) {
+    g = g || sctx; c = c || sc;
+    const img = g.getImageData(0, 0, c.width, c.height), px = new Uint32Array(img.data.buffer);
+    for (let i = 0; i < px.length; i++) { const v = px[i]; px[i] = v >>> 31 ? LUT[((v & 0xf8) << 7) | ((v >> 6) & 0x3e0) | ((v >> 19) & 0x1f)] : 0; } /* see-through stays see-through (the backdrop shows there) */
+    g.putImageData(img, 0, 0);
   }
   function present() {
     palettize();
@@ -685,11 +697,17 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     out.setTransform(1, 0, 0, 1, 0, 0);
     out.imageSmoothingEnabled = false;
     out.clearRect(0, 0, cv.width, cv.height);
-    const k = sc.width / WORLD_W;
-    out.drawImage(sc, CAM.x * k, 0, CAM.w * k, sc.height, 0, 0, cv.width, cv.height);
-    const camM = new DOMMatrix([cv.width / CAM.w, 0, 0, cv.height / WORLD_H, -CAM.x * cv.width / CAM.w, 0]);
+    const k = sc.width / WORLD_W, sx = CAM.x * k, sw = CAM.w * k, F = cv.width / sw, Fy = cv.height / sc.height;
+    const ox = SUBON ? -SUB.x * cv.width / CAM.w : 0, oy = SUBON ? SUB.y * cv.height / WORLD_H : 0;
+    if (BG.on) out.drawImage(BG.c, (BG.x - sx) * F, BG.y * Fy, BG.c.width * F, BG.c.height * Fy); /* the backdrop, not shifted */
+    out.drawImage(sc, sx, 0, sw, sc.height, ox, oy, cv.width, cv.height);
+    if (ox < 0) out.drawImage(sc, sx + sw - 1, 0, 1, sc.height, cv.width + ox - 0.5, oy, -ox + 1, cv.height); /* the strip the shift uncovers: repeat the edge column */
+    if (oy < 0) out.drawImage(sc, sx, sc.height - 1, sw, 1, ox, cv.height + oy - 0.5, cv.width, -oy + 1);
+    if (SUBON) { palettize(ucx, uc); out.drawImage(uc, sx, 0, sw, uc.height, 0, 0, cv.width, cv.height); ucx.save(); ucx.setTransform(1, 0, 0, 1, 0, 0); ucx.clearRect(0, 0, uc.width, uc.height); ucx.restore(); }
+    BG.on = false;
+    const camM = new DOMMatrix([cv.width / CAM.w, 0, 0, cv.height / WORLD_H, -CAM.x * cv.width / CAM.w, 0]), camW = new DOMMatrix([1, 0, 0, 1, ox, oy]).multiply(camM);
     for (const r of TXT) {
-      out.setTransform(camM.multiply(TXT_BASE).multiply(r.m)); out.font = r.font; out.globalAlpha = r.a; out.textAlign = r.al; out.textBaseline = r.bl;
+      out.setTransform((r.ui ? camM : camW).multiply(TXT_BASE).multiply(r.m)); out.font = r.font; out.globalAlpha = r.a; out.textAlign = r.al; out.textBaseline = r.bl;
       if (r.fill !== '#2b1d3a') { out.fillStyle = '#1b1430'; out.fillText(r.t, r.x + 3, r.y + 3); }
       out.fillStyle = palCol(r.fill); out.fillText(r.t, r.x, r.y);
     }
@@ -1511,7 +1529,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   // that keeps the picture still when 我 crosses into a room whose floor is at another height, then eases to 0.
   const VIEW = { x: 0, oy: 0, dy: 0, nb: 0, rm: -1 };
   let NBP = {}; // props of rooms 我 has left, so they are still drawn the way they were left
-  const viewX = () => Math.round(VIEW.x / PX) * PX;
+  const viewX = () => Math.floor(VIEW.x / PX) * PX; /* the art-pixel part; the rest (SUB.x) shifts the final upscale */
   const exitX = i => ROOMS[i].climb ? W_ - 40 - P.w / 2 : W_ - P.w / 2, entryX = i => ROOMS[i].climb ? 40 + P.w / 2 : P.w / 2 + 1;
   function edgeH(i, right) { // floor height at a room's left or right edge
     const rm = ROOMS[i]; if (rm.climb) return right ? rm.climb.top * FH : 0;
@@ -2202,11 +2220,11 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       ctx.fillRect(h.x - 16, hy, 32, 8); ctx.fillRect(h.x - 16, hy, 8, 24); ctx.fillRect(h.x + 8, hy, 8, 24); ctx.fillRect(h.x - 16, hy + 16, 32, 8);
     }
     drawDoor(W - 110, top * FH, true, true);
-    if (!VIEW.nb) { box(248 + viewX(), 16 - cam, 412, 28, '#181425');
+    if (!VIEW.nb) onUI(() => { box(248 + viewX(), 16 - cam, 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260 + viewX(), 36 - cam); }
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${ROOMS[R.i].name}`, 260 + viewX(), 36 - cam); });
   }
-  const camY = () => Math.round((CAMV.y + VIEW.oy + VIEW.dy) / PX) * PX;
+  const camY = () => Math.ceil((CAMV.y + VIEW.oy + VIEW.dy) / PX) * PX, setSub = () => { SUB.x = VIEW.x - viewX(); SUB.y = CAMV.y + VIEW.oy + VIEW.dy - camY(); };
   function camFollow(h, dt) {
     const cl = climbOf(), tall = !cl && ROOMS[R.i].tall, target = cl ? clamp(h - 170, 0, cl.top * FH - 170) : tall ? clamp(h - 330, 0, 896) : 0; /* `tall` rooms (the dojo): the view rises with 我 onto the roof, up to one extra screen (Daniel, 2026-11-15) */
     if (tall && CAMV.rm !== R.i) CAMV.rm = R.i; /* keep the height across a seam between two tall rooms */
@@ -2470,7 +2488,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (k === 'rock' || k === 'slab' || k === 'crate' || k === 'box' || k === 'pod' || k === 'hedge' || k === 'pot') { if ((k === 'rock') && !p.hh && Math.abs(w - 96) < 20 && Math.abs(h - 64) < 20 && S('rock', p.x, t + h)) return true; tileBlock(A, l, t, w, (p.hh || h) + (p.hh ? 0 : 0)); cracks(); return true; }
     return false;
   }
-  function plate(rm) { if (VIEW.nb) return; bx(248 + viewX(), 16 - camY(), 412, 28, '#181425'); ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left'; ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
+  function plate(rm) { if (VIEW.nb) return; onUI(() => { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425'); ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left'; ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }); }
   const drawProps = () => R.props.forEach(p => { if (p.dead && p.k === 'ice') { artProp(p); return; } if (p.dead && p.k === 'floor') { bx(p.x - p.w / 2, FLOOR - p.h, p.w, 32, '#181425'); return; } if (p.dead || artProp(p)) return; if (p.raw) drawProp(p); else litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 64, (p.hh || p.h) + 64, () => drawProp(p)); });
   function artScene(rm, sec) { // a whole room from its level set: backdrop, ground, the moving bits, props
     const A = ART[sec], sc = rm.scene, now = performance.now(), open = rm.void || rm.vac;
@@ -2539,7 +2557,10 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       g.globalCompositeOperation = 'destination-in'; g.drawImage(DUSK, 0, my - AH); g.globalCompositeOperation = 'source-over';
     }
     ctx.save(); ctx.beginPath(); ctx.rect(0, st, W, H); ctx.clip(); ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(NIGHT, x0, y0, W, H);
+    if (SUBON && my == null && ctx !== ucx && !VIEW.nb) { /* the backdrop goes under the world as its own layer (not shifted by the smooth camera); punch it out of the world canvas */
+      const M = ctx.getTransform(); if (BG.c.width !== AW || BG.c.height !== AH) { BG.c.width = AW; BG.c.height = AH; } const bg = BG.c.getContext('2d'); bg.clearRect(0, 0, AW, AH); bg.drawImage(NIGHT, 0, 0);
+      BG.on = true; BG.x = Math.round(x0 * M.a + M.e); BG.y = Math.round(y0 * M.d + M.f); ctx.clearRect(x0, y0, W, H);
+    } else ctx.drawImage(NIGHT, x0, y0, W, H);
     ctx.restore(); ctx.imageSmoothingEnabled = sm; return true;
   }
   function drawProp(p) {
@@ -2813,9 +2834,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     if (rm.hill && sc !== 'snow' && sc !== 'dive') col(0, W, '#3a4466');
     if (R.i === ROOMS.length - 1) drawDoor(W - 110, Math.max(0, surfAt(W - 110)), true, true);
     drawProps();
-    if (!VIEW.nb) { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425');
+    if (!VIEW.nb) onUI(() => { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); });
   }
   function drawNb(j, dx, dy) { // a neighbouring room, drawn beside the current one
     const sv = { i: R.i, props: R.props, gl: R.gl, el: R.el };
@@ -2885,9 +2906,9 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawDoor(W - (last ? 96 : 60), rp && rp.up ? rp.h : 0, true, last);
     // furniture gets the same lit edges and dark outline as 我
     R.props.forEach(p => { if (!p.dead) litSprite(p.x - p.w / 2 - 16, FLOOR - p.h - 64, p.w + 32, p.h + 64, () => drawProp(p)); });
-    if (!VIEW.nb) { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425');
+    if (!VIEW.nb) onUI(() => { bx(248 + viewX(), 16 - camY(), 412, 28, '#181425');
     ctx.fillStyle = '#c0cbdc'; ctx.font = '16px ' + PF; ctx.textAlign = 'left';
-    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); }
+    ctx.fillText(`ROOM ${R.i + 1}/${ROOMS.length} · ${rm.name}`, 260 + viewX(), 36 - camY()); });
   }
 
   // ---------- UI ----------
@@ -4831,7 +4852,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawRings(dt);
     drawParts(dt);
     S.pops = pops(S.pops, dt);
-    ctx.translate(viewX(), -camY()); drawOverlayFx(dt, S.st === 'play' && S.lives === 1); ctx.translate(-viewX(), camY());
+    ctx.translate(viewX(), -camY()); onUI(() => drawOverlayFx(dt, S.st === 'play' && S.lives === 1)); ctx.translate(-viewX(), camY()); setSub();
     tauntBubble(S, P.x, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -4983,7 +5004,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
     drawRings(dt);
     drawParts(dt);
     B.pops = pops(B.pops, dt);
-    ctx.translate(viewX(), -camY()); drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1); ctx.translate(-viewX(), camY());
+    ctx.translate(viewX(), -camY()); onUI(() => drawOverlayFx(dt, !!tp && tp.st === 'play' && +tp.lives === 1)); ctx.translate(-viewX(), camY()); setSub();
     if (tp) tauntBubble(B, B.tx, dt); // last, so score pops and flashes never cover it
     ctx.restore();
   }
@@ -5048,7 +5069,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
       else if (S.st === 'play') { FX.slow = Math.max(0, FX.slow - dt); update(FX.slow > 0 ? dt * 0.4 : dt); }
       followCam(P.x - viewX(), dt);
       drawTargetView(dt);
-      offscreenArrows();
+      onUI(offscreenArrows);
       pushAcc += dt;
       if (pushAcc > 0.05) { pushAcc = 0; pushTarget(); }
     } else {
@@ -5179,7 +5200,7 @@ kbd { font-family: var(--body); background: var(--panel); padding: 1px 6px; bord
   document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setForm(+b.dataset.f)));
   $('chopBtn').addEventListener('click', () => doChop(B.aim));
 
-  const toX = e => { const r = cv.getBoundingClientRect(); return CAM.x + (e.clientX - r.left) / r.width * CAM.w + viewX(); };
+  const toX = e => { const r = cv.getBoundingClientRect(); return CAM.x + (e.clientX - r.left) / r.width * CAM.w + viewX() + (SUBON ? SUB.x : 0); };
   const toH = e => { const r = cv.getBoundingClientRect(); return FLOOR + camY() - (e.clientY - r.top) / r.height * H; };
   let steer = false, steerY = 0;
   cv.addEventListener('pointerdown', e => {

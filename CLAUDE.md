@@ -330,6 +330,13 @@ A pixel-art party game in a single file, `index.html`, hosted on GitHub Pages
   looked out of place on the new art; `addHole` now does nothing. It was only a visual.
 - Art in the prototype: Endesga 64 and the Hoodie Guy sprite (PR #22's commit is cherry-picked onto this branch). The other
   characters, animation frames and the pixelfx effects are not in. Daniel chose no new screen effects on hits.
+- Smooth camera (Daniel, 2026-11-16, said "sure" to a sub-texel camera): `viewX()` floors and `camY()` ceils to whole art pixels; the
+  leftover fraction (`SUB`, set by `setSub` after the world is drawn) shifts the final hard-pixel upscale in `present()`, with the uncovered
+  edge strip filled from the edge column. The world is still drawn on the art grid and palette. Backdrops from `artBack` go to their own
+  layer (`BG`, punched out of the world canvas, not shifted, so parallax and the sky body behave as before; the climb's dusk fade still
+  draws into the world). Screen-fixed things go through `onUI(fn)` to the `uc` canvas (title plates, `drawOverlayFx`, `offscreenArrows`);
+  recorded text carries `ui` and world text gets the same shift. `palettize(g, c)` keeps see-through pixels see-through. Taps add `SUB.x`.
+  `?sub=0` turns it off for comparison.
 - Follow camera (Daniel: 我 fixed on screen, one spatial map): `VIEW.x` (`viewFollow`, `viewX()`) keeps 我 centred and the
   world is drawn under `translate(-viewX(), camY())`. `drawWorld` draws the previous / next room beside the current one
   (`drawNb`, props of left rooms kept in `NBP`), offset by `exitX/entryX` and by `pairD(i)` (height difference at the seam;
