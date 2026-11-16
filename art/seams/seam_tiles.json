@@ -1,0 +1,69 @@
+{
+ "frames": {
+  "edge_house_garden": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 32,
+    "h": 16
+   }
+  },
+  "edge_garden_dojo": {
+   "frame": {
+    "x": 0,
+    "y": 16,
+    "w": 32,
+    "h": 16
+   }
+  },
+  "edge_temple_dojo": {
+   "frame": {
+    "x": 0,
+    "y": 32,
+    "w": 32,
+    "h": 16
+   }
+  },
+  "edge_dojo_bamboo": {
+   "frame": {
+    "x": 0,
+    "y": 48,
+    "w": 32,
+    "h": 16
+   }
+  },
+  "edge_lake_volcano": {
+   "frame": {
+    "x": 0,
+    "y": 64,
+    "w": 32,
+    "h": 16
+   }
+  },
+  "edge_volcano_snow": {
+   "frame": {
+    "x": 0,
+    "y": 80,
+    "w": 32,
+    "h": 16
+   }
+  },
+  "edge_snow_elevator": {
+   "frame": {
+    "x": 0,
+    "y": 96,
+    "w": 32,
+    "h": 16
+   }
+  },
+  "edge_elevator_space": {
+   "frame": {
+    "x": 0,
+    "y": 112,
+    "w": 32,
+    "h": 16
+   }
+  }
+ },
+ "note": "ground transition tiles, 32x16 each: left half = left section ground, right half = right section ground"
+}

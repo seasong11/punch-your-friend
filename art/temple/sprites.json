@@ -1,0 +1,22 @@
+{
+ "pavilion": {
+  "roof_edge": 56,
+  "peak": 80,
+  "note": "walk on the lower roof edge (56 px above the ground) and up to the peak (80)"
+ },
+ "arch_bridge": {
+  "w": 120,
+  "rise": 22,
+  "walk_line": "top of deck: y above ground = 6+22*(1-((x-59.5)/59.5)^2), x from the left edge"
+ },
+ "koi_pond": {
+  "above_ground_rows": 5,
+  "note": "place so the 5th row from the top is the ground line; the 9 rows below sink into the ground"
+ },
+ "hall_end": {
+  "w": 128,
+  "h": 170,
+  "walk_line": "ridge 160 px above the ground for x 0..62 from the left edge, then the hip falls steeply and sweeps out nearly level to an upturned eave tip (about 126 px up) at x=127; the hall continues to the left, the garden is on the right; flip it for the other end",
+  "wall_right_edge_x": 84
+ }
+}

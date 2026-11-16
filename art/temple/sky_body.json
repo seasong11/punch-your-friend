@@ -1,0 +1,9 @@
+{
+ "kind": "sun",
+ "w": 31,
+ "h": 31,
+ "home_x": 60,
+ "home_y": 127,
+ "parallax": 0.04,
+ "layer": "between bg_sky and bg_far"
+}

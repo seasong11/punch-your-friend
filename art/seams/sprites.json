@@ -1,0 +1,80 @@
+{
+ "end_house_garden": {
+  "w": 72,
+  "h": 104,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_garden_dojo": {
+  "w": 96,
+  "h": 132,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_dojo_bamboo": {
+  "w": 104,
+  "h": 170,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_temple_dojo": {
+  "w": 104,
+  "h": 170,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_lake_volcano": {
+  "w": 100,
+  "h": 150,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_volcano_snow": {
+  "w": 100,
+  "h": 128,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_snow_elevator": {
+  "w": 88,
+  "h": 112,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "end_elevator_space": {
+  "w": 96,
+  "h": 120,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "pond_top": {
+  "w": 112,
+  "h": 72,
+  "anchor": "row 32 = volcano floor line (art y 208); the water opening is x 24..88 (64 px); shaft below: shaft_l at x 16, water tiles at x 32..80, shaft_r at x 80",
+  "layer": "front, the banks are ground"
+ },
+ "shaft_mouth": {
+  "w": 128,
+  "h": 40,
+  "anchor": "top row at the lake ceiling, centred on the shaft (local x 32..96 = shaft opening, so x = pond_top x - 8)",
+  "layer": "front"
+ },
+ "end_bamboo_climb": {
+  "w": 96,
+  "h": 112,
+  "anchor": "bottom centre on the seam, bottom row on floor y 208",
+  "layer": "front, decoration only"
+ },
+ "roof_access": {
+  "w": 64,
+  "h": 72,
+  "anchor": "bottom centre where the climb comes out on the roof, bottom row on the roof floor",
+  "layer": "behind the player (the player steps out of the doorway, x 20..44)"
+ },
+ "pond_rock": {
+  "w": 432,
+  "h": 284,
+  "anchor": "local x 0 = screen art x -10 of the lake's last screen (shaft art x 320..384 = local 330..394); local row r = height 284 - r above the lake bed (lip row 12 = 272, pond surface row 16, lake surface row 98, bed row 284)",
+  "layer": "drawn over the lake and the volcano sky; replaces the band tiles, pond_top, the shaft tiles and shaft_mouth"
+ }
+}

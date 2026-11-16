@@ -1,0 +1,9 @@
+{
+ "kind": "moon",
+ "w": 25,
+ "h": 25,
+ "home_x": 268,
+ "home_y": 104,
+ "parallax": 0.04,
+ "layer": "between bg_sky and bg_far"
+}
